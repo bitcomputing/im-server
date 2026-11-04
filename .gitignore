@@ -1,4 +1,6 @@
 .idea/
+.env
+.local/
 .vscode/
 **/conf/*.yml
 launcher/uploads/

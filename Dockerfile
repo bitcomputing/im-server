@@ -26,7 +26,8 @@ RUN apk add --no-cache bash tzdata ca-certificates \
 
 # Binary + run.sh + config_template.yaml produced by the build stage.
 COPY --from=builder /out/ /opt/
-RUN chmod +x /opt/imserver /opt/run.sh
+RUN sed -i 's/\r$//' /opt/run.sh \
+    && chmod +x /opt/imserver /opt/run.sh
 
 # WebSocket + API + Navigator + Admin console
 EXPOSE 9003 9001 9002 8090

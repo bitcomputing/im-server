@@ -1,6 +1,8 @@
 # VCS / IDE
 .git
 .gitignore
+.env
+.local
 .idea
 .vscode
 
