@@ -11,6 +11,7 @@ import (
 	"im-server/commons/pbdefines/pbobjs"
 	hisdbs "im-server/services/historymsg/storages/dbs"
 	"im-server/simulator/utils"
+	"im-server/simulator/wsclients"
 )
 
 func retentionFixture(t *testing.T) *fixture {
@@ -55,10 +56,26 @@ func TestPurgeSeenHistoryMySQL(t *testing.T) {
 func TestSeenAfterRetention(t *testing.T) {
 	f := retentionFixture(t)
 	owner := f.connect("read-owner", "Web")
-	sender := f.connect("read-sender", "PC")
+	ownerPC := f.connect("read-owner", "PC")
+	sender := f.connect("read-sender", "Web")
 	code, ack := sender.SendGroupMsg(f.Group, &pbobjs.UpMsg{MsgType: "jg:text", MsgContent: []byte(`{"content":"after owned retention"}`), Flags: 8})
 	if code != utils.ClientErrorCode_Success || ack == nil || ack.Code != 0 {
 		t.Fatal("post-retention publish failed")
+	}
+	eventually(t, func() bool {
+		_, web := f.Seen.Load("read-owner/Web/" + ack.MsgId)
+		_, pc := f.Seen.Load("read-owner/PC/" + ack.MsgId)
+		return web && pc
+	})
+	for _, client := range []*wsclients.WsImClient{owner, ownerPC} {
+		code, history := client.QryHistoryMsgs(&pbobjs.QryHisMsgsReq{TargetId: f.Group, ChannelType: pbobjs.ChannelType_Group, Count: 20})
+		if code != utils.ClientErrorCode_Success || history == nil || len(history.Msgs) != 1 || history.Msgs[0].MsgId != ack.MsgId || history.Msgs[0].MsgSeqNo <= f.Seq {
+			t.Fatal("post-retention ACK, actual history and nonreused sequence differ")
+		}
+		_, conver := client.QryConversation(&pbobjs.QryConverReq{TargetId: f.Group, ChannelType: pbobjs.ChannelType_Group})
+		if conver == nil || conver.GetMsg().GetMsgId() != ack.MsgId || conver.UnreadCount != 0 {
+			t.Fatal("post-retention summary or no-count state differs across devices")
+		}
 	}
 	eventually(t, func() bool {
 		code, state := seen(t, owner, f.Group, -1)
@@ -66,7 +83,7 @@ func TestSeenAfterRetention(t *testing.T) {
 			t.Fatalf("query failed %d", code)
 		}
 		if state.LatestSeq > 0 {
-			t.Logf("post-retention latest=%d seen=%d has_new=%v", state.LatestSeq, state.SeenSeq, state.HasNew)
+			t.Logf("post-retention message_id=%s latest=%d seen=%d has_new=%v; both devices received and queried the same history/summary", ack.MsgId, state.LatestSeq, state.SeenSeq, state.HasNew)
 			if !state.HasNew || state.LatestSeq <= state.SeenSeq {
 				t.Fatal("new stored message was hidden by a reused reading sequence")
 			}
