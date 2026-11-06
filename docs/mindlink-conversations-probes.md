@@ -386,3 +386,15 @@ GET 的 data 为 SeenState；PUT 候选 data 为 `{operation: OperationResult, s
 用户行复验关联的是**前批** `2026-11-06T12:37:56.256147Z` SQL 结果：目标 scope 恰1行、id9、该隔离库其他租户同 user_id 为0，原发送回执 `pbydq8gfp8lhukeh`。本批未重复该查询，不能称这是本轮重查或证明 Token 握手。该旧证据及本轮计数/版本/格式/未覆盖项已分别写入 Rocky 公开文件 `D:/projects/.evidence/DG2-20261106-002/im/business-crossrepo-cbe13afa-public.json`，SHA256 `df12d5ebeb3952e6bfb4183bfcc16256e700dbed40a9dff6a08f03506c078a26`；本机忽略的对应 JSON 与远端文件逐哈希相同，并已解析回读。原 `validation.md` 仍保留三用户及旧离线/重启失败，不覆盖改写成新业务验收。
 
 首次通过长 EncodedCommand 写证据失败（Windows 命令行长度）；随后回查目标文件不存在，改传上述不含秘密的单个 JSON，读回及哈希匹配后才计作证据交付。没有创建租户/用户/群、发送消息、连接业务用户、回调业务接口、重启服务或改 IM/BIZ/Redis/私有 JSON；仅公开证据文件和本报告新增。下一步所缺是业务 Token 的真实客户端运行及受控的拦截器配置/有效事件/业务审计闭环，不是再发一次模拟消息或把旧记录重标为通过。
+
+## 18. F 字段回执补充：生成时间与接收分发时间分开（2026-11-06）
+
+有效批次 `0b0cb32b31e0721c4bf23984ee8dc5fc660fc5c8c661fb80498a51b36b5403e9`，来源 READ 二管家 `pbyfldxeyu8hukeh`。原管理前次 F 回执 `pbyfjzh38uuhukeh` 只核了发送服务构造赋值等位置，对“私聊转发副本保留 seq/time”的接受范围过宽；本批补读固定 `a35c8779c43d23e42cd6d49fc295f454abf6f2ff` 的接收分发及用户时间状态，作如下限定，不修改原生行为。
+
+- `services/message/services/dispatchservice.go:21`：Private/System 分支直接将 downMsg 交给 `doDispatch`；该文件的 `copyDownMsg` 调用位于 Group 分支。`copyDownMsg:151` 构造副本时确实复制 MsgSeqNo 和当时的 MsgTime，但这仅是复制时点。
+- 同文件 `doDispatch:92` 在实际处理前调用 `RegenateSendTime(appkey, receiverId, msg.MsgTime)`，随后以返回值覆盖 `msg.MsgTime`（96—97 行）；该处未重写 MsgSeqNo。不能把复制或发送服务的赋值当作接收投递 MsgTime 不变的证明。
+- `services/message/services/userstatus.go:226`：时间状态按 appkey/userId 取出并加锁；已有 latestMsgTime 不小于传入 currentTime 时返回旧值加一。它是接收者时间序列，可能受同接收者其他会话影响，不等同于消息会话的 `message_sequence.send_time`。
+
+因此应将唯一契约 F 的生产者行澄清为：生成阶段返回的 seq/time 写入 DownMsg(6/8)，分发沿用其 MsgSeqNo，MsgTime 可在接收者分发阶段重新生成；不要写“私聊转发保证 seq/time 端到端相同”。READ 的展示位置仍是同授权会话实际持久历史的 MsgSeqNo，不能由 MsgTime、未读 index 或预留水位推导。两张表的键、序列生产/历史消费关系、E 合法空 PB、§16 接线候选及既有验收边界不因此扩大或改变。
+
+本批证据为固定 Git 源码及调用分支核对，**没有**跨会话运行复现或产品/DB 回归，不把静态可发生条件描述成已观测的投递结果。只提交本报告的限定说明，由 BIZ 维护者修改唯一契约后回固定版本；不并写其契约，也不把此处澄清称为原生 bug 修复。
