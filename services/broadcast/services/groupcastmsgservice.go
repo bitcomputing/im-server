@@ -21,7 +21,10 @@ func SendGroupCastMsg(ctx context.Context, upMsg *pbobjs.UpMsg) (errs.IMErrorCod
 
 	converId := commonservices.GetConversationId(userId, grpCastId, pbobjs.ChannelType_GroupCast)
 	msgConverCache := convercache.GetMsgConverCache(ctx, converId, "", pbobjs.ChannelType_GroupCast)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_GroupCast, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_GroupCast, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0
+	}
 
 	downMsg4Sendbox := &pbobjs.DownMsg{
 		SenderId:       userId,

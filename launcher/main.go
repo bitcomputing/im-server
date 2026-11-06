@@ -72,7 +72,10 @@ func main() {
 		return
 	}
 	//upgrade mysql
-	dbcommons.Upgrade()
+	if err := dbcommons.Upgrade(); err != nil {
+		logs.Errorf("Upgrade Mysql failed: %v", err)
+		os.Exit(1)
+	}
 	//init tsdb
 	if err := kvdbcommons.InitKvdb(); err != nil {
 		logs.Error("Init KvDB failed.", err)

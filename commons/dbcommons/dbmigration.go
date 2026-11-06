@@ -2,11 +2,14 @@ package dbcommons
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"im-server/commons/tools"
 	"io"
 	"sort"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 //go:embed sqls/*
@@ -21,23 +24,29 @@ type CountResult struct {
 	Count int64 `gorm:"count"`
 }
 
-func Upgrade() {
+func Upgrade() error {
 	var currVersion int64 = 0
 	dao := GlobalConfDao{}
-	conf, err := dao.FindByKey(JimDbVersionKey)
+	var conf GlobalConfDao
+	err := GetDb().Where("conf_key=?", JimDbVersionKey).Take(&conf).Error
 	if err == nil {
 		ver, err := tools.String2Int64(conf.ConfValue)
 		if err == nil && ver > 0 {
 			currVersion = ver
+		} else {
+			return fmt.Errorf("invalid database version %q", conf.ConfValue)
 		}
-	} else {
+	} else if errors.Is(err, gorm.ErrRecordNotFound) {
 		err = dao.Create(GlobalConfDao{
 			ConfKey:   JimDbVersionKey,
 			ConfValue: fmt.Sprintf("%d", initVersion),
 		})
-		if err == nil {
-			currVersion = initVersion
+		if err != nil {
+			return err
 		}
+		currVersion = initVersion
+	} else {
+		return err
 	}
 	fmt.Println("[DbMigration]current version:", currVersion)
 	sqlFiles, err := sqlFs.ReadDir("sqls")
@@ -59,16 +68,23 @@ func Upgrade() {
 				sqlFileName := fmt.Sprintf("sqls/%d.sql", ver)
 				fmt.Println("[DbMigration]start to execute sql file:", sqlFileName)
 				err := executeSqlFile(sqlFileName)
-				if err == nil {
-					fmt.Println("[DbMigration]execute sql file success:", sqlFileName)
-					dao.Upsert(GlobalConfDao{
-						ConfKey:   JimDbVersionKey,
-						ConfValue: fmt.Sprintf("%d", ver),
-					})
+				if err != nil {
+					return fmt.Errorf("database migration %d: %w", ver, err)
 				}
+				fmt.Println("[DbMigration]execute sql file success:", sqlFileName)
+				if err := dao.Upsert(GlobalConfDao{
+					ConfKey:   JimDbVersionKey,
+					ConfValue: fmt.Sprintf("%d", ver),
+				}); err != nil {
+					return fmt.Errorf("record database migration %d: %w", ver, err)
+				}
+				currVersion = ver
 			}
 		}
+	} else {
+		return err
 	}
+	return nil
 }
 
 func executeSqlFile(fileName string) error {

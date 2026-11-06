@@ -76,7 +76,10 @@ func SendGroupMsg(ctx context.Context, upMsg *pbobjs.UpMsg) (errs.IMErrorCode, s
 	}
 
 	msgConverCache := convercache.GetMsgConverCache(ctx, groupId, upMsg.SubChannel, pbobjs.ChannelType_Group)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(groupId, pbobjs.ChannelType_Group, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(groupId, pbobjs.ChannelType_Group, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0, upMsg.ClientUid, 0, nil
+	}
 	preMsgId := bases.GetMsgIdFromCtx(ctx)
 	if preMsgId != "" {
 		msgId = preMsgId
