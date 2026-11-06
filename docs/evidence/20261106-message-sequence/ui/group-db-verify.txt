@@ -1,0 +1,6 @@
+msg_id	msg_seq_no	conver_id	channel_type	sub_channel
+pbyc3tys2agkbg4m	3	group-19d7a77432b7	2	
+seq	send_time
+3	1793965890377
+seen_seq
+1

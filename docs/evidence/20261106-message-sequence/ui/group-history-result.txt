@@ -1,0 +1,17 @@
+### Result
+{
+  "code": 0,
+  "expectedMessageIdVisible": true,
+  "messages": [
+    {
+      "msg_id": "pbyc3tys2agkbg4m"
+    },
+    {
+      "msg_id": "pbyctf27aaekbg4m"
+    }
+  ]
+}
+### Ran Playwright code
+```js
+await page.getByText('响应 991234567891011121314151617181920212223242526272829›⌄⌄⌄⌄⌄{ "code": 0, "msg').evaluate('el => { const t=el.innerText; const r=JSON.parse(t.slice(t.indexOf(\'{\'))); return {code:r.code,expectedMessageIdVisible:t.includes(\'pbyc3tys2agkbg4m\'),messages:r.data?.msgs?.map(m=>({msg_id:m.msg_id,msg_seq_no:m.msg_seq_no}))}; }');
+```

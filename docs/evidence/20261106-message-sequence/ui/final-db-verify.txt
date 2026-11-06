@@ -1,0 +1,14 @@
+check_name	history_rows	msg_seq_no
+private_ui	1	3
+check_name	history_rows	msg_seq_no
+group_ui	1	3
+conver_id	channel_type	seq
+seq-alice:seq-bob	1	3
+group-19d7a77432b7	2	3
+target_id	channel_type	seen_seq
+seq-alice	1	1
+group-19d7a77432b7	2	1
+fault_table_residue
+0
+retained_runtime_tenants
+2

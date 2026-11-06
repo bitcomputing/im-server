@@ -25,6 +25,7 @@ Own Docker project `im-f1-sequence-20261106`, Go 1.25.12 Linux runner and MySQL 
 | Final-source live flow after restart | exit 0: private/group sequence 2 > retained seen=1, actual Web/PC receipt and history; new IDs differ from expired messages |
 | Actual allocation storage fault | both WS sends reject with 10009 and empty ID/sequence; no extra history, inbox/sendbox rows or client receipt observed in the one-second test window; temporary fault table restored |
 | Actual startup failure | invalid-version fixture exits 1 before serving |
+| Browser self-check supplement | Existing management UI private/group sends and history queries actually executed; exact IDs match DB sequence/watermark 3, seen remains 1; see [browser/DB self-check](ui-selfcheck.md) |
 
 Final tested image: `sha256:3827b96e8a23b2c927f1e9dd2a7c39173ab465c0378335e31ca035161ce90090`. Disk and both live process binary SHA256: `a4458bccbfd2e05d0a2237fc7adf2757134950575ab33a87b1b7e74505af52fb`. Source and nonsecret evidence hashes are in [manifest.json](manifest.json); text source hashes normalize CRLF to LF for comparison with Git blobs. Earlier intermediate builds are not substituted for this final-source run.
 
@@ -32,7 +33,7 @@ Independent static review found the migration-skipping defect; its concrete erro
 
 ## Remaining boundaries
 
-READ owner must integrate this exact dependency in its isolated branch and run `e3957ea` plus READ regression and independent review. Native READ RPC / business §11.3 / real App or browser UI / phone push are not accepted by this patch. No merge, push, Rocky switch or release occurred.
+READ owner must integrate this exact dependency in its isolated branch and run `e3957ea` plus READ regression and independent review. Native READ RPC / business §11.3 / real App / new business READ browser UI / phone push are not accepted by this patch. The existing management UI supplement is separate from these gates. No merge, push, Rocky switch or release occurred.
 
 Mongo bootstrap aggregation is retained but not live-tested; MySQL migration seeds do not scan Mongo history. Physical Mongo retention requires backend-aware startup seeding before it is enabled; this patch is not Mongo retention acceptance. History already removed before upgrade, with no remaining READ/history metadata, cannot be reconstructed. Mixed old/new writers and production-size migration/latency/load have not been validated. Each stored private/group allocation now performs a durable row transaction; throughput costs need measurement before production rollout.
 

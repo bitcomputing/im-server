@@ -1,0 +1,6 @@
+msg_id	msg_seq_no	conver_id	channel_type	sub_channel
+pbyc3b68aachlzrr	3	seq-alice:seq-bob	1	
+seq	send_time
+3	1793965825691
+seen_seq
+1
