@@ -1,6 +1,7 @@
 package services
 
 import (
+	"errors"
 	"fmt"
 	"im-server/commons/caches"
 	"im-server/commons/pbdefines/pbobjs"
@@ -9,11 +10,13 @@ import (
 	"im-server/services/conversation/storages"
 	"im-server/services/conversation/storages/models"
 	"math"
-	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/bytedance/gopkg/collection/zset"
+	mysqldriver "github.com/go-sql-driver/mysql"
+	"google.golang.org/protobuf/proto"
 )
 
 var userConverCache *caches.LruCache
@@ -21,6 +24,8 @@ var userLocks *tools.SegmentatedLocks
 
 var persistCache *caches.EphemeralCache
 var persistSem chan struct{}
+var persistLocks = tools.NewSegmentatedLocks(persistWorkerCount)
+var persistLatest sync.Map
 
 const persistWorkerCount = 32
 
@@ -37,52 +42,52 @@ func init() {
 	userLocks = tools.NewSegmentatedLocks(512)
 
 	persistSem = make(chan struct{}, persistWorkerCount)
-	persistCache = caches.NewEphemeralCache(time.Second, 60*time.Second, func(key, value interface{}) {
-		persistIndex, ok := value.(*ConverPersistIndex)
-		if ok && persistIndex != nil {
-			userConvers := getUserConvers(persistIndex.Appkey, persistIndex.UserId)
-			item := userConvers.QryConver(persistIndex.TargetId, persistIndex.SubChannel, persistIndex.ChannelType)
-			if item != nil {
-				conversation := models.Conversation{
-					AppKey:      item.AppKey,
-					UserId:      item.UserId,
-					TargetId:    item.TargetId,
-					ChannelType: item.ChannelType,
-					SubChannel:  item.SubChannel,
+	persistCache = caches.NewEphemeralCache(time.Second, 60*time.Second, func(key, _ interface{}) {
+		persistConversationSnapshot(key.(string))
+	})
+}
 
-					SortTime: item.SortTime,
-					SyncTime: item.SyncTime,
-
-					LatestMsgId: item.LatestMsgId,
-					// LatestMsg:            item.LatestMsg,
-					LatestUnreadMsgIndex: item.LatestUnreadMsgIndex,
-
-					LatestReadMsgIndex: item.LatestReadMsgIndex,
-					LatestReadMsgId:    item.LatestReadMsgId,
-					LatestReadMsgTime:  item.LatestReadMsgTime,
-
-					IsTop:          item.IsTop,
-					TopUpdatedTime: item.TopUpdatedTime,
-					UndisturbType:  item.UndisturbType,
-
-					UnreadTag:  item.UnreadTag,
-					ConverExts: item.ConverExts,
-					IsDeleted:  item.IsDeleted,
-				}
-				persistSem <- struct{}{}
-				storage := storages.NewConversationStorage()
-				go func() {
-					defer func() {
-						<-persistSem
-					}()
-					err := storage.Upsert(conversation)
-					if err != nil {
-						fmt.Println("save conver err:", err)
-					}
-				}()
+func persistConversationSnapshot(key string) {
+	initial, pending := persistLatest.Load(key)
+	if !pending {
+		return
+	}
+	// Eviction holds the cache-wide lock; admission must never wait for a worker.
+	select {
+	case persistSem <- struct{}{}:
+	default:
+		time.AfterFunc(time.Second, func() { persistConversationSnapshot(key) })
+		return
+	}
+	go func() {
+		identity := initial.(*models.Conversation)
+		lock := persistLocks.GetLocks(getUserConverCacheKey(identity.AppKey, identity.UserId))
+		lock.Lock()
+		defer func() { lock.Unlock(); <-persistSem }()
+		// A queued notification may be stale; only the latest snapshot is authoritative.
+		value, pending := persistLatest.Load(key)
+		if !pending {
+			return
+		}
+		conversation := value.(*models.Conversation)
+		err := storages.NewConversationStorage().Upsert(*conversation)
+		if err == nil {
+			persistLatest.CompareAndDelete(key, value)
+			return
+		}
+		fmt.Println("save conver err:", err)
+		var sqlError *mysqldriver.MySQLError
+		if errors.As(err, &sqlError) {
+			switch sqlError.Number {
+			case 1048, 1264, 1292, 1366, 1406, 3819:
+				// Invalid snapshot data needs a corrected update; resource/unknown errors must retry.
+				persistLatest.CompareAndDelete(key, value)
+				return
 			}
 		}
-	})
+		// shortcut: dirty snapshots are memory-only; add a durable journal if crash recovery is required.
+		time.AfterFunc(time.Second, func() { persistConversationSnapshot(key) })
+	}()
 }
 
 type UserConversations struct {
@@ -335,11 +340,29 @@ func (uc *UserConversations) purge() {
 // 	})
 // }
 
+func converPersistKey(appkey, userId, targetId, subChannel string, channelType pbobjs.ChannelType) string {
+	return fmt.Sprintf("%q/%q/%q/%q/%d", appkey, userId, targetId, subChannel, channelType)
+}
+
 func (uc *UserConversations) PersistConverV2(item *models.Conversation) {
-	key := fmt.Sprintf("%s_%s_%s_%s_%d", uc.Appkey, uc.UserId, item.TargetId, item.SubChannel, item.ChannelType)
-	persistCache.Add(key, &models.Conversation{
-		AppKey:      item.AppKey,
-		UserId:      item.UserId,
+	if item == nil {
+		return
+	}
+	lock := userLocks.GetLocks(getUserConverCacheKey(uc.Appkey, uc.UserId))
+	lock.RLock()
+	defer lock.RUnlock()
+	if latest := uc.ConverItemMap[getConverItemKey(item.TargetId, item.SubChannel, item.ChannelType)]; latest != nil {
+		item = latest
+	}
+	uc.queueConverSnapshotLocked(item)
+}
+
+// Caller holds the user lock, including while cloning nested protobuf maps.
+func (uc *UserConversations) queueConverSnapshotLocked(item *models.Conversation) {
+	key := converPersistKey(uc.Appkey, uc.UserId, item.TargetId, item.SubChannel, item.ChannelType)
+	snapshot := &models.Conversation{
+		AppKey:      uc.Appkey,
+		UserId:      uc.UserId,
 		TargetId:    item.TargetId,
 		ChannelType: item.ChannelType,
 		SubChannel:  item.SubChannel,
@@ -362,7 +385,12 @@ func (uc *UserConversations) PersistConverV2(item *models.Conversation) {
 		UnreadTag:  item.UnreadTag,
 		ConverExts: item.ConverExts,
 		IsDeleted:  item.IsDeleted,
-	})
+	}
+	if snapshot.ConverExts != nil {
+		snapshot.ConverExts = proto.Clone(snapshot.ConverExts).(*pbobjs.ConverExts)
+	}
+	persistLatest.Store(key, snapshot)
+	persistCache.Add(key, snapshot)
 }
 
 func (uc *UserConversations) SyncConvers(startTime int64, count int32) []*models.Conversation {
@@ -571,11 +599,17 @@ func converContainsTag(conver *models.Conversation, tag string) bool {
 	return conver.ConverExts.ConverTags[tag] || conver.ConverExts.GlobalConverTags[tag]
 }
 
-func (uc *UserConversations) ClearTotalUnread() {
+func (uc *UserConversations) ClearTotalUnread() error {
 	key := getUserConverCacheKey(uc.Appkey, uc.UserId)
+	commitLock := persistLocks.GetLocks(key)
+	commitLock.Lock()
+	defer commitLock.Unlock()
 	lock := userLocks.GetLocks(key)
 	lock.Lock()
 	defer lock.Unlock()
+	if err := storages.NewConversationStorage().ClearTotalUnreadCount(uc.Appkey, uc.UserId); err != nil {
+		return err
+	}
 
 	for _, conver := range uc.ConverItemMap {
 		conver.LatestReadMsgIndex = conver.LatestUnreadMsgIndex
@@ -584,7 +618,20 @@ func (uc *UserConversations) ClearTotalUnread() {
 			SenderIds:   []string{},
 			MentionMsgs: []*models.MentionMsg{},
 		}
+		uc.queueConverSnapshotLocked(conver)
 	}
+	// Cache eviction can leave an unflushed conversation absent from both SQL and this map.
+	persistLatest.Range(func(_, value interface{}) bool {
+		pending := value.(*models.Conversation)
+		if pending.AppKey == uc.Appkey && pending.UserId == uc.UserId && uc.ConverItemMap[getConverItemKey(pending.TargetId, pending.SubChannel, pending.ChannelType)] == nil {
+			snapshot := *pending
+			snapshot.LatestReadMsgIndex = snapshot.LatestUnreadMsgIndex
+			snapshot.UnreadTag = 0
+			uc.queueConverSnapshotLocked(&snapshot)
+		}
+		return true
+	})
+	return nil
 }
 
 func buildConverFilterSet(convers []*pbobjs.SimpleConversation) map[string]struct{} {
@@ -833,7 +880,7 @@ func (uc *UserConversations) TagDelConvers(tag string, convers []*pbobjs.SimpleC
 }
 
 func getUserConverCacheKey(appkey, userId string) string {
-	return strings.Join([]string{appkey, userId}, "_")
+	return fmt.Sprintf("%q/%q", appkey, userId)
 }
 
 func getConverItemKey(targetId, subChannel string, channelType pbobjs.ChannelType) string {
@@ -845,6 +892,9 @@ func getUserConvers(appkey, userId string) *UserConversations {
 	if obj, exist := userConverCache.Get(key); exist {
 		return obj.(*UserConversations)
 	} else {
+		commitLock := persistLocks.GetLocks(key)
+		commitLock.Lock()
+		defer commitLock.Unlock()
 		l := userLocks.GetLocks(key)
 		l.Lock()
 		defer l.Unlock()
@@ -879,15 +929,6 @@ func getUserConvers(appkey, userId string) *UserConversations {
 						}
 						itemKey := getConverItemKey(dbConver.TargetId, dbConver.SubChannel, dbConver.ChannelType)
 						userConvers.ConverItemMap[itemKey] = dbConver
-						// build index
-						userConvers.SyncTimeIndex.Add(float64(dbConver.SyncTime), itemKey)
-						if dbConver.IsDeleted == 0 {
-							userConvers.SortTimeIndex.Add(float64(dbConver.SortTime), itemKey)
-						}
-						if dbConver.IsTop > 0 {
-							userConvers.TopIndexBaseSortTime.Add(float64(dbConver.SortTime), itemKey)
-							userConvers.TopIndexBaseTopTime.Add(float64(dbConver.TopUpdatedTime), itemKey)
-						}
 					}
 				}
 				if converLen < int(count) {
@@ -896,6 +937,28 @@ func getUserConvers(appkey, userId string) *UserConversations {
 				index++
 				if index >= 10 {
 					break
+				}
+			}
+			// Pending snapshots are newer than SQL; eviction must not reload stale data over them.
+			persistLatest.Range(func(_, value interface{}) bool {
+				pending := value.(*models.Conversation)
+				if pending.AppKey == appkey && pending.UserId == userId {
+					snapshot := *pending
+					if snapshot.ConverExts != nil {
+						snapshot.ConverExts = proto.Clone(snapshot.ConverExts).(*pbobjs.ConverExts)
+					}
+					userConvers.ConverItemMap[getConverItemKey(snapshot.TargetId, snapshot.SubChannel, snapshot.ChannelType)] = &snapshot
+				}
+				return true
+			})
+			for itemKey, conver := range userConvers.ConverItemMap {
+				userConvers.SyncTimeIndex.Add(float64(conver.SyncTime), itemKey)
+				if conver.IsDeleted == 0 {
+					userConvers.SortTimeIndex.Add(float64(conver.SortTime), itemKey)
+				}
+				if conver.IsTop > 0 {
+					userConvers.TopIndexBaseSortTime.Add(float64(conver.SortTime), itemKey)
+					userConvers.TopIndexBaseTopTime.Add(float64(conver.TopUpdatedTime), itemKey)
 				}
 			}
 			userConverCache.Add(key, userConvers)

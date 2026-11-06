@@ -296,9 +296,9 @@ func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) *p
 func ClearTotalUnreadV2(ctx context.Context, userId string) errs.IMErrorCode {
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	userConvers := getUserConvers(appkey, userId)
-	userConvers.ClearTotalUnread()
-	storage := storages.NewConversationStorage()
-	storage.ClearTotalUnreadCount(appkey, userId)
+	if err := userConvers.ClearTotalUnread(); err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL
+	}
 	//clear mention msgs
 	mentionStorage := storages.NewMentionMsgStorage()
 	mentionStorage.CleanMentionMsgsBaseUserId(appkey, userId)
