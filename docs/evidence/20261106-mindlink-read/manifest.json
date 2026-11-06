@@ -1,0 +1,41 @@
+{
+  "task": "DG-20261104-003-F1-READ",
+  "base": "4ecec887fb38d2d81af4bf2773b05d304e8ced97",
+  "clean_time_commit": "584f9032b8759f63be627c95b5b2336f69f7c4f7",
+  "sources": {
+    "commons/dbcommons/sqls/20261106.sql": "a9f5ac7eb1d000757592b3cb94aa61653e44c50c94134d6ada860f85805c00b8",
+    "commons/pbdefines/mindlinkread.proto": "1cd6fd34f9efe0a9c9c00ceaf7c7e606e37a8cb8cae68ad2a153d798a34e502f",
+    "commons/pbdefines/pbobjs/mindlinkread.pb.go": "310d444c94fa11afc68f565ce19a477edd7b2991af34862ba2d745962e246483",
+    "services/conversation/starter.go": "215e601708d3aaf3e1f4aa965a209a35ae54d7714aa98d5e63f4de8cb5ac69e3",
+    "services/conversation/actors/seenactor.go": "a4332eccad6d7b83c5c40866fa741fa70719076ce7302fa4e551466706293961",
+    "services/conversation/services/seenservice.go": "1a5a58c7679d8325857c2777d21e0bbbe91ddaa6a09a596806d5d73f413824a6",
+    "services/conversation/services/seenservice_test.go": "f3c7b3a48ff9d104665b6fc26ebc100307def280ea01ed55a9090b508624c83a",
+    "services/conversation/storages/dbs/seen.go": "053097116daf83430bc990b890124624ea42b96a4aaf2b1493da11af554a6845",
+    "services/conversation/storages/dbs/seen_test.go": "5d3f4663213c17d91777a9f7eed363d6f3851ac118dd65016a1ef6593aebc14c",
+    "services/historymsg/storages/dbs/convercleantimedao.go": "eed2a84e547f005c8c06c84a3208e48584a2495e9be83e0f53337d3595a7f4a1",
+    "services/historymsg/storages/dbs/convercleantimedao_test.go": "50625e50c8e3f9d6f3b6833b288f39102591ddf7271489a19c0dbfb0e1dc9e78",
+    "simulator/probes/mindlinkread/runtime_test.go": "dc5ff2d09d8bc0ed6ebf8fdee0bcdad2b0a519bfde709787e710c14a0c6a8601"
+  },
+  "private_evidence_sha256": {
+    "baseline.log": "b9c969afee9060b045e00df54b5ce85377504c38ae3e0aa5633d2df2d437bda7",
+    "schema-red.log": "7833463fd262173c9666f6d72405c1c4bb67db659f39f2c713ac1a52f53a62d0",
+    "merge-red.log": "bc294637a87d7dbe12ecc9d41c0370c0a5c4c12dd8bcdc60d841b01079418d44",
+    "storage-green.log": "67396d3999ea80c84bdad021842715196ea70612ef8b7efc0a1a265b9bf6b1c4",
+    "rpc-red.log": "dfecdabb26ed134072a28fe5021188bba0b1f1140a07af0b914d589153d156a3",
+    "clean-red.log": "390d5515ab7079dbdcac15018caca3dc2fa48937565d9f08b546326ec03957af",
+    "clean-green.log": "72d865cb30016911d5096bc4b964f035178b58718eeeed5e0db4e97eb46ffbf7",
+    "boundary-red.log": "d5b55d511faf0d018d1f714b5038016a459973cab3746391e3bf0b0b67af2c6b",
+    "green-build.log": "ec5f558f5e24c3bf9e76a03b00bcceb5ddeda8a5c2186cc6f4303c0e39124fdc",
+    "ci-tests.log": "a82825cc8e32945be4ee6bfee05d626bf382400df831586a07aed07e987e44af",
+    "runtime-before.log": "fe3594d4b045d0b7760629186840806c63a892d03486698aa2b8d44bd2d43d9b",
+    "runtime-after.log": "e4d45743cc80644511d1709793f7e7070fcf0b06b516ac12308751bd78918853",
+    "fresh-schema.log": "646e7f2058cbeee9b09816a7894274ca4c1211d00c156b1d083e26941dc52152",
+    "upgrade-before.log": "f12f4cb0472349939700c5535933839124c709ef9be39a92ccdbd94bf5219573",
+    "db-before.log": "29524f2523ea1111cfed1c713857c796a09ed6c9e5fbf3c0433b01d70fb326d2",
+    "db-after.log": "29524f2523ea1111cfed1c713857c796a09ed6c9e5fbf3c0433b01d70fb326d2",
+    "version-before.json": "06ccb7dd8e5de81ecde62982f76d3c0a49880139c5a27ae25f78d31253fd3649",
+    "version-after.json": "f1b8e5fc9500f7aefd61d9d6ed5154bd61623391948a5546cef5078750be29c8"
+  },
+  "binary_sha256": "49d9e6b5f09b4afd382eb11343b7e3b5d73706b08e916c666d1ab736f2d91b87",
+  "image": "sha256:66f045dd93e2abb3d5190fcadb160dc75685b49637e23b8625570eb00da9133e"
+}

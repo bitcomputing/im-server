@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "im-server/commons/pbdefines/pbobjs";
+import "commons/pbdefines/appmessages.proto";
+
+message QryConverSeenReq {
+  string target_id = 1;
+  ChannelType channel_type = 2;
+  string sub_channel = 3;
+}
+
+message SetConverSeenReq {
+  string target_id = 1;
+  ChannelType channel_type = 2;
+  string sub_channel = 3;
+  int64 seen_seq = 4;
+}
+
+message ConverSeenState {
+  int64 seen_seq = 1;
+  int64 latest_seq = 2;
+  bool has_new = 3;
+}

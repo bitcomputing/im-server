@@ -13,6 +13,12 @@ var serviceName string = "conversation"
 type ConversationManager struct{}
 
 func (manager *ConversationManager) RegisterActors(register gmicro.IActorRegister) {
+	register.RegisterActor("qry_conver_seen", func() actorsystem.IUntypedActor {
+		return bases.BaseProcessActor(&actors.QryConverSeenActor{}, serviceName)
+	})
+	register.RegisterActor("set_conver_seen", func() actorsystem.IUntypedActor {
+		return bases.BaseProcessActor(&actors.SetConverSeenActor{}, serviceName)
+	})
 	register.RegisterActor("add_conver", func() actorsystem.IUntypedActor {
 		return bases.BaseProcessActor(&actors.AddConversationActor{}, serviceName)
 	})
