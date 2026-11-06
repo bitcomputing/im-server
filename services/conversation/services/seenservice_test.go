@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"im-server/commons/bases"
@@ -193,6 +194,17 @@ func TestSeenServiceMySQL(t *testing.T) {
 		t.Fatal("failed history query became empty success")
 	}
 	db.Callback().Query().Remove("seen_history_error")
+	if err := db.Callback().Query().Before("gorm:query").Register("seen_missing_cleanup", func(tx *gorm.DB) {
+		if tx.Statement.Table == "convercleantimes" || tx.Statement.Table == "usercleantimes" {
+			tx.AddError(mongo.ErrNoDocuments)
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if code, state := QryConverSeen(ctx, &pbobjs.QryConverSeenReq{TargetId: "peer", ChannelType: pbobjs.ChannelType_Private}); code != 0 || state == nil || state.LatestSeq != 7 {
+		t.Fatal("missing Mongo cleanup record became internal failure")
+	}
+	db.Callback().Query().Remove("seen_missing_cleanup")
 	if err := db.Exec("UPDATE p_hismsgs SET msg_seq_no=-1 WHERE app_key=?", app).Error; err != nil {
 		t.Fatal(err)
 	}

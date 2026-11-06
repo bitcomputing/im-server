@@ -1,6 +1,6 @@
 # DG-20261104-003-F1-READ
 
-Implemented and locally verified: an independent conversation reading position for stored messages, including messages that do not count as unread. This is a native IM module delivery; business HTTP integration, UI acceptance and release remain separate.
+Candidate implementation; native delivery is blocked by the independent review's retention finding. The successful checks below describe the `008bd1f` snapshot and do not establish correctness after history retention. Business HTTP integration, UI acceptance and release remain separate.
 
 Base: `4ecec887fb38d2d81af4bf2773b05d304e8ced97`. Necessary clean-time SQL fix: `584f9032b8759f63be627c95b5b2336f69f7c4f7` (one SQL-space correction plus real-MySQL regression). No changes to legacy unread counting, old protobuf tags or PERSIST snapshots.
 
@@ -40,6 +40,11 @@ Tested image: `sha256:66f045dd93e2abb3d5190fcadb160dc75685b49637e23b8625570eb00d
 
 Private raw evidence is `.local/f1-read/` in the owning managed worktree. It includes fixture credentials and must not be committed. The checked-in manifest contains hashes only. Initial test-fixture failures (wrong table names and uninitialized custom debug logger) remain in private logs and were not counted as passing.
 
-Independent code review: pending. No push, merge, production deployment or manual acceptance is claimed. App/browser UI, phone push/badge/sound, MongoDB, history physical-retention sequence reuse and RELIABLE crash guarantees have not been verified. Legacy PERSIST integration tests target another owner's fixed fixture and were skipped; this task instead used its own live history/summary/restart checks.
+Independent review found two Important issues, no Critical/Minor issues:
+
+- **Blocking retention defect:** tenant history retention can remove all history for an idle conversation. On cache reload/restart the existing allocator reuses `msg_seq_no=1`, while the durable reading position remains 3 (or higher), producing `has_new=false` for an actually new stored message. A real owned-tenant `GroupHisMsgDao.DelMsgsBaseTime` purge plus IM-only restart reproduced exactly `latest=1 / seen=3 / has_new=false`, exit 1. A non-reusable durable ordering watermark in the shared sending chain is required. The original manager owns that chain; a minimal shared write handoff is pending. Never reset the acknowledged position to hide this failure.
+- **Mongo missing cleanup records:** the service originally recognized only `gorm.ErrRecordNotFound`. It now also recognizes `mongo.ErrNoDocuments`, with a consumer regression injecting the storage error into the otherwise real MySQL service flow (RED exit 1, GREEN exit 0). This is error-boundary evidence, not a live Mongo acceptance result.
+
+No push, merge, production deployment or manual acceptance is claimed. App/browser UI, phone push/badge/sound, full Mongo behavior and RELIABLE crash guarantees have not been verified. Legacy PERSIST integration tests target another owner's fixed fixture and were skipped; this task instead used its own live history/summary/restart checks. Review set aside these explicitly assigned or uncovered integration boundaries; none is counted as passed.
 
 Own containers/volumes and test tenants are retained for inspection; resource state is a snapshot, not a continuous guarantee.

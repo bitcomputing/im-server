@@ -14,6 +14,7 @@ import (
 	groupdbs "im-server/services/group/dbs"
 	hisstorages "im-server/services/historymsg/storages"
 
+	"go.mongodb.org/mongo-driver/mongo"
 	"gorm.io/gorm"
 )
 
@@ -100,14 +101,14 @@ func seenLatest(app, user, target, sub string, channel pbobjs.ChannelType) (errs
 		}
 	}
 	clean, err := hisstorages.NewHisMsgConverCleanTimeStorage().FindOne(app, conver, sub, channel)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && !errors.Is(err, mongo.ErrNoDocuments) {
 		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, 0
 	}
 	if clean != nil && clean.CleanTime > cleanTime {
 		cleanTime = clean.CleanTime
 	}
 	userClean, err := hisstorages.NewHisMsgUserCleanTimeStorage().FindOne(app, user, target, sub, channel)
-	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) && !errors.Is(err, mongo.ErrNoDocuments) {
 		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, 0
 	}
 	if userClean != nil && userClean.CleanTime > cleanTime {
