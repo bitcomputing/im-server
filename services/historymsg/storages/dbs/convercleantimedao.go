@@ -26,7 +26,7 @@ func (msg HisMsgConverCleanTimeDao) UpsertDestroyTime(item models.HisMsgConverCl
 
 func (msg HisMsgConverCleanTimeDao) FindOne(appkey, converId, subChannel string, channelType pbobjs.ChannelType) (*models.HisMsgConverCleanTime, error) {
 	var item HisMsgConverCleanTimeDao
-	err := dbcommons.GetDb().Where("app_key=? and conver_id=?and sub_channel=? and channel_type=?", appkey, converId, subChannel, channelType).Take(&item).Error
+	err := dbcommons.GetDb().Where("app_key=? and conver_id=? and sub_channel=? and channel_type=?", appkey, converId, subChannel, channelType).Take(&item).Error
 	if err != nil {
 		return nil, err
 	}
