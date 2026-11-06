@@ -294,3 +294,19 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 核读工作区：主仓 master 7df1c64 tracked/staged 无差异，未跟踪 `deploy/`、`docs/pre-deployment_zh.md` 是保留的旧部署材料；序列分支 11aa1ac、READ 分支 a35c877 均无未提交改动。旧 detached F0 工作树保留两份 PERSIST 生产文件修改、旧集成测试和 probes，未归为新 POLICY/RELIABLE 实施，不清理。上述状态在本次查询后可能变化。
 
 当前没有可宣称真群/私聊改造整体可用的验收结果。已解除的是共享修复负责人和源码依赖不明；剩余门是 READ 对整合制品的实际回归/复审、BIZ 单一权威与正式 HTTP/认证接线，以及尚未开始的 POLICY/RELIABLE 核心实施。POLICY 未开始不是因为必须等待 READ 全包；后续应由原管理沿既有授权实施专用主体/权限及提交屏障，再推进真实持久幂等/结果链，二管家继续其 READ 回归，各自提交并按对应版本验证。本次状态查询本身不执行这些开发步骤，也不扩大部署权限。
+
+## 15. READ 整合证据核验更新（2026-11-06 07:27 -05:00）
+
+大当家升级请求批次 `cbf09810b1a5292f9e6e8994281c4affb3fd9088aac89300acd92e7c6b194ea8` 到达时，本轮实查二管家已提交新报告 `932ef61ffc813fd03dd4e4d2c17898bace96d1b8`，取代§14当时“尚未取得整合回归回报”的快照。报告对应测试源码 `a35c8779c43d23e42cd6d49fc295f454abf6f2ff`，非旧 008 制品；932 只改四份证据文档。原管理本轮没有启动/重跑二管家的测试栈，只审阅当前材料并执行哈希及结果一致性核对。
+
+- 30 份源码 Git blob、归档内同一 30 份源码、39 份原件摘要均匹配 `integrated-manifest.json`。磁盘二进制 SHA `48592a8d46e71929e0d8f062e7b8e456e4969d8af11fddc0134994a6843fec00` 匹配；测试镜像为 `sha256:90ce1013e041bb65e4121a849e4938dd3401f3f73724ff90a815f6316784adb9`，label 为 a35。
+- 未修改的原始 e395 场景原件 `legacy-retention-green.log` 实际 PASS：latest=4、seen=3、has_new=true。最终加强双端原件 `final-runtime-retention.log` 也 PASS，ACK ID 为 `pbydb47ajacltf3b`，两端收到、历史和摘要对应此 ID；原始 latest=1/seen=3/false 的 RED 保留不删。
+- 本轮核对持久化原件：恰一条历史 seq=4、floor=4、seen=3，三份摘要均为该 ACK ID，owner 未读/已读 index=1/1。普通及清理后仅 IM 重启的 DB 转储均逐字节相等，新旧库两张表结构相同，版本记录指明 MySQL 在对应重启窗口未重启、活体为上述同一二进制。
+- `tests-lf.log` 中 READ schema、merge、service 和 clean-time 四个真实 MySQL 用例均有 PASS 且非 SKIP；同文件另有 19 个固定他人 fixture 等 SKIP，不计覆盖。广泛 message-tree vet 的六个既有 Mongo 字面量警告仍为 FAIL，不描述为全仓 vet 绿；精确受影响包 vet/build 已通过。前期 CRLF、探针编译失败均保留，不归为通过。
+- 已读 `integrated-review.md`：新独立审查在原生 MySQL/停止旧写者范围为 0 Critical、0 Important、1 Minor。Minor 是 retention 探针本身未直接断言 seen 恰等于旧值和 latest 恰等于历史序列；本轮原件里的单独精确 DB 断言覆盖了实际运行事实，后续可加强自动断言，未作为新功能验收保证。
+
+阶段结论：已具备解除“原生 MySQL READ 历史清尽/冷启序列复用”单项阻断的版本对应实测及独立复审证据，原管理材料核验通过；这不是原管理独立重跑，也不是心灵传输产品/生产全验收。正式 BIZ HTTP/原 actor 认证、单一权威契约确认、真实 READ 页面/App/push、Mongo、混合写者及生产负载继续待验。独立权威序列候选已同步 BIZ，唯一契约当次核读仍为 C/0a117252…，未以发送回执当冻结。
+
+写负责人不变：原管理持有共享 `convercache/msgconvercache.go`、`msgsequence.go`及测试、六发送调用方、公共迁移入口/007/新库 SQL/启动器和后续 HTTP/认证；二管家持有 READ 模块、独立 proto/006、clean-time 两配套文件及 READ 探针。006 已原样纳入依赖，整合提交 7ccc6e9 的 16 份共享源码仍与 33d2b9b 相同；不增第二个分配源或转写权。现阶段不再是等待共享依赖交付。
+
+资源仅核快照：本轮 Docker 只读检查显示其两个 IM 和 MySQL 均停止；IM exit 137、OOM=false，MySQL exit 0，不能称已演示优雅退出。数据、卷、制品和私有原件保留；本轮未改生产源、未启动别人的服务、未合并/推送/部署或切换 Rocky。证据入口是二管家 `docs/evidence/20261106-mindlink-read/{README,integrated-verification,integrated-review,integrated-manifest}`，旧 manifest/retention-handoff 保留历史语境。
