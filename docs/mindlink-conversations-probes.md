@@ -310,3 +310,59 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 写负责人不变：原管理持有共享 `convercache/msgconvercache.go`、`msgsequence.go`及测试、六发送调用方、公共迁移入口/007/新库 SQL/启动器和后续 HTTP/认证；二管家持有 READ 模块、独立 proto/006、clean-time 两配套文件及 READ 探针。006 已原样纳入依赖，整合提交 7ccc6e9 的 16 份共享源码仍与 33d2b9b 相同；不增第二个分配源或转写权。现阶段不再是等待共享依赖交付。
 
 资源仅核快照：本轮 Docker 只读检查显示其两个 IM 和 MySQL 均停止；IM exit 137、OOM=false，MySQL exit 0，不能称已演示优雅退出。数据、卷、制品和私有原件保留；本轮未改生产源、未启动别人的服务、未合并/推送/部署或切换 Rocky。证据入口是二管家 `docs/evidence/20261106-mindlink-read/{README,integrated-verification,integrated-review,integrated-manifest}`，旧 manifest/retention-handoff 保留历史语境。
+
+## 16. READ-R1 契约 E 核对与公共 HTTP 接线候选（2026-11-06）
+
+当前有效批次 `db790ca557f684e9483609d19f6ac542da590a744bc8ccba354e37d94160ba12` 要求核对 E 及补齐公共接线候选。唯一契约仍由 BIZ 独占维护：`chatbot43/docs/mindlink-conversations-contract.md`，固定提交 `ad496155c984b0a3865f07e137025a5447540b73`。本轮直接计算该 Git blob 的 SHA256 为 `0c506044afe2f82d64232b14df85dfdfbddd6518bcce01a511d759aeca5e84b0`，工作区 CRLF 规范化为 LF 后逐字节相同；E 相对 D 的实质变更是合法零 PB 与 HTTP 缺字段的区分，§11.2/§11.4 未变。原管理接受该零状态修订及之前已经回执的单一 seen 权威/原生语义子集，不代表 E 全部接口已经冻结或运行验收。
+
+READ 二管家 `23872613c059f7c181512b5ed8a303c382613c9b` 的交接与现有源一致：`CreateQueryAckWraper` 传递合法空 PB，带正确响应 factory 的 `SyncRpcCall` 调用 `PbUnMarshal`；匹配请求的成功 ACK 可以解出全零 `ConverSeenState`。不能用载荷长度代替有效性判断，HTTP 仍显式输出 `"0"/"0"/false`。上一批原管理在 Go 1.26.1 Windows、关闭模块网络查询后运行既有纯编码检查，实际通过零字节编码及往返；本批只核 E 变更和正式源，不把该前批检查或 BIZ 报告的 21 项规格检查算成本批新运行测试。
+
+### 16.1 可供唯一契约登记的 IM 方候选
+
+本节是原管理提出的设计候选，等待 BIZ 与 READ 对应回执后并入唯一契约。下列方法、路径、枚举和结构**均未注册或实现**；这里不产生第二份已生效契约，也不放行新账号/页面。先把当前状态读取与原写操作结果核查分开：
+
+| 语义 | IM 上游候选方法/路径 | 候选 operation_type | 授权及结果 |
+| --- | --- | --- | --- |
+| 当前阅读状态 | `GET /apigateway/mindlink/conversations/:conversation_id/seen` | `conversation_seen.query` | 同 scope 当前读权限；无 query/body，空字节 SHA256；返回当前 seen/latest 快照，不证明某次 PUT 已执行 |
+| 确认展示位置 | `PUT /apigateway/mindlink/conversations/:conversation_id/seen` | `conversation_seen.advance` | 独立写 allowlist；绑定原持久操作意图、所展示位置与当前策略；不能以 query 票据调用 |
+| 原写操作结果 | 复用 §11.2 候选 `GET /apigateway/mindlink/operations/:operation_id` 的受限结果模型 | 精确枚举随公共操作结果 schema 登记，当前不冒称已定 | 核对原操作、摘要、scope、固定目标与当前可读权限；不得用 GET seen 的当前值冒充原请求回执 |
+
+主人侧仍是 BIZ 候选 `GET/PUT /api/personal/agent-conversations/:conversation_id/seen`，不能把客户端直接连到上游服务间接口。首个主人入口仅接受可信 `actor_kind=owner`、`actor_id=owner_id`、`avatar_generation=0`；avatar/system 的阅读授权如另有需求须独立登记，不能从通用票据支持三种 actor 推导本路由都允许。上游 `target_id` 固定为路径中的业务 conversation ID；签名身份及权威投影解析出 IM requester/peer 或 group/type/subchannel，不接受客户端给 IM 身份挑选范围。
+
+**GET 当前状态不是 GET 原操作结果。** 两者需在 §11.4 各自的必填 schema、digest 与 allowlist 中显式区分；前者不能要求该会话必须先有一次 SET，也不能借旧 mutation 票据读取当前状态。原操作查询继续按既有“原持久目标”规则。GET 当前状态的 operation/request 字段是否作为本次查询意图绑定，需在该新 operation 的正式 schema 中登记后再调用；不能默默套用结果查询 schema、缺字段填零或猜测枚举。这一认证细项仍未冻结，不因路径候选确定而解除。
+
+### 16.2 JSON、操作回执与错误候选
+
+PUT 上游候选 body 仅含 `operation_id`、`request_id`、`request_digest`、`seen_seq` 四个必填字段。前三项沿 §11.1：operation ID 为 64 位小写 hex，请求键 1..64 ASCII，摘要 64 位小写 hex；均与 §11.4 票据及原持久意图一致。`seen_seq` 是 JSON 字符串，值只能为 `"0"` 或以 1..9 开头的 ASCII 十进制数字串，且不大于 `9223372036854775807`。数字类型、缺失/null/空串、前导零、空白、正负号、小数、指数和越界均拒绝；未知与重复 JSON 字段拒绝。body 不接受 owner/app/requester/IM target/subchannel 自报授权。BIZ 先固定原始 body 字节再签 `body_sha256`，重试不改字节、目标或语义摘要。
+
+操作摘要必须把 READ advance 的具体 `seen_seq` 纳入原意图，并绑定 operation_type、完整 scope、actor、业务目标、权威参与者/映射及 expected policy；具体确定性数组次序随唯一契约 schema 登记，不允许两边自行猜。新展示位置是新意图；同 operation/request 键改位置/目标/摘要在写前冲突。request_id 不是任意 trace，也不是 seen 表主键。公共持久绑定/结果账本和最终策略提交屏障仍需实现，不能把普通 `SetConverSeen` 外包一层 HTTP 就称为原操作结果已持久。
+
+候选 `SeenState` 固定为三个显式字段：`seen_seq`、`latest_seq` 使用上述十进制字符串，`has_new` 为 boolean，无 omitempty。IM 上游沿现有 `code/msg/data` 成功 envelope，BIZ 再适配自身 `code/message/data/timestamp`，不要把两者按同一 DTO 解码：
+
+```json
+{"code":0,"msg":"success","data":{"seen_seq":"0","latest_seq":"0","has_new":false}}
+```
+
+GET 的 data 为 SeenState；PUT 候选 data 为 `{operation: OperationResult, state: SeenState}`。OperationResult 沿 §11.2/§11.4 的原操作 ID/类型、request ID/digest、完整 scope、固定目标、desired_state 及 effective policy/result 版本登记；READ 的 desired_state 为 `{seen_seq: "所提交位置"}`。该正式结构、字段类型和事务回执版本尚需公共操作结果源登记，不得省掉它而返回 code0。PUT 成功须具备真实持久操作回执及成功读出的 state；重试返回原操作回执，state 重新按当前权限读取，不缓存旧 has_new 冒充新快照。写已提交但回读失败可返回未知；当前 GET 位置已足够大，也不能证明是该 request 推进的。
+
+| 来源/条件 | 候选 HTTP / reason / 数字码 | 约束 |
+| --- | --- | --- |
+| 严格 JSON/路径/序列参数错误，原生 12004 | 400 / INVALID_REQUEST / 19001 | 不以 proto3 缺省零代替 PUT 必填 |
+| 可信 scope 与路径/投影不符 | 403 / SCOPE_MISMATCH / 19002 | 无写入，不回跨 scope 信息 |
+| 同键异摘要/位置/目标 | 409 / REQUEST_CONFLICT / 19003 | 不分配新键，不再次执行 |
+| 旧策略或代际 | 409 / STALE_POLICY / 19004 | 最终提交屏障仍核权，不只靠验签时检查 |
+| 投影/能力/可信 context 未就绪，原生 11013 不支持 | 409 / NOT_READY / 19005 | 不降级旧管理 API 或 WS 代发 |
+| 已禁用主体 | 409 / PRINCIPAL_DISABLED / 19006 | 不因重试获得提交权 |
+| 原生 10009、超时、无 ACK、解码失败或缺预期 typed/HTTP 响应 | 503 / UNKNOWN_RESULT / 19007 | 不填成功零状态，不断言写未发生；合法空 PB 不属此类 |
+| actor/签名/有效期/可读写权限不符，群非成员 13002 | 403 / FORBIDDEN / 19008 | 私聊返回空历史不能代替业务拒绝 |
+
+以上数字沿已有候选字典，仍须在 `commons/errs/errorcode.go` 和新路径响应测试正式注册后生效。现有框架的路由不存在/方法不支持响应同样不能被适配成成功 state。
+
+### 16.3 可信接线及实施边界
+
+- `routers/router.go` 的现有普通路由 group 使用旧 `Signature`；READ 候选必须挂专用 §11.4 Ed25519 认证/严格 schema group，不能只放进旧 group。`ToRpcCtx` 第二参数虽名 requestId，实际赋 requester，业务 request_id 绝不能传作读者；它也不提供验签或最终事务屏障。
+- 公共认证应验证 issuer/kid/env/tenant/app/audience/owner/actor、method/精确 path/body hash、时效与独立 operation allowlist，再解析服务端权威映射并封装不可由终端自报的 RPC context。正式 server-only proto/tag 仍须公共源分配，当前不虚构号码。原生 READ API 没有该上下文、操作账本或事务参数，需协同提供能与最终核权/回执共用事务的最小入口；未完成时禁止通过原 RPC 绕过屏障。
+- 最小复用点：READ `starter/seenactor/seenservice/SeenDao`、`mindlinkread.proto`、006/007 以及持久序列；新增 HTTP DTO/handler/route 放 `apigateway/models/convermodels.go`、`apis/conversation.go`、`routers/router.go` 的公共写集。认证、操作结果和必要新迁移由原管理集中实现；不并写二管家文件，不改已定 006/007 偷加新能力。
+- 实际展示序列仍有缺口：普通 `models.HisMsg` 与 `apis/hismsg.go` 映射未暴露 MsgSeqNo。如选择该 HTTP 历史作为页面来源，需从相同授权历史的 DownMsg 追加无损 `msg_seq_no` 字符串并验真实数据；不得从发送 ACK、msg ID/time 或预留水位推算，也不得扩大历史收件范围。已有原生 SDK 的 MsgSeqNo 可作为另一实际数据源，但需以最终采用的页面/SDK链证明。
+
+本批只新增这份现有报告内的候选及 E 校核记录，未修改唯一业务契约、生产 Go/proto/SQL、运行栈或密钥。核对 E blob/换行/变更及阅读源码是本轮实际检查；原生 DB/制品/页面、上述新 HTTP schema/鉴权/冲突/提交屏障、历史新增字段均未新跑或实现。完成文档后只提交该报告，不 merge/push/deploy。接下来由 BIZ 把接受的候选及差异写回唯一契约并回固定 SHA，不能把发送回执当作其接受。
