@@ -366,3 +366,23 @@ GET 的 data 为 SeenState；PUT 候选 data 为 `{operation: OperationResult, s
 - 实际展示序列仍有缺口：普通 `models.HisMsg` 与 `apis/hismsg.go` 映射未暴露 MsgSeqNo。如选择该 HTTP 历史作为页面来源，需从相同授权历史的 DownMsg 追加无损 `msg_seq_no` 字符串并验真实数据；不得从发送 ACK、msg ID/time 或预留水位推算，也不得扩大历史收件范围。已有原生 SDK 的 MsgSeqNo 可作为另一实际数据源，但需以最终采用的页面/SDK链证明。
 
 本批只新增这份现有报告内的候选及 E 校核记录，未修改唯一业务契约、生产 Go/proto/SQL、运行栈或密钥。核对 E blob/换行/变更及阅读源码是本轮实际检查；原生 DB/制品/页面、上述新 HTTP schema/鉴权/冲突/提交屏障、历史新增字段均未新跑或实现。完成文档后只提交该报告，不 merge/push/deploy。接下来由 BIZ 把接受的候选及差异写回唯一契约并回固定 SHA，不能把发送回执当作其接受。
+
+## 17. Rocky 真实业务用户连接与回调证据缺口（2026-11-06）
+
+有效批次 `cbe13afa579358f0cb654007ac5d38165081a96daa3d6807896f5067443f7106` 要求回已有正向证据或具体阻塞，不重建租户/用户、发消息或重启。目标固定为 `dg2c3350172f150 / test_6199931265070805`。本轮实际只查 IM 容器/端口元数据、目标租户拦截器计数、既有公开证据和源码，未取得或读取业务 Token、Secret、私有配置或消息日志值。
+
+| 项目 | 本轮事实及适用范围 |
+| --- | --- |
+| 当前 IM 版本 | Rocky 仓库 detached `b87fc791400dafae0f3fb2e1665863419bad58f7`；运行镜像 `bitcomputing/im-server:dg2-rocky-b87fc79-diagnostic`，image ID `sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7`，不等于本机后续 READ/序列/PERSIST 验收制品 |
+| 网络地址范围 | `docker port` 实查 API/nav/WS/admin 只绑定 Rocky Windows 主机 `127.0.0.1:19001/19002/19003/18090`。其他机器的 localhost 不是 Rocky；IM 容器的 localhost 也不是 Windows 业务 API |
+| nav 既有记录 | 公开 `handoff-c550-public.json` 于 `2026-11-06T07:50:36.6149341Z` 记录普通测试夹具导航 code0、servers=`["127.0.0.1:19003"]`；不能移作真实业务用户成功记录 |
+| 客户端格式 | 同 b87 源 `navigator/apis/checktoken.go` 要求 `x-appkey`/`x-token`，GET `/navigator/general` 返回裸 host:port。`simulator/wsclients/wsimclient.go:Connect` 的 Address 需要 `ws://127.0.0.1:19003`，客户端追加 `/im`，实际 wire URL 是 `ws://127.0.0.1:19003/im`；不把含 `/im` 的完整 URL 再当 Host 输入。此为已读协议客户端源码格式，不是已发布 SDK 的本轮握手结果 |
+| 真实业务 Token nav/CONNECT | **not_covered / 未核**。本批没有提供来自业务实际返回 Token 的安全进程输入，未读取业务登录凭据、Redis 或私有文件来获取它；没有发起这条真实用户 nav/CONNECT。需由业务负责人在其凭据范围内取得实际 Token，完成 nav 用户 ID 核对及 SDK/协议 CONNECT，输出仅脱敏 code/用户/地址/版本；不能用注册成功、缓存存在或三模拟用户替代 |
+| 目标租户回调配置 | `2026-11-06 14:22:34.791565 UTC` 对自有 `jim_db.interceptors` 仅做目标 app_key 的 COUNT/SUM：全部行 **0**、custom(type0) **0**、业务 `/api/im/callback/message` 路径匹配 **0**，未读取 conf、模板或凭据。该租户尚无这条自定义拦截器的持久注册，不能声称已有正向触发链 |
+| IM 容器→业务处理 | **not_covered / 未核**。本轮未发送消息或签名回调，没有实际业务 PASS/处理审计证据。`http://host.docker.internal:16006/api/im/callback/message` 仅为容器访问 Windows 主机的候选地址，监听/防火墙/签名与处理结果未验证，端口或 401 不计正向。业务正式路由为发送前拦截器，不是通用消息订阅 |
+
+静态边界核对：所读 navigator、拦截器 DAO/实现及协议客户端文件与 b87 的 `git diff --exit-code` 为 0。`LoadInterceptors` 按 app_key 加载 `interceptors`；`CustomInterceptor.CheckMsgInterceptor` 对 `isFromApi` 直接 PASS，网络/非200/解码故障也可 PASS。因此以后即使 HTTP 代发 ACK 成功，仍不能证明业务回调被请求、验签或处理成功。此为已有实现的源码事实，本批未改权限或错误策略；真实跨容器请求仍未验证。
+
+用户行复验关联的是**前批** `2026-11-06T12:37:56.256147Z` SQL 结果：目标 scope 恰1行、id9、该隔离库其他租户同 user_id 为0，原发送回执 `pbydq8gfp8lhukeh`。本批未重复该查询，不能称这是本轮重查或证明 Token 握手。该旧证据及本轮计数/版本/格式/未覆盖项已分别写入 Rocky 公开文件 `D:/projects/.evidence/DG2-20261106-002/im/business-crossrepo-cbe13afa-public.json`，SHA256 `df12d5ebeb3952e6bfb4183bfcc16256e700dbed40a9dff6a08f03506c078a26`；本机忽略的对应 JSON 与远端文件逐哈希相同，并已解析回读。原 `validation.md` 仍保留三用户及旧离线/重启失败，不覆盖改写成新业务验收。
+
+首次通过长 EncodedCommand 写证据失败（Windows 命令行长度）；随后回查目标文件不存在，改传上述不含秘密的单个 JSON，读回及哈希匹配后才计作证据交付。没有创建租户/用户/群、发送消息、连接业务用户、回调业务接口、重启服务或改 IM/BIZ/Redis/私有 JSON；仅公开证据文件和本报告新增。下一步所缺是业务 Token 的真实客户端运行及受控的拦截器配置/有效事件/业务审计闭环，不是再发一次模拟消息或把旧记录重标为通过。
