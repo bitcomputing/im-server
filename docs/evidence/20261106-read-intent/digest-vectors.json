@@ -1,0 +1,30 @@
+{
+  "schema": "mindlink-read-r1",
+  "verification_scope": "Synthetic offline digest reference only; no HTTP, signature, policy or database test",
+  "go_version": "go1.26.1",
+  "vectors": [
+    {
+      "name": "query",
+      "canonical_json": "[\"mindlink-read-r1\",\"conversation_seen.query\",\"dev\",\"tenant-example\",\"read-app\",\"42\",\"conversation-example\",\"pair\",\"owner\",\"42\",0,7,7,\"test_42\",\"mg000000000000000000000000000001\",2,\"\",[\"ma000000000000000000000000000001\",\"ma000000000000000000000000000002\",\"test_42\"],\"GET\",\"/apigateway/mindlink/conversations/conversation-example/seen\",[]]",
+      "sha256": "d77bb09590ad3224c7ea97c703566e27965f4fd753c7bc689d31033a61d1c5c9"
+    },
+    {
+      "name": "advance-zero",
+      "canonical_json": "[\"mindlink-read-r1\",\"conversation_seen.advance\",\"dev\",\"tenant-example\",\"read-app\",\"42\",\"conversation-example\",\"pair\",\"owner\",\"42\",0,7,7,\"test_42\",\"mg000000000000000000000000000001\",2,\"\",[\"ma000000000000000000000000000001\",\"ma000000000000000000000000000002\",\"test_42\"],\"PUT\",\"/apigateway/mindlink/conversations/conversation-example/seen\",[\"0\"]]",
+      "sha256": "c42cfc005e857a1fe12548e0f6df43ba52953a97951ccedca11bcb2239d7b3d8"
+    },
+    {
+      "name": "advance-three",
+      "canonical_json": "[\"mindlink-read-r1\",\"conversation_seen.advance\",\"dev\",\"tenant-example\",\"read-app\",\"42\",\"conversation-example\",\"pair\",\"owner\",\"42\",0,7,7,\"test_42\",\"mg000000000000000000000000000001\",2,\"\",[\"ma000000000000000000000000000001\",\"ma000000000000000000000000000002\",\"test_42\"],\"PUT\",\"/apigateway/mindlink/conversations/conversation-example/seen\",[\"3\"]]",
+      "sha256": "3524b5a3d9f4e3dfcff1eef5a3991739616773771b0b1f4dbd475fff227138dc"
+    },
+    {
+      "name": "advance-max",
+      "canonical_json": "[\"mindlink-read-r1\",\"conversation_seen.advance\",\"dev\",\"tenant-example\",\"read-app\",\"42\",\"conversation-example\",\"pair\",\"owner\",\"42\",0,7,7,\"test_42\",\"mg000000000000000000000000000001\",2,\"\",[\"ma000000000000000000000000000001\",\"ma000000000000000000000000000002\",\"test_42\"],\"PUT\",\"/apigateway/mindlink/conversations/conversation-example/seen\",[\"9223372036854775807\"]]",
+      "sha256": "e373d47a707c3727c196d25da00ff2706a208b346b26132194b1cd5d1d3237e1"
+    }
+  ],
+  "member_order_check": true,
+  "go_string_escape_check": true,
+  "empty_body_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -398,3 +398,63 @@ GET 的 data 为 SeenState；PUT 候选 data 为 `{operation: OperationResult, s
 因此应将唯一契约 F 的生产者行澄清为：生成阶段返回的 seq/time 写入 DownMsg(6/8)，分发沿用其 MsgSeqNo，MsgTime 可在接收者分发阶段重新生成；不要写“私聊转发保证 seq/time 端到端相同”。READ 的展示位置仍是同授权会话实际持久历史的 MsgSeqNo，不能由 MsgTime、未读 index 或预留水位推导。两张表的键、序列生产/历史消费关系、E 合法空 PB、§16 接线候选及既有验收边界不因此扩大或改变。
 
 本批证据为固定 Git 源码及调用分支核对，**没有**跨会话运行复现或产品/DB 回归，不把静态可发生条件描述成已观测的投递结果。只提交本报告的限定说明，由 BIZ 维护者修改唯一契约后回固定版本；不并写其契约，也不把此处澄清称为原生 bug 修复。
+
+## 19. J 候选补充：GET 自身意图与 READ 摘要参考（2026-11-06）
+
+本批 `f02998be34a28084ff2e52f45fc13e48983c55ada036a9eac733d296aa1dbe9a` 实读唯一契约 J 固定提交 `bd22d3b5983cfefb572441362795ec190aead7bf`，契约 Git blob SHA256 为 `deddaccf6ef8ce2066ba0cafa9ff838fb0546da47cac24dffb407df36179c7b7`，工作区规范化 LF 后相同。J 对 §16 的方法/路径、query/advance 枚举、owner 首个入口与 PUT 四字段登记准确；以下专门补它明确留下的 GET 意图和摘要次序缺口。**仍为原管理提出、待 BIZ/READ 回执后写回唯一契约的候选，不是已注册接口、已实现账本或权限放行。**
+
+### 19.1 GET 独立持久查询意图，不借一次 SET 作前置
+
+建议严格复用 §11.4 的原操作约束，不给当前态 GET 增加“随意复用 trace、跳过持久绑定”的例外。BIZ 在核当前主人/会话/映射/策略后，为一次逻辑读取持久化独立 `conversation_seen.query` 意图；即使会话从未 SET 也可以创建该只读意图，不调用 Set(0) 或创建 seen 行。IM 只从 `conversation_seen`/授权历史读取状态；查询意图和结果是不可变操作证据，不成为第二份可写 seen 权威。
+
+这一选择使逻辑 GET 也产生持久意图/结果写入，复用规划中的公共操作账本，不新增阅读游标表；其保留策略归公共账本统一处理，本轮不另造清理服务。这是保持既有原操作重试约束所取的成本，不应写成无状态 GET 已经接通。
+
+- query 的 `operation_id` 必填，由 BIZ 用32随机字节生成64位小写 hex；`request_id` 同样必填，首个 GET 方案由 BIZ 取与该 query operation_id 相同的64字符值（符合已有1..64 ASCII规则）。同一逻辑读取的重试沿原键，页面明确刷新或下一次逻辑读取才新建 query 意图。PUT 仍用其调用者请求键，不把这一 GET 生成规则套到其他操作。
+- 当前态 GET 的 `target_id` 固定为该 query 意图绑定的业务 conversation ID，且与本次路径和当前权威投影一致；不是借某个先前 mutation 的 operation ID 选择目标。查询原写操作结果仍走 §11.2 `operations/:operation_id` 候选及其独立 allowlist/schema，两种 query 不混用。
+- 持久绑定至少唯一约束 `(issuer,operation_id)`，并约束同 `(issuer,environment,tenant_id,appkey,owner_id,actor_kind,actor_id,request_id)` 不映射到另一意图；operation_type、代际、目标、policy、映射/成员、摘要和 body hash 为不可替换的绑定内容。不能按 digest 单独合并不同 query 意图，因为同一 scope 的不同读取可以有相同语义摘要而观察到不同时间的状态。
+- GET 无 query/body。标识与摘要只由 BIZ 放入经验证的 JWS，不放 URL 参数、body 或可自报 requester。GET 新票据/重试仍完整核验 issuer+jti 及原意图全部绑定；刷新 jti/iat/exp 不改变原 operation/request/digest/目标，失权或策略不匹配仍失败关闭，不因读操作绕过授权。
+
+READ query/advance 的 JWS header 沿 §11.4 固定 `alg=EdDSA`、`typ=mindlink-actor+jwt` 和受信 kid。payload 沿该节已有字段，**本候选要求全部显式必填**：iss/aud/environment/tenant_id/appkey/owner_id、operation_type/operation_id/request_id/target_id、actor_kind/actor_id/avatar_generation、expected_policy_version/desired_policy_version、request_digest、method/path/body_sha256、iat/exp/jti；不新增可自报 IM 身份字段，不允许未知/重复项或缺字段填默认。
+
+首个入口 actor 仅 owner，actor_id 必须等于 owner_id，generation 是显式整数0。policy 两字段是0..MaxInt64整数，均须显式等于权威有效 policy（READ 不修改策略，desired=expected；0只有权威版本确为0时合法）。method/path 必须匹配实际固定路由；GET body hash 为 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。时间、jti、签发信任绑定仍沿原60秒/5秒及32随机字节hex规则，不改 §11.4。IM 必须从权威投影重建下面摘要所用的 IM reader/target/type/subchannel/参与者；它们不是新增 JWT 自报授权字段。
+
+### 19.2 严格重试返回原查询快照，不把它标成新状态
+
+原 query 已执行时，同键同摘要仅核原持久结果，不再次执行查询来违反原操作规则；异摘要写前冲突。为避免原查询快照被消费成“当前态”，建议将 §16 扁平 GET data 候选补充为 `{operation: 原query回执, state: SeenState, state_observed_at: UTC时间, replayed: boolean}`。首次保存的 state 和其 observation 时间不可被重试覆盖；replayed 是本次返回是否复用了原结果的显式标记。公共 OperationResult 完整类型仍待其正式源登记，缺回执不能补 code0。
+
+BIZ 如向页面提供新的当前态，必须来自本次新 query 意图的首次有效读取。若先重查/重试得到原 query 回执，不能直接把旧 state 当作新状态返回；在原查询结果已确定、重新核当前权限后，另起一次明确的新逻辑读取再提供新快照。**未知的 mutation 仍沿原键查询，绝不因超时创建新 advance 重放。** 这不豁免未知 query 的原操作核对，也不承诺首次查询结果在返回后持续不变。新状态 GET 不证明任何先前 advance 已执行；原 advance 结果查询也不缓存旧 latest/has_new 冒充新状态。
+
+这是本次为满足两种约束共同提出的 GET 回执补充，尚需 BIZ 确认纳入唯一契约；原 §16 扁平 GET data 在该细项确认前不独立启用。没有落地公共意图/结果绑定及当前权限核验时，GET 与 PUT 一起保持未就绪，不用一个裸 native RPC 跳过该门。
+
+### 19.3 request_digest 精确有序数组候选
+
+query 与 advance 采用同一21项数组，顺序严格如下；参与者取权威固定 IM 成员集合，先校验无重复，再按 UTF-8 字节序排序；Private 为固定参与者对，Group 为完整固定成员。发现重复属于无效权威记录，不静默合并来修复坏状态。所有字符串须先通过正式字段格式/UTF-8/长度及权威绑定校验，不 trim、改大小写或作 Unicode 归一化。
+
+| 位置（从0开始） | 值 | JSON 类型 |
+| --- | --- | --- |
+| 0 | 固定 `mindlink-read-r1` | string |
+| 1 | `conversation_seen.query` 或 `conversation_seen.advance` | string |
+| 2—5 | environment、tenant_id、appkey、owner_id，依次各一项 | string |
+| 6—9 | 业务 conversation_id、conversation kind、actor_kind、actor_id，依次各一项 | string |
+| 10 | avatar_generation；首版 owner 为0 | integer/int64 |
+| 11—12 | expected_policy_version、desired_policy_version，依次各一项 | integer/int64 |
+| 13—14 | 权威 IM requester user ID、权威 IM target ID（peer/group），依次各一项 | string |
+| 15—16 | channel_type（1或2）、sub_channel，依次各一项 | integer/int64、string |
+| 17 | 排序后的固定成员 IM IDs | string array，禁止null |
+| 18—19 | 大写 method、包含固定业务ID的精确 path，依次各一项 | string |
+| 20 | query 为 `[]`；advance 为 `[seen_seq]`，其中位置沿H规范十进制字符串 | string array，禁止null |
+
+在已校验类型的 Go 值上使用标准库 **`encoding/json.Marshal` 默认字符串转义**生成这一个数组的紧凑 UTF-8 字节，无 BOM、空白或末尾换行；整数必须是 int64，不经浮点中转，成员/位置空数组必须是已分配的空 slice 而非 nil。保留默认 HTML 转义（例如 `<&>` 编为 `\u003c\u0026\u003e`，U+2028/U+2029也使用 Go JSON 转义）；禁止一侧改用 SetEscapeHTML(false)、Encoder.Encode 的末尾换行或另一侧的默认 JSON 排版。随后 `SHA256` 并输出64位小写 hex。这个摘要是操作语义，不是 HTTP raw body hash；两者仍分别核验。
+
+operation_id/request_id、issuer/kid/audience、jti/iat/exp 不放进该语义数组；合法刷新 jti/时间或同一信任绑定下的 kid 不改变原意图 digest，issuer/audience 等原绑定不允许因此更换。这**不免除**所有这些字段按票据信任配置及原操作/issuer+jti记录的完整绑定和冲突检查。两侧都需从受验证票据及权威事实重建数组，不能只采信 body/request_digest。seen_seq 用字符串进入数组，query 的空位置数组也不能替换为字符串0或null。
+
+合成固定向量见 [digest-vectors.json](evidence/20261106-read-intent/digest-vectors.json)：其中包含完整规范数组字节文本，可直接做两侧序列化比对。样例均非真实账号/租户或凭据。
+
+| 合成向量 | SHA256 |
+| --- | --- |
+| query | `d77bb09590ad3224c7ea97c703566e27965f4fd753c7bc689d31033a61d1c5c9` |
+| advance `"0"` | `c42cfc005e857a1fe12548e0f6df43ba52953a97951ccedca11bcb2239d7b3d8` |
+| advance `"3"` | `3524b5a3d9f4e3dfcff1eef5a3991739616773771b0b1f4dbd475fff227138dc` |
+| advance `"9223372036854775807"` | `e373d47a707c3727c196d25da00ff2706a208b346b26132194b1cd5d1d3237e1` |
+
+本批先用 Python 独立算上述四个 ASCII 样例，再用 Go1.26.1（GOPROXY/GOSUMDB关闭，标准库程序）对四项黄金值、成员输入顺序变化、Go字符串转义做断言，全部通过，公开向量原件 SHA256 为 `41c93383ba90ef03238080b3c7cb00929bd61875366887052ce65b47c1ec8c36`。这只是合成摘要/编码参考验证，不是 HTTP parser、Ed25519、jti绑定、DB唯一约束/同事务、页面或真实调用的测试。未修改唯一业务契约、Go/proto/SQL生产源或服务；只提交报告与公开向量，忽略目录的离线参考程序不加入生产。后续由 BIZ 把接受项/差异写回唯一契约并给新固定SHA；两个缺口有了具体候选，整体 HTTP 仍待双方确认和实际实现。
