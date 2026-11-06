@@ -217,3 +217,28 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 提交前实查五份源码/测试仍逐字节匹配§9已审版本，并重新在 Go1.25.12/Linux 及所属真实 MySQL 上执行 `go test ./services/conversation/... -count=1 -v -timeout 60s` 和 `go vet ./services/conversation/... ./simulator/probes/mindlink`，均 exit0，见 `.local/f1-persist/initial/queue-regressions-precommit-v11.log` / `vet-precommit-v11.log`。该记录是本轮新增回归，不把历史测试当作本次新跑；§9活体镜像/刷新/重启流程属于此前同SHA版本证据，本轮未重跑。原生 Windows 测试本轮因既有 metrics 的 SwapTotal/SwapUsed/SwapFree 字段编译问题 exit1，未计为通过。
 
 本轮最初 Docker 引擎不可达，经正常启动 Docker Desktop 后恢复；只为回归显式启动所属测试 MySQL 和 SDK runner，验后停止并保留数据。此前对大当家交付的报告 SHA `f315e9c9945b739e1bfe99148f9b3300897fc3f942d063da9cba5c5cd2039246` 对应快照另存 `.local/f1-persist/initial/reported-v10.md`，旧证据不与本节新增提交记录混版。
+
+## 11. READ 并行交接（2026-11-06）
+
+大当家有效派单 `pbya2kwwflghukeh` 将原 F1-READ 交给同职责“43chat im server二管家” `01a1b020-5d93-76c3-baf2-730ccf75405b`；原管理 `01a1a0e1-b344-7501-bc44-fadc4a29d403` 保留 POLICY、RELIABLE、Rocky 与共享源整合。知识仓库的 `DG-20261104-003-F1-READ.md` 是本次分工入口，不构成永久岗位层级或新增 Git/部署权限。
+
+本轮实查主仓 HEAD 为 `4ecec887fb38d2d81af4bf2773b05d304e8ced97`，tracked/staged 无差异，未跟踪 `deploy/`、`docs/pre-deployment_zh.md` 属旧部署准备，保留。主仓没有未提交 READ 实现。旧 `.local/worktrees/f0-im` 仍是 detached b87，带 PERSIST 的两生产文件改动及未跟踪测试；五份源码/测试 SHA 均与已提交 4ece 相同，仅保留为旧测试副本，不交二管家接管或清理。
+
+交接清单已发送 `pbya6d887mchukeh`，二管家明确回复 `pbya7k4pfm4hukeh` 接管基线、写集、独立 proto/迁移和共享整合安排；其回执作为本次交接问答的结果核对，不把历史消息当新任务重放。后续确认 `pbya9sqkfnlhukeh` 纠正契约快照并说明接口依赖。接管确认不是实现或验收通过。
+
+| 文件集合 | 本包唯一写入人 / 边界 |
+| --- | --- |
+| `services/conversation/starter.go`、`actors/**`、`convercallers/**`、`services/**`、`storages/**` | 二管家按 READ 必要范围实施，包含 convercache/converservice 及相关测试；原管理不并写该模块，跨包接口变动先协调 |
+| `simulator/probes/mindlinkread/**`、`docs/evidence/20261106-mindlink-read/**` | 二管家的独立探针和非敏感证据；凭据与原始私有数据留忽略目录 |
+| `commons/pbdefines/mindlinkread.proto`、`pbobjs/mindlinkread.pb.go` | 二管家独立新增；只修改这套生成件，不顺手重生成公共 appmessages 文件 |
+| `commons/dbcommons/sqls/20261106.sql` | 当前独占预留给 READ，尚无已发布迁移；其他包正式编号按实际整合顺序集中协调，若顺序改变先协调重分号并真跑新库/升级，防止高版本先落地而漏掉 READ；已发布脚本不改号 |
+| `appmessages.proto` / `pbobjs/appmessages.pb.go`、`commons/errs/errorcode.go`、`services/apigateway/routers/router.go`、`sql/imserver.sql`、`commons/dbcommons/dbmigration.go` 及公共迁移登记 | 原管理集中整合；二管家提供最小接口/差异，不并写。接收已提交交付物后按适用授权处理合入，不自动扩大 merge/push/deploy 权限 |
+| 原 `simulator/probes/mindlink/probe_test.go`、`persist_runtime_test.go` 与本报告 | 原管理维护 F0/PERSIST 基线及总报告；READ 不覆盖旧失败或历史证据 |
+
+二管家从 4ece 建独立 worktree/分支，使用自己的 IM/DB、端口和卷，避开旧 F0、共享 IM、Rocky、pre/pro 与原封包。建议先核查 19601/19602/19603/18690；端口仍须启动前确认，不据此承诺持续空闲。本交接不依赖 POLICY/RELIABLE 全包完成，独立红例、存储和普通会话回归可先推进。
+
+已有公开 `Conversation` 字段 1—22、`QryConverReq` 1—5、`ClearUnreadReq` 1—2 未为 READ 改动或占号。二管家提出独立 `qry_conver_seen` / `set_conver_seen`，按当前用户＋租户＋会话持久 max 合并，首页 clear 不推进 seen。已回最小候选编号表：`QryConverSeenReq` 的 target_id/channel_type/sub_channel 为 1/2/3；`SetConverSeenReq` 同 1—3、seen_seq 为4；`ConverSeenState` 的 seen_seq/latest_seq/has_new 为1/2/3。该表仍是正式源登记提案，未生成、未注册或对外生效；字段/命名差异由二管家回报后共同冻结。当前用户与租户须来自真实登录或已验证服务端授权上下文，不能取请求中的 userId/IsInner 作为可信身份。
+
+唯一业务契约本轮已更新为提案 **2026-11-06-C**，SHA `0a117252225b049c15e1b24160ed8d4eb2ab1da44631070a1328e80eff2a0480`；早先交接消息中的 B/EAD66 只代表当时快照。C 已采纳票据精确项，§11.3 的可靠 latest_seq 和业务 seen 接线仍待双方确认。二管家的原生 seen 方案需与业务适配及单一权威存储对齐；原管理集中登记 IM HTTP/授权接线，业务负责人维护唯一契约。分工及依赖已定向通知业务负责人，不能把发送回执当接口冻结。
+
+`DownMsg.MsgSeqNo=6` 与 `unreadIndex=23` 是不同字段。现有序列能否直接复用，须由二管家按同 scope、授权可见历史、真正落库、新旧库与重启证据证明；不假设 RELIABLE 已实现，不把 DB 错误或范围未知记为 latest=0 成功。该关联验收尚未通过，App/push 等仍按实际覆盖单列。本节只交接写权和依赖，本轮未实施或运行 READ 产品测试。
