@@ -231,6 +231,7 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 | `services/conversation/starter.go`、`actors/**`、`convercallers/**`、`services/**`、`storages/**` | 二管家按 READ 必要范围实施，包含 convercache/converservice 及相关测试；原管理不并写该模块，跨包接口变动先协调 |
 | `simulator/probes/mindlinkread/**`、`docs/evidence/20261106-mindlink-read/**` | 二管家的独立探针和非敏感证据；凭据与原始私有数据留忽略目录 |
 | `commons/pbdefines/mindlinkread.proto`、`pbobjs/mindlinkread.pb.go` | 二管家独立新增；只修改这套生成件，不顺手重生成公共 appmessages 文件 |
+| `services/historymsg/storages/dbs/convercleantimedao.go`、新增 `convercleantimedao_test.go` | READ 必要配套临时交二管家独占，限 SQL 条件空格修正及真实 MySQL clean-time/过滤回归；原管理不并写，其他 history 文件仍须另行协调 |
 | `commons/dbcommons/sqls/20261106.sql` | 当前独占预留给 READ，尚无已发布迁移；其他包正式编号按实际整合顺序集中协调，若顺序改变先协调重分号并真跑新库/升级，防止高版本先落地而漏掉 READ；已发布脚本不改号 |
 | `appmessages.proto` / `pbobjs/appmessages.pb.go`、`commons/errs/errorcode.go`、`services/apigateway/routers/router.go`、`sql/imserver.sql`、`commons/dbcommons/dbmigration.go` 及公共迁移登记 | 原管理集中整合；二管家提供最小接口/差异，不并写。接收已提交交付物后按适用授权处理合入，不自动扩大 merge/push/deploy 权限 |
 | 原 `simulator/probes/mindlink/probe_test.go`、`persist_runtime_test.go` 与本报告 | 原管理维护 F0/PERSIST 基线及总报告；READ 不覆盖旧失败或历史证据 |
@@ -242,3 +243,5 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 唯一业务契约本轮已更新为提案 **2026-11-06-C**，SHA `0a117252225b049c15e1b24160ed8d4eb2ab1da44631070a1328e80eff2a0480`；早先交接消息中的 B/EAD66 只代表当时快照。C 已采纳票据精确项，§11.3 的可靠 latest_seq 和业务 seen 接线仍待双方确认。二管家的原生 seen 方案需与业务适配及单一权威存储对齐；原管理集中登记 IM HTTP/授权接线，业务负责人维护唯一契约。分工及依赖已定向通知业务负责人，不能把发送回执当接口冻结。
 
 `DownMsg.MsgSeqNo=6` 与 `unreadIndex=23` 是不同字段。现有序列能否直接复用，须由二管家按同 scope、授权可见历史、真正落库、新旧库与重启证据证明；不假设 RELIABLE 已实现，不把 DB 错误或范围未知记为 latest=0 成功。该关联验收尚未通过，App/push 等仍按实际覆盖单列。本节只交接写权和依赖，本轮未实施或运行 READ 产品测试。
+
+必要调用方范围补充（请求 `pbybhndrxp4hukeh`）：原管理本轮只读核对 DAO 的 `conver_id=?and sub_channel=?`、调用链及二管家 `service-debug2.log` 中 MySQL 1064、query 10009、测试 FAIL；主仓无该 DAO 未提交改动，新增测试文件尚不存在。已将表中两文件释放给二管家补最小修复与真实 DB 红绿例，保留租户/会话/子通道/类型过滤和参数化。旧 `GetCleanTime` 忽略查询错误，不得据此使 READ 降级成功；其服务层及其他 history 文件不包含在本次释放中。本次是写集协调和日志核对，原管理未独立复跑、未修改 DAO，不声明缺陷已修复或回归通过；修复交付与审查另记。
