@@ -245,3 +245,16 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 `DownMsg.MsgSeqNo=6` 与 `unreadIndex=23` 是不同字段。现有序列能否直接复用，须由二管家按同 scope、授权可见历史、真正落库、新旧库与重启证据证明；不假设 RELIABLE 已实现，不把 DB 错误或范围未知记为 latest=0 成功。该关联验收尚未通过，App/push 等仍按实际覆盖单列。本节只交接写权和依赖，本轮未实施或运行 READ 产品测试。
 
 必要调用方范围补充（请求 `pbybhndrxp4hukeh`）：原管理本轮只读核对 DAO 的 `conver_id=?and sub_channel=?`、调用链及二管家 `service-debug2.log` 中 MySQL 1064、query 10009、测试 FAIL；主仓无该 DAO 未提交改动，新增测试文件尚不存在。已将表中两文件释放给二管家补最小修复与真实 DB 红绿例，保留租户/会话/子通道/类型过滤和参数化。旧 `GetCleanTime` 忽略查询错误，不得据此使 READ 降级成功；其服务层及其他 history 文件不包含在本次释放中。本次是写集协调和日志核对，原管理未独立复跑、未修改 DAO，不声明缺陷已修复或回归通过；修复交付与审查另记。
+
+## 12. READ 候选接收与阻断项（2026-11-06）
+
+本次有效批次 `4ccd193bc2a6d5f7584ff6fe9669e29820876c9555109186bb2cc5b97de9d408` 接收二管家的候选 `008bd1fe7e116f006da95cdbf10edfbac47de5db`，前置 clean-time 修复为 `584f9032b8759f63be627c95b5b2336f69f7c4f7`，基线为 4ece。本轮核对两个提交及调用链；15 个变更文件符合上述写集，公共路由、错误码、appmessages 和新库初始化 SQL 未改。
+
+候选已登记独立的 `qry_conver_seen` / `set_conver_seen` Actor、§11 的 proto 编号及 `20261106.sql` 的 `conversation_seen` 表。原管理核对了提交内 manifest 的 12 份源码和 18 份私有证据摘要：11 份源码直接匹配；clean-time DAO 的 manifest 使用工作区 CRLF 字节，转为 Git blob 的 LF 后内容一致；18 份证据摘要均匹配。原件中的 Linux/CI、双端、DB 与重启结果是二管家本轮保留的运行记录，原管理只核对原件及摘要，本轮未独立重跑，不将其提升为全部验收通过。
+
+候选接收期间，二管家分支已出现后继修订，不能把旧候选当最终交付：
+
+- `80bdd8728a16a84208eccce590242bd7ed669551` 补 Mongo 清理记录缺失的判定。旧候选只接受 GORM 的 not-found，而 Mongo 返回 `mongo.ErrNoDocuments`，会把正常空记录报为内部失败；二管家已保留对应红例。本轮未跑真实 Mongo 流程。
+- `e3957ea` 新增真实历史清理后的红例；其 `retention-red.log` 记录 IM 重启后新消息 `latest=1, seen=3, has_new=false`，用例 exit 1。现有 `commonservices/convercache.GetLatestMsgTimeSeq` 从剩余历史恢复序列，历史物理清空后从零重新编号，与持久 max 阅读位置冲突。该红例不能算作通过，禁止仅为消除现象而回退 seen；共享序列生产链仍由原管理协调，二管家未获本节之外的新写权。
+
+本次结论：保留 READ 候选，暂不接线或合并。先解决序列复用并取得对应版本的回归、独立审查和业务 §11.3 单一权威存储回执，再由原管理将相同 DDL 整合新库初始化、核对升级顺序并实施已认证 HTTP 适配。主人登录态的业务 `/api/personal/agent-conversations/:conversation_id/seen` 与 IM 原生 RPC 是不同入口；当前未注册的路由和认证不能因候选存在而记为可用。本轮主仓只更新此记录，未修改 schema、运行服务、切换 Rocky 或发布。
