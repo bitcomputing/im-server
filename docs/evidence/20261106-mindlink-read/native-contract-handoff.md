@@ -61,3 +61,15 @@ stored no-count 消息仍分配序列、进入历史并影响 latest；count 位
 此前版本对应的 [integrated-verification.md](integrated-verification.md)、[integrated-review.md](integrated-review.md) 与 manifest 已交付：MySQL seen schema/max/隔离、实际 service 错误分支、模拟双端、首页清未读独立、普通 IM-only 重启；真实历史清尽后再冷启，新消息 latest4/seen3/has_new=true，ACK/双端实收/历史/摘要 ID 一致，最终 DB seen3/floor4/history seq4/三份摘要同 ID，MySQL 未重启。独立复审 0 Critical/0 Important，1 Minor 为自动断言覆盖，本轮 SQL 事实另有精确核对。
 
 本轮只核读正式源码/唯一契约，并复核版本和已有证据的对应关系；没有重跑这些产品场景，也不把过去 PASS 当本轮新实测。BIZ HTTP/actor 授权、真实页面/App/push、live Mongo、混合写者/负载及 RELIABLE 异步持久结果/幂等/outbox仍未验收。十九固定fixture SKIP、广义 message vet 六项旧 Mongo 告警和 IM stop137 的局限保持原记录。
+
+## D / READ-R1 固定版本复核回执
+
+后续有效投递 `pbyembnvgm4hukeh` 指定业务唯一契约提交 `d53da1b5116e6943c75be853f30956029c346fd2`。本次直接读取该 Git blob 的 §7、§11.3 及其相对 C 的差异，复算原始 blob 与 LF 规范化 SHA256 均为 `57ef8b8eec66ebcb178f0281aee43e48a9790fc5b55bf06261638371c1569220`，与交付值一致。前文 C/SHA 记录保留为 `5e1b283` 当时的交接快照，本节记录更新版本的复核。
+
+READ 侧接受 D 的 §7 与 §11.3 中单一可写 IM seen、经授权业务映射到完整 IM scope、可见持久 latest、no-count 与首页清未读独立、latest 可降而 seen 不退、旧位 max 幂等例外、set 的 mutation 授权、写后失败可能已存、无新增广播及无 request_id 结果协议等原生边界。未发现需改变现有 READ 实现的语义差异。普通 HTTP 历史未暴露 MsgSeqNo 的缺口与实际展示序列来源要求也正确，不用 msgID/time/floor 代替。
+
+READ 侧同意 D 表中非负十进制字符串、显式 `"0"`、PUT 显式必填、拒绝 null/缺失及越 int64 作为 HTTP 格式方向；仍需原 IM 管理与业务确认完整 schema、精确路径/方法、错误/envelope 和 operation_type/actor 接线。此项技术意见不是新路由已注册，也不能单方把 D 整份标冻结。
+
+一个待澄清的适配措辞：D 的“非零或缺 state 失败关闭”应区分确实未取得 ACK/解码失败/业务 HTTP data 缺失，与合法的全零原生 PB。`ConverSeenState{seen_seq:0, latest_seq:0, has_new:false}` 按现有 proto3 编码为空字节；[CreateQueryAckWraper](../../../commons/bases/messageutil.go) 会传递这种有效载荷。**不能用 `len(ack.Data)==0` 判定失败**；有成功 ACK 时按正式 PB 解码，空字节合法解出全零 state，然后按约定生成显式 JSON 字段。该澄清不放宽非零 ACK、超时或格式错误，不要求修改原生 proto。
+
+本次额外运行了一个无网络、无 DB 的 Go 1.25.12 编码检查，使用既有 `a35c877` canonical 源归档：`proto.Marshal` 全零 state 长度为 0，`proto.Unmarshal` 成功还原 0/0/false，exit 0。私有原件 `.local/f1-read/contract-review-27999904/wire-check.log`；它只是本轮编码事实验证，不是重跑 READ 产品场景、业务 HTTP 或页面验收。没有重建 IM 服务、启动数据库或重验 30/39 整套既有证据。
