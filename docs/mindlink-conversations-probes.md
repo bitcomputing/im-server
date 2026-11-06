@@ -270,3 +270,5 @@ F2-A 映射/操作意图子集已以回执 `pbx7y2nyeyshukeh`、`pbx8palmn64huke
 最终镜像 `sha256:3827b96e8a23b2c927f1e9dd2a7c39173ab465c0378335e31ca035161ce90090`，磁盘及重启前后活体二进制 SHA `a4458bccbfd2e05d0a2237fc7adf2757134950575ab33a87b1b7e74505af52fb`。`git show 33d2b9b:docs/evidence/20261106-message-sequence/README.md` 提供非敏感报告，manifest 的 16 份源码已与提交暂存 blob 逐字节核对，24 份原件摘要保留在同目录。独立静态复核在 MySQL/停止旧写者范围未余阻断；审查者未独立跑 DB/活体，Windows 编译仍受既有 metrics 字段错误影响。
 
 依赖已通过原批次回传二管家（发送回执 `pbycwwhfxy8hukeh`），待其在隔离分支整合确切版本、重建并跑 e3957ea、完整适用 READ 回归及独立复审；发送成功不算其已接单或 READ 验收。业务 §11.3/真实 App/页面/push、Mongo 物理清理启动种子、混合旧写者与生产负载未验。自有测试栈已停止，试验租户/库/卷/制品保留；未动既有开发服务、READ 栈或 Rocky，未推送或发布。
+
+交付自检补充：原交付未跑浏览器，不把该缺口记为通过。本轮使用真实 Chrome 登录隔离管理后台，通过现有 API 调试页实际发送私聊/群聊并查询历史，两个新 ID 分别为 `pbyc3b68aachlzrr` / `pbyc3tys2agkbg4m`；页面历史均命中，DB 各恰一行、seq/水位为 3、seen 仍为 1。现有历史 HTTP 响应不含序列字段，序列证据来自 DB，不能外推为 READ 新页面通过。代码 33d2b9b 未变，原 16 源码及 24 证据摘要复核一致；新增非敏感页面/DB 证据提交为独立分支 `11aa1ac222aaeef50b652cb69cc6715d8811eaff`，见其中 `docs/evidence/20261106-message-sequence/ui-selfcheck.md`。启动时的 DB 未就绪失败及一次视口导航超时保留为失败尝试，条件修正后才继续；未重复发送未知结果。浏览器关闭且原 PID 不存在，故障表为零，自有 IM/MySQL 已停、数据卷保留；均为本轮快照，不承诺持续状态。业务 READ 页面、真实 App、Mongo 等验收门维持待验证。
