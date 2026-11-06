@@ -20,6 +20,8 @@ The shared dependency reserves durable private/group sequence and send time befo
 
 See [integrated-verification.md](integrated-verification.md) for commands, provenance, failures/skips and evidence; [integrated-manifest.json](integrated-manifest.json) records hashes. [integrated-review.md](integrated-review.md) records the independent review and its scope.
 
+The [native contract handoff](native-contract-handoff.md) records the READ owner's acceptance of IM as the sole writable seen authority, exact native sources/errors and the still-pending BIZ HTTP/authentication/JSON bindings. It does not freeze the business contract or add those bindings.
+
 | Check | Observed result |
 | --- | --- |
 | Affected packages and named CI packages | Canonical LF source tests passed; READ real-MySQL cases ran; unrelated fixed-fixture cases skipped |
