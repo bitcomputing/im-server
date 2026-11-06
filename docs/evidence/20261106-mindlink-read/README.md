@@ -1,8 +1,8 @@
 # DG-20261104-003-F1-READ
 
-Candidate implementation; native delivery is blocked by the independent review's retention finding. The successful checks below describe the `008bd1f` snapshot and do not establish correctness after history retention. Business HTTP integration, UI acceptance and release remain separate.
+Native MySQL READ passed its applicable local regression and fresh independent review at `a35c8779c43d23e42cd6d49fc295f454abf6f2ff`, with old writers stopped. The previous retention blocker is reproduced in the historical RED evidence and GREEN after the exact shared sequence dependency was integrated. This is a local native-interface result; business HTTP, real clients and release acceptance remain pending.
 
-Base: `4ecec887fb38d2d81af4bf2773b05d304e8ced97`. Necessary clean-time SQL fix: `584f9032b8759f63be627c95b5b2336f69f7c4f7` (one SQL-space correction plus real-MySQL regression). No changes to legacy unread counting, old protobuf tags or PERSIST snapshots.
+Dependency: `33d2b9bb1a8aad82d95ed25d890476e9496d5546`, integrated without conflict as `7ccc6e96d09601e1cb19dffd5608907fa0a7feee`. READ implementation: `008bd1f`; clean-time SQL fix: `584f903`; Mongo missing-record error boundary: `80bdd87`; original retention regression: `e3957ea`; enhanced dual-device retention probe: `a35c877`. Base: `4ecec887fb38d2d81af4bf2773b05d304e8ced97`.
 
 ## Native interface
 
@@ -10,41 +10,39 @@ Base: `4ecec887fb38d2d81af4bf2773b05d304e8ced97`. Necessary clean-time SQL fix: 
 
 `set_conver_seen`: `SetConverSeenReq` adds `seen_seq=4`.
 
-Both return `ConverSeenState(seen_seq=1, latest_seq=2, has_new=3)`. Sequences are int64. The tenant and user come from authenticated RPC context, independent of the client-controlled routing target. The API supports private/group conversations and returns a state on each successful query/update. Other devices obtain the same authoritative position by querying; no new push notification is implemented.
+Both return `ConverSeenState(seen_seq=1, latest_seq=2, has_new=3)`. Sequences are int64. Tenant and requester come from authenticated RPC context. Private/group conversations are supported. Other devices query the same durable max; no new push notification is implemented.
 
-`latest_seq` is the stored `msg_seq_no` of the latest history message visible in that exact scope, after membership, hidden-before-join, cleanup, deletion, expiration and portion-recipient filters. Empty visible history returns zero; SQL errors or invalid persisted ordering return an error. New positions above the visible latest are rejected. Duplicate positions already acknowledged remain valid when later deletion/expiry reduces visible latest. `conversation_seen` stores the maximum by tenant/user/target/channel/subchannel synchronously. Homepage unread clearing and delayed summary snapshots cannot overwrite it.
+`latest_seq` comes from the latest visible persisted history in the same scope, after membership, hidden-before-join, cleanup, deletion, expiry and portion-recipient filters. It is not the allocation watermark or unread index. Empty visible history returns zero; storage errors and invalid stored ordering return errors. A new acknowledgement above visible latest is rejected; an already acknowledged duplicate remains valid if later deletion reduces latest. `conversation_seen` persists the maximum synchronously and independently of homepage clearing and summary snapshots.
 
-The original IM manager owns shared HTTP authorization/routing, SQL initialization and final migration ordering. `20261106.sql` is reserved for READ. This branch supplies the additive migration, picked up by the existing embedded upgrade path. The business §11.3 adapter and sole-authority contract still require joint registration; native RPC implementation is not evidence those HTTP routes exist.
+The shared dependency reserves durable private/group sequence and send time before sendbox/history/delivery. `20261107.sql` seeds retained history/seen maxima, preserves higher floors and follows the unchanged READ `20261106.sql`; migration failure stops startup. Reservation alone does not establish asynchronous history durability.
 
-## Actual verification
+## Current verification
 
-Environment: own `im-f1-read-20261106` Docker project, MySQL 8.0, Go 1.25.12 Linux runners; API/nav/WS/admin bound only to `127.0.0.1:19601/19602/19603/18690`, DB has no host port. No shared IM/F0, Rocky, pro/pre or existing deployment archive was used.
+See [integrated-verification.md](integrated-verification.md) for commands, provenance, failures/skips and evidence; [integrated-manifest.json](integrated-manifest.json) records hashes. [integrated-review.md](integrated-review.md) records the independent review and its scope.
 
-| Check | Actual result |
+| Check | Observed result |
 | --- | --- |
-| Baseline conversation package tests | exit 0; old PERSIST DB fixtures skipped |
-| Missing durable schema | RED exit 1, expected missing-table capability |
-| DAO | real MySQL GREEN exit 0; duplicate/older/concurrent updates preserve max; tenant/user/target/subchannel/channel isolation |
-| Missing native RPC | RED exit 1, actual WS response 11013 |
-| Clean-time SQL | RED exit 1 / MySQL 1064; GREEN scoped/empty/error regression and vet exit 0 |
-| Invalid stored ordering | RED exit 1; corrected boundary tested in GREEN suite |
-| Module tests, real MySQL tests, vet, Linux launcher build | exit 0; DB read/write/history errors fail rather than return successful empty state |
-| Project's named CI package tests | exit 0 |
-| New schema | initial SQL plus READ migration executed in own fresh database, table/primary key inspected, exit 0 |
-| Existing schema upgrade | startup recorded version 20261106; legacy sentinel retained message ID and unread/read indexes 2/1 |
-| Live two-session flow | exit 0; one counted plus flags 8/72 messages actually received by owner Web and PC, all three history IDs/sequences and final summary match; ordinary unread remained 1 until explicitly cleared |
-| Independent reading state | native RPC returns max across two sessions; stale/duplicate/future/nonmember/routing-target cases verified; clearing homepage unread leaves entry unseen |
-| IM-only restart | exit 0; history, summary, zero ordinary unread and seen/latest=3/3 restored; DB dumps byte-identical and MySQL start timestamp unchanged |
+| Affected packages and named CI packages | Canonical LF source tests passed; READ real-MySQL cases ran; unrelated fixed-fixture cases skipped |
+| Vet and Linux build | Exact affected-package vet/build passed; broad message-tree vet has six pre-existing Mongo literal warnings |
+| Fresh/upgrade schema | Both reached 20261107; READ/sequence DDL byte-identical; old seen 3/history 1 seeded floor 3; legacy summary/index sentinel retained |
+| Fresh native lifecycle | Three messages matching sender ACK IDs received by simulated Web/PC, matching history and final summary; ordinary unread 1, then cleared to 0 without advancing independent seen |
+| Multi-device acknowledgement | Durable max, stale/duplicate/future/nonmember/routing-target cases passed |
+| IM-only ordinary restart | Same live binary; MySQL not restarted; scoped DB snapshots byte-identical; history IDs/seq 1..3, summary, unread 0 and seen/latest 3/3 restored |
+| Original retention regression | Unmodified `e3957ea` scenario GREEN: latest 4, seen 3, has_new true |
+| Final purge/cold-start | Actual owned-tenant retention DAO removed history; seen/floor 3 unchanged across IM restart; next ACK/history seq 4, seen 3, has_new true, both sessions received same ID/summary |
+| Final DB persistence | One history row at seq 4 with ACK ID, durable floor 4/seen 3, all three summaries at that ID, owner indexes 1/1 |
+| Independent review | No Critical/Important blocker for tested native MySQL mode; one optional regression-assertion Minor |
 
-Tested image: `sha256:66f045dd93e2abb3d5190fcadb160dc75685b49637e23b8625570eb00da9133e`. Disk, image process and restarted process binary SHA256: `49d9e6b5f09b4afd382eb11343b7e3b5d73706b08e916c666d1ab736f2d91b87`. These identify the tested dirty source snapshot; [manifest.json](manifest.json) records source and evidence hashes for matching it to commits.
+Tested source archive SHA256: `92313f2557c778632633536a7e246b8e2b52eb231e1d29ed35e7f131d3270ec3`.
 
-Private raw evidence is `.local/f1-read/` in the owning managed worktree. It includes fixture credentials and must not be committed. The checked-in manifest contains hashes only. Initial test-fixture failures (wrong table names and uninitialized custom debug logger) remain in private logs and were not counted as passing.
+Disk and live binary SHA256: `48592a8d46e71929e0d8f062e7b8e456e4969d8af11fddc0134994a6843fec00`.
 
-Independent review found two Important issues, no Critical/Minor issues:
+Image: `sha256:90ce1013e041bb65e4121a849e4938dd3401f3f73724ff90a815f6316784adb9`, revision label `a35c8779c43d23e42cd6d49fc295f454abf6f2ff`. Subsequent evidence-only commits do not change these tested source files.
 
-- **Blocking retention defect:** tenant history retention can remove all history for an idle conversation. On cache reload/restart the existing allocator reuses `msg_seq_no=1`, while the durable reading position remains 3 (or higher), producing `has_new=false` for an actually new stored message. A real owned-tenant `GroupHisMsgDao.DelMsgsBaseTime` purge plus IM-only restart reproduced exactly `latest=1 / seen=3 / has_new=false`, exit 1. A non-reusable durable ordering watermark in the shared sending chain is required. The original IM manager will implement that dependency within F1-RELIABLE; READ awaits its reviewable version and handoff, not transfer of shared write ownership. Never reset the acknowledged position to hide this failure. Exact original paths, fixture and staged commands are in [retention-handoff.md](retention-handoff.md).
-- **Mongo missing cleanup records:** the service originally recognized only `gorm.ErrRecordNotFound`. It now also recognizes `mongo.ErrNoDocuments`, with a consumer regression injecting the storage error into the otherwise real MySQL service flow (RED exit 1, GREEN exit 0). This is error-boundary evidence, not a live Mongo acceptance result.
+## Boundaries and retained resources
 
-No push, merge, production deployment or manual acceptance is claimed. App/browser UI, phone push/badge/sound, full Mongo behavior and RELIABLE crash guarantees have not been verified. Legacy PERSIST integration tests target another owner's fixed fixture and were skipped; this task instead used its own live history/summary/restart checks. Review set aside these explicitly assigned or uncovered integration boundaries; none is counted as passed.
+Business contract section 11.3 and its sole writable authority remain a coordination candidate. Native RPC success does not demonstrate business HTTP route registration or business integration. App/browser UI, phone push/badge/sound, live Mongo retention/bootstrap, mixed old/new writers, production load and RELIABLE idempotency/outbox/crash timing were not accepted by these checks. Mongo missing-record coverage is error injection into the real MySQL consumer, not live Mongo evidence. Supplier-owned sequence failure/concurrency/migration fixture results were audited as supplied evidence, not independently rerun here.
 
-Own containers/volumes and test tenants are retained for inspection; resource state is a snapshot, not a continuous guarantee.
+Only the owned `im-f1-read-20261106` Docker project was used, with MySQL 8.0 and Go 1.25.12 Linux runners. API/nav/WS/admin bindings were loopback 19601/19602/19603/18690; MySQL had no host port. Final inspection recorded both IM containers exited 137, OOM=false, and MySQL exited 0 after the stop command. Volumes, images, disposable tenants and private evidence were preserved. This is a resource-state snapshot; graceful IM shutdown was not demonstrated. No push, main merge or production deployment was performed.
+
+Private evidence lives under `.local/f1-read/integrated-33d2b9b/` in the owning managed worktree; credentials and runtime fixtures must not be committed. Historical [manifest.json](manifest.json) describes the earlier `008bd1f` artifact and is not the current artifact. [retention-handoff.md](retention-handoff.md) preserves the original RED reproduction and dependency handoff; its blocked-state notes are historical and superseded by this integrated result.
