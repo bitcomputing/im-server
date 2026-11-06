@@ -458,3 +458,21 @@ operation_id/request_id、issuer/kid/audience、jti/iat/exp 不放进该语义�
 | advance `"9223372036854775807"` | `e373d47a707c3727c196d25da00ff2706a208b346b26132194b1cd5d1d3237e1` |
 
 本批先用 Python 独立算上述四个 ASCII 样例，再用 Go1.26.1（GOPROXY/GOSUMDB关闭，标准库程序）对四项黄金值、成员输入顺序变化、Go字符串转义做断言，全部通过，公开向量原件 SHA256 为 `41c93383ba90ef03238080b3c7cb00929bd61875366887052ce65b47c1ec8c36`。这只是合成摘要/编码参考验证，不是 HTTP parser、Ed25519、jti绑定、DB唯一约束/同事务、页面或真实调用的测试。未修改唯一业务契约、Go/proto/SQL生产源或服务；只提交报告与公开向量，忽略目录的离线参考程序不加入生产。后续由 BIZ 把接受项/差异写回唯一契约并给新固定SHA；两个缺口有了具体候选，整体 HTTP 仍待双方确认和实际实现。
+
+## 20. Rocky 真实业务 Token 导航与原生 CONNECT 证据复核（2026-11-06）
+
+有效批次 `c180f8e7e313c9307eb07aa10904bad9b00e9937a1879974498dc6c28f2901a4` 收到 BIZ 负责人稳定身份 `01a1a0e1-3618-78b0-a5c7-81a37bff3a31` 的回报 `pbyhqw95rc8hukeh`。本批接受其补齐 §17 中“真实业务返回 Token 的 nav/协议 CONNECT”这一项的有限证据，不把 BIZ 的实跑记作原管理重新登录或独立运行用户流程。
+
+固定产物为 Rocky `D:/projects/chatbot43` 提交 `d8269a7cac5dec6b380a94638ba48e79dcf5606b`，实际测试 BIZ 源基线 `e0855573bda66ff0db19b60ee5b994ea75fea610`，IM 源 `b87fc791400dafae0f3fb2e1665863419bad58f7`。本轮通过 SSH 实读固定提交的报告增量、六份 `docs/evidence/20261106-im-private-tenant/nav-connect-*` 脱敏产物及其中客户端/驱动源码；提交仅改八份 STATE/文档/证据，未包含旧 `go.sum` 改动。
+
+| 证据 | 实际支持的结论与边界 |
+| --- | --- |
+| BIZ 成功记录 UTC `17:03:22.790538—17:03:27.130877` | 登录、`/api/im/token`、`navigator/general` 均记录 HTTP200/code0；驱动断言前两者返回同一非空 IM Token，再将这个 Token 用于导航和原生 CONNECT，不重注册 IM 用户或借旧夹具 Token |
+| 身份及连接 | app `dg2c3350172f150`，导航、CONNECT ACK 和 client 的 user 均为 `test_6199931265070805`；记录 ACK 存在、client/server code0、connected=true、显式断开及进程 exit0。客户端是固定 b87 的 `simulator/wsclients`，Go1.25.12 Windows、wire SDK1.0.1、Verbose=false，Address 为 `ws://127.0.0.1:19003`，实际路径 `/im`；不是已发布 SDK 或浏览器验收 |
+| 原件与归档 | 原管理本轮重算五份指定公开原件/源码的 raw 和 CRLF→LF SHA256，逐一匹配 receipt；成功归档 Git blob SHA256 为 `af81dfe8cd94bb3b5c55210d8465b396f5ab1173b5c7833e8607a8bf92c6cd9f`，receipt blob 为 `11d29cf726a4c4a551ab5f81ce0ed7250d6d8babb4d6fde0f2fc51ff80c81ac2`。固定 b87 客户端源 SHA `c58e4792…` 与 build 记录一致，保留的探针二进制 SHA `29cbfb84…` 亦匹配；未执行该探针 |
+| 本轮进程快照 UTC `17:20:53.8409415` | 精确探针路径的进程数0；API PID26644、路径 `D:/projects/chatbot43/tmp/dg2-rocky-biz/chatbot43.im-safe.exe`、启动 UTC `11:08:43.8150240`、二进制 SHA `f2d9fc0c20cdfe1885e14a5b695de731cc871bd9c3d73fe30de0467f66877fe4` 与原记录一致。此为本次读回快照，不是持续运行保证或服务端离线状态证明 |
+| BIZ 数据和凭据边界 | 驱动与记录保留业务身份比较、user/reservation/message 的1/1/0计数及 device/request 审计9→10、1→2，合成验证码 NX/300s 与条件清理后不存在；原管理未重跑 SQL/Redis。Token 由 BIZ 进程内获得并经 stdin 交给子进程；其子输出及五份自有应用日志新增字节的凭据扫描仅覆盖那一轮。原管理本批不读取凭据、私有配置或原始日志，也不宣称所有日志出口安全 |
+
+首轮 `nav-connect-attempt1.json` 是探针错误要求 API 存在 Verbose 字段而在 HTTP/夹具写入前失败，不能算通过或业务产品失败；纠正到客户端显式设置后才有上述成功记录，不称产品修复。本轮一次只读复核命令因本机长度预检停止，拆分后的原件哈希和进程复核实际 exit0；未把失败的预检算成已运行远端检查。
+
+§17 的旧 nav 夹具、IM 用户行和 interceptor 零计数仍各保留其原时间；新记录仅取代“该真实用户业务 Token 的 nav/原生 CONNECT 未跑”这一历史缺口。回调仍缺受控注册、有效事件、签名和业务处理审计；发布 SDK/真实页面、消息/历史/离线/摘要/read 重启、服务端离线状态及旧列表/资料问题未因本批通过。IM 运行版本按 BIZ receipt 仍是 `09186cb7…` 诊断镜像，不是后续 READ/序列制品。本批不重启、构建、改配置、发消息、调用回调或部署；独立产品场景、原 bec85、三包和 DG2 整体验收仍未完成。
