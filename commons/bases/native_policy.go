@@ -43,6 +43,27 @@ func CheckNativeMessage(ctx context.Context, appkey string, msg proto.Message, u
 	return CheckNativeIdentities(ctx, appkey, users, groups)
 }
 
+// FilterNativeMessages classifies only supplied selectors; callers must load actual
+// history/mentions and check requester/final authority separately.
+func FilterNativeMessages(ctx context.Context, appkey string, messages []proto.Message) ([]bool, error) {
+	if ctx == nil || appkey == "" {
+		return nil, mindlink.ErrInvalidRequest
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	identities := make([]mindlink.NativeIdentities, len(messages))
+	for i, msg := range messages {
+		if msg == nil || !msg.ProtoReflect().IsValid() {
+			return nil, mindlink.ErrInvalidRequest
+		}
+		if ctx.Err() != nil {
+			return nil, mindlink.ErrUnknownResult
+		}
+		identities[i].Users, identities[i].Groups = appendNativeIdentities(msg.ProtoReflect(), nil, nil)
+	}
+	return nativePolicy.Load().Filter(ctx, appkey, identities)
+}
+
 func NativePolicyCode(err error) errs.IMErrorCode {
 	if err == nil {
 		return errs.IMErrorCode_SUCCESS

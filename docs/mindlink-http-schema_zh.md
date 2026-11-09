@@ -4,6 +4,12 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；未公开的停用 SQL 事务原语已有隔离验证，真实业务权威写入源和全部适用读取面仍未具备，POST 不能据此启用 ready。
 
+## 原生批量消息分类依赖（c74fc1cf）
+
+Root新增只读Go接口 `bases.FilterNativeMessages(ctx,appkey,[]proto.Message)([]bool,error)`，复用既有递归身份提取；结果按输入序号返回，true只表示所提供身份未命中native拒绝屏障，不授业务owner权限。SQL按有界批次及原生0900排序规则分类，保留用户/群命名空间与app隔离；失败返回nil mask，空候选也检查SQL可用。该接口不会加载缺失的真实history/mentions，也不新增HTTP/proto或替代最终核权。
+
+实现、红绿与查询量反向试验见[共享分类验收记录](evidence/20261109-mindlink-native-filter/verification.md)。READ仍须在其隔离候选中接线并完成分页/聚合、冷态与RPC/重建制品验收；不据此关闭完整READ、公共disable或066/c82。
+
 ## 原生 READ 与持久序列整合（2026-11-09，066519ee，Task4）
 
 整合 READ 已交付的固定 `dcdd3a30ba4b802dce11ae396dc8f3711755ed4f`（含 `d336dec4` 的 WithTx 基础）及持久消息序列；未改业务公共 HTTP 契约。原生 `qry_conver_seen` / `set_conver_seen` 经过既有 Actor 拒绝屏障。查询和推进 seen 独立于未读计数；WithTx 只使用调用方事务，尚未接入公共 READ 的原操作快照与 typed 回执生产者。
