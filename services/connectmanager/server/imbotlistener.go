@@ -30,9 +30,6 @@ func (listener *ImBotListenerImpl) Connected(msg *codec.ConnectMsgBody, ctx imco
 	//check login
 	if code := services.CheckBotLogin(ctx, msg); code != errs.IMErrorCode_SUCCESS {
 		uId := imcontext.GetContextAttrString(ctx, imcontext.StateKey_UserID)
-		if uId == "" {
-			uId = msg.Token
-		}
 		msgAck := codec.NewConnectAckMessage(&codec.ConnectAckMsgBody{
 			Code:      int32(code),
 			Session:   imcontext.GetConnSession(ctx),

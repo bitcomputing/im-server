@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+	"im-server/commons/bases"
 	"im-server/commons/errs"
 	"im-server/services/commonservices"
 	"im-server/services/commonservices/tokens"
@@ -23,6 +25,9 @@ func CheckBotLogin(ctx imcontext.WsHandleContext, msg *codec.ConnectMsgBody) err
 	token, err := tokens.ParseToken(tokenWrap, []byte(appinfo.AppSecureKey))
 	if err != nil || token.UserId == "" {
 		return errs.IMErrorCode_CONNECT_TOKEN_AUTHFAIL
+	}
+	if code := bases.NativePolicyCode(bases.CheckNativeIdentities(context.Background(), appkey, []string{token.UserId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code
 	}
 	imcontext.SetContextAttr(ctx, imcontext.StateKey_UserID, token.UserId)
 	imcontext.SetContextAttr(ctx, imcontext.StateKey_UserType, token.UserType)

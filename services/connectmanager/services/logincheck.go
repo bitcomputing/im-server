@@ -1,6 +1,8 @@
 package services
 
 import (
+	"context"
+	"im-server/commons/bases"
 	"im-server/commons/errs"
 	"im-server/services/commonservices"
 	"im-server/services/commonservices/tokens"
@@ -62,6 +64,9 @@ func CheckLogin(ctx imcontext.WsHandleContext, msg *codec.ConnectMsgBody) (int32
 
 	if appinfo.TokenEffectiveMinute > 0 && (token.TokenTime+int64(appinfo.TokenEffectiveMinute)*60*1000) < time.Now().UnixMilli() {
 		return int32(errs.IMErrorCode_CONNECT_TOKEN_EXPIRED), ""
+	}
+	if code := bases.NativePolicyCode(bases.CheckNativeIdentities(context.Background(), appkey, []string{token.UserId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return int32(code), ""
 	}
 	imcontext.SetContextAttr(ctx, imcontext.StateKey_UserID, token.UserId)
 	imcontext.SetContextAttr(ctx, imcontext.StateKey_DeviceID, msg.DeviceId)

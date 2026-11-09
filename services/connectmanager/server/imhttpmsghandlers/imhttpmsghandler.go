@@ -1,6 +1,7 @@
 package imhttpmsghandlers
 
 import (
+	"context"
 	"im-server/commons/bases"
 	"im-server/commons/errs"
 	"im-server/commons/pbdefines/pbobjs"
@@ -155,6 +156,9 @@ func parseToken(appkey, tokenStr string) (string, errs.IMErrorCode) {
 	}
 	if appInfo.TokenEffectiveMinute > 0 && (token.TokenTime+int64(appInfo.TokenEffectiveMinute)*60*1000) < time.Now().UnixMilli() {
 		return "", errs.IMErrorCode_CONNECT_TOKEN_EXPIRED
+	}
+	if code := bases.NativePolicyCode(bases.CheckNativeIdentities(context.Background(), appkey, []string{token.UserId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return "", code
 	}
 	return token.UserId, errs.IMErrorCode_SUCCESS
 }
