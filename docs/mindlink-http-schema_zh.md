@@ -106,6 +106,8 @@ Go1.26.1/Windows；gofmt 检查及 Git whitespace 检查无差异。以上为无
 
 ## Web 实施输入核对（2026-11-09）
 
+后续3d83批次沿原c82分工给出[首条纯文本DM链的实际输入与最短缺口](mindlink-f5-dm-inputs_zh.md)：IM新链路由仍0，普通历史在IM/BIZ两端都未承载序列；新history操作/授权schema尚缺，字符串输入仅建议，不把前端model或旧签名接口当冻结接线。
+
 以下保留上一批 `742b2924` 查询时点的版本与缺口；本轮 N1 同版确认及 Go 源替代以本页开头为准，不追改历史回传为当时已确认。
 
 回应 F5-WEB 消息 `pbz3u6a9wcqhukeh`，批次 `742b2924733db9e8083d076ebd296adff8ba7fdb9308fa142fd6a2d96f086728`。本节只记录固定源码、已存在制品与能力边界；不产生第二份业务契约。核对时 IM 公共实现为 `cd51070f14814395ac3b55196c38131ed2fc9577`，Web 候选为 `aa8aa3f15b1507984790b6d242a1bf74c8dfd68e`，BIZ 为 `dfd2533942799790cde047ed82aaaff0a43434f6`。
