@@ -96,6 +96,17 @@ func executeSqlFile(fileName string) error {
 		if strings.HasSuffix(line, ";") {
 			query := strings.TrimSpace(queryBuilder.String())
 			if query != "" {
+				if fileName == "sqls/20261110.sql" {
+					done, err := nativeFenceDDLApplied(query)
+					if err != nil {
+						fmt.Println("[DbMigration_Err]Native fence schema check failed:", err, "file_name:", fileName)
+						return err
+					}
+					if done {
+						queryBuilder.Reset()
+						continue
+					}
+				}
 				if err := GetDb().Exec(query).Error; err != nil {
 					fmt.Println("[DbMigration_Err]Execute sql error:", err, query)
 					return err

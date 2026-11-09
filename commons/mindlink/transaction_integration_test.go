@@ -23,7 +23,7 @@ import (
 	"im-server/commons/dbcommons"
 )
 
-func ownedDB(t *testing.T) *sql.DB {
+func ownedDBConfig(t *testing.T) *mysql.Config {
 	t.Helper()
 	path := os.Getenv("MINDLINK_TEST_DSN_FILE")
 	if path == "" {
@@ -47,6 +47,12 @@ func ownedDB(t *testing.T) *sql.DB {
 	if err != nil || host != "127.0.0.1" || cfg.Net != "tcp" || cfg.DBName != "mindlink_policy_c82" {
 		t.Fatal("refusing a non-owned database")
 	}
+	return cfg
+}
+
+func ownedDB(t *testing.T) *sql.DB {
+	t.Helper()
+	cfg := ownedDBConfig(t)
 	db, err := sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		t.Fatal("open owned database")
@@ -581,6 +587,11 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		if _, err := other.Exec(base); err != nil {
 			t.Fatal(err)
 		}
+		if !fresh {
+			if _, err := other.Exec("UPDATE globalconfs SET conf_value='20260908' WHERE conf_key='jimdb_version'"); err != nil {
+				t.Fatal(err)
+			}
+		}
 		if _, err := other.Exec("INSERT IGNORE INTO users(app_key,user_id,nickname) VALUES('guard-app','upgrade-sentinel','original')"); err != nil {
 			t.Fatal(err)
 		}
@@ -597,7 +608,7 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		dbcommons.CloseDB()
 		configures.Config = saved
 		var version string
-		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261109" {
+		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261110" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
 		var nickname string

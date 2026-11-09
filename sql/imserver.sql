@@ -990,7 +990,7 @@ CREATE TABLE IF NOT EXISTS `performance_metrics` (
   KEY `idx_metric_type_collect_time` (`metric_type`,`collect_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT = '统计-性能指标';
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20260908');
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261110');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding
@@ -1023,8 +1023,10 @@ CREATE TABLE IF NOT EXISTS `mindlink_owner_barriers` (
   `appkey` VARBINARY(20) NOT NULL,
   `owner_id` VARBINARY(20) NOT NULL,
   `read_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
+  `write_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (`environment`,`tenant_id`,`appkey`,`owner_id`),
-  CONSTRAINT `chk_mindlink_owner_read` CHECK (`read_enabled` IN (0,1))
+  CONSTRAINT `chk_mindlink_owner_read` CHECK (`read_enabled` IN (0,1)),
+  CONSTRAINT `chk_mindlink_owner_write` CHECK (`write_enabled` IN (0,1))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
 CREATE TABLE IF NOT EXISTS `mindlink_principals` (
@@ -1037,8 +1039,11 @@ CREATE TABLE IF NOT EXISTS `mindlink_principals` (
   `avatar_generation` BIGINT NOT NULL,
   `policy_version` BIGINT NOT NULL,
   `state` VARBINARY(8) NOT NULL,
+  `native_appkey` VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (CONVERT(`appkey` USING utf8mb4)) STORED,
+  `native_principal_id` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (CONVERT(`principal_id` USING utf8mb4)) STORED,
   PRIMARY KEY (`appkey`,`principal_id`),
   UNIQUE KEY `uniq_mindlink_avatar` (`environment`,`tenant_id`,`appkey`,`avatar_id`),
+  UNIQUE KEY `uniq_mindlink_native_identity` (`native_appkey`,`native_principal_id`),
   CONSTRAINT `chk_mindlink_principal_generation` CHECK (`avatar_generation` > 0),
   CONSTRAINT `chk_mindlink_principal_policy` CHECK (`policy_version` > 0),
   CONSTRAINT `chk_mindlink_principal_state` CHECK (`state` IN ('active','disabled'))
