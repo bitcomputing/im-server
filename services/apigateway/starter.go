@@ -1,12 +1,15 @@
 package apigateway
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
 	"im-server/commons/configures"
+	"im-server/commons/dbcommons"
 	"im-server/commons/gmicro"
 	"im-server/services/apigateway/routers"
+	apiservices "im-server/services/apigateway/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +31,19 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 		ser.httpServer.HEAD("/", func(ctx *gin.Context) {
 			ctx.JSON(http.StatusOK, nil)
 		})
-		routers.Route(ser.httpServer, "apigateway")
+		var policyDB *sql.DB
+		if db := dbcommons.GetDb(); db != nil {
+			var err error
+			policyDB, err = db.DB()
+			if err != nil {
+				policyDB = nil
+			}
+		}
+		policy, err := apiservices.NewMindlinkHTTP(configures.Config.Mindlink, policyDB)
+		if err != nil {
+			fmt.Println("Mindlink API remains closed:", err)
+		}
+		routers.Route(ser.httpServer, "apigateway", policy)
 
 		httpPort := configures.Config.GetApiPort()
 		go ser.httpServer.Run(fmt.Sprintf(":%d", httpPort))

@@ -2,7 +2,19 @@
 
 DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本页不替换它。回应 BIZ `pbz32ne2eduhukeh` / 批次 `1d4a6f925381dde9a316bbf3530d7c2f71081ba330c6a805810fd354b7c1d5e5`，本方确认固定 `6d0b3e7f81fe9f6f5ccba0f3fa6c797940bce538` 的 §11.5 N1 字段与技术语义，文件 raw SHA256 `c2b5cce47269976487fd0ddc26a0ac3e1c5bac8fce3a2027b2d06b384505d0dc`。BIZ 候选状态由其收到回执后登记，发信不作已登记证据。
 
-当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。没有注册路由、原结果 GET、生产权限事务或结果生产者，不能调用或据此启用 ready。[可信调用候选](mindlink-trusted-rpc-candidate_zh.md) 中 RPC/最终屏障仍待实现。
+当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心已提交 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，本轮继续接其公共 HTTP 和当前读投影。disable 结果生产者及[可信调用候选](mindlink-trusted-rpc-candidate_zh.md)中的最终原生屏障仍未具备，不能据此启用 ready。
+
+## 本轮查询接线（2026-11-09，066519ee）
+
+沿 BIZ 固定 `7349850f69ca66f3a42e0bff1b303ddaccadb1e8` 的 N1，不修改具名机器块或默认关闭规则。正式注册 `POST /apigateway/mindlink/principals/disable` 与 `GET /apigateway/mindlink/operations/:operation_id`；两者独立于旧 app-secret Signature，只消费当前受信 Ed25519 请求。`mindlink.enabled` 默认 false、`trusts=[]`；无有效配置/数据库时为关闭的 NOT_READY，错误外层始终 `code/msg/data` 且 data=null，不暴露原始 SQL/认证错误。
+
+GET 精确查询 verified issuer+原ID，核原 audience/scope/request/digest/target，在原事务中锁 `mindlink_owner_barriers` 与 `mindlink_principals`，核当前 read_enabled/policy 后绑定 query jti。read_enabled 默认 false；缺投影不建号/建授权，撤读权后重放原票据也拒绝。永久 disabled 目标可由当前合法 owner/system 查询，返回的 actor、原版本、desired_state 和时间仍是原 mutation；22字段/null/状态组合及语义摘要检查不合格时不补成功零值。迁移为 `20261109.sql`，同步新库 SQL。
+
+POST 已接验签和严格 N1 parser；生产 authority/grant 写入源、disable producer 与全部适用 native final gate 尚未接齐，合法 body 仍返回 NOT_READY，不插入操作或虚构 ready。新增表及测试夹具中的 grant/原件不代表真实业务权威或实际停用。READ、ensure、消息可靠发送和跨 Actor 接线继续各自保留缺口；不因两条路由已注册称整包可用。
+
+具体写集、执行命令、实际回归与基线失败分列在[本轮接线记录](superpowers/plans/2026-11-09-mindlink-query-http.md)。下面技术确认/旧提案的“尚未注册/GET未实现”是其当批历史状态，当前查询状态以本节为准。
+
+本轮已重建隔离镜像并实际启动完整网关：在上游成功后丢弃HTTP应答，沿原查询恢复；随后重启该夹具网关进程，再以新query票据读取同一原件，均通过且原操作/夹具效果不增。有效当前权威和原件由测试夹具提供，不冒充真实业务投影或disable效果。临时网关已移除；没有长期可用测试URL或生产切换。扩展Windows检查中的既有CRLF源码文本断言失败单列，不称全仓全绿。
 
 ## 当前N1技术确认登记（2026-11-09，8323676b）
 
@@ -66,7 +78,7 @@ F2-A 九项旧摘要不等于 N1 wire 摘要；BIZ须先持久化与本地意图
 
 通用state枚举不是首条producer的阶段更新许可：当前Transact只保存不可变原件，不承接accepted→ready；其generic JSON对象检查也不是ready语义校验。首条生产接线仅在全部约束同事务落地后保存/返回ready，参数/权限/能力或提交未知走非成功错误，不拼operation回执。F2父意图的准备/unknown与已提交IM原件分开；未来非终结阶段能力须另行实现，不能改写原终结结果。
 
-首条 POST/operations.query 成功 data 为 `{operation,replayed}`。GET `/apigateway/mindlink/operations/:operation_id` 只查已有 disable，按已验证 issuer+路径原ID定位并核原 audience、原 scope/目标/request/digest及当前读权，两 policy 字段相等于当前读授权版本；不能全局扫描或改写原 actor/版本，不新建 mutation、不再 effect。此入口尚未实现。
+首条 POST/operations.query 成功 data 为 `{operation,replayed}`。GET `/apigateway/mindlink/operations/:operation_id` 只查已有 disable，按已验证 issuer+路径原ID定位并核原 audience、原 scope/目标/request/digest及当前读权，两 policy 字段相等于当前读授权版本；不能全局扫描或改写原 actor/版本，不新建 mutation、不再 effect。本轮已接查询入口与 SQL 读投影适配，默认仍关闭；找不到原件为 UNKNOWN_RESULT，缺当前权威为 NOT_READY，撤读权为 FORBIDDEN。
 
 READ GET 沿 `{operation,state,state_observed_at,replayed}`，state_observed_at 统一UTC毫秒，与原快照回执复放；PUT `{operation,state}` 的当前 state 与原回执分开。N1 的后续阶段转换尚未实现：当前 Transact 只保存不可变终结结果，首条不会提交 accepted 再期待重试覆盖 ready。控制面仅owner/system；system不得发送消息或扩pair成员/解除主人禁言；READ首个入口仅owner。测试信任只接受 N1 默认关闭结构，使用临时 fixture 公钥替代不可用占位，不新增真实密钥/签发入口。
 

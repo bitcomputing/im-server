@@ -597,7 +597,7 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		dbcommons.CloseDB()
 		configures.Config = saved
 		var version string
-		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261108" {
+		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261109" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
 		var nickname string
@@ -605,7 +605,7 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 			t.Fatal("upgrade changed existing data")
 		}
 		var pair []string
-		for _, table := range []string{"mindlink_operations", "mindlink_tickets"} {
+		for _, table := range []string{"mindlink_operations", "mindlink_tickets", "mindlink_owner_barriers", "mindlink_principals"} {
 			var name, ddl string
 			if err := other.QueryRow("SHOW CREATE TABLE "+table).Scan(&name, &ddl); err != nil {
 				t.Fatal(err)
