@@ -526,3 +526,74 @@ IM以b87的 `services/commonservices/interceptors/custominterceptor.go`、`inter
 POLICY/RELIABLE/公共READ尚无同一已实现、已验的commit/image/binary及完整有序迁移包，不能交付新方案可执行切换单。本机已有认证/journal/READ局部候选及其证据不替代统一制品；006/007与后续新迁移仍须在同一候选核顺序、新库/升级及旧写者兼容。原PERSIST-only 4ecec887是另一条旧修复复验候选，无SQL/proto/依赖改动，沿0ae单独确认，不冒充全新方案。
 
 本批交付可达性/计数时点及正式源码契约和操作稿，未实现或验证真实签名POST、PASS/REJECT事件、业务审计/DB关联、缓存新增恢复或新方案部署。需要BIZ身份/审计材料及二当家明确的新执行范围与窗口；当前无需变更监听、配置或服务。
+
+## 22. Rocky 原 PERSIST-only 固定制品与复验稿（2026-11-09，未切换）
+
+来源二当家 `pbz4w6wdnjwhukeh`，有效批次 `01c5c1097c7062b8e4afbe7da6197f6a27c634a3d331abc771684e0dcef6ea5c`。范围只含原 `4ecec887fb38d2d81af4bf2773b05d304e8ced97` 复验准备，不包含本机 POLICY/公共 READ/序列后续 HEAD，不授予启停、部署或迁移。二当家报告主人仍在手测、接入码 POST503 待 BIZ 诊断；这不是本批重现的业务错误。本轮已在本机构建二进制、向 Rocky 本任务新目录暂存文件并构建一个候选镜像，**没有启动候选服务或替换运行容器**。
+
+### 固定候选与本批实际检查
+
+完整机器清单见 [manifest.json](evidence/20261109-dg2-persist-only/manifest.json)。二进制/归档保存在本机忽略目录 `.local/rocky-im/DG2-20261106-002/persist-only-01c5/`；Rocky 暂存目录为 `D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5`。不包含运行配置、凭据或消息正文。
+
+| 产物 | 固定值 |
+| --- | --- |
+| 候选提交 | `4ecec887fb38d2d81af4bf2773b05d304e8ced97`；比较基线 `b87fc791400dafae0f3fb2e1665863419bad58f7` |
+| 源归档 | `source-4ecec887-canonical.tar` SHA256 `2ebcb383e173bafd58c4165ecce557852f13e3ad2e5da0da7ad5e17eb63a5cbf`；742普通文件，从固定 Git archive 导出，指定文本扩展 CRLF→LF，排除 `launcher/conf/config.yml`，不读取工作树增量 |
+| 新 Linux/amd64 二进制 | 103760056字节，SHA256 `551de72723dc3c4917c8666f67e8165a094800769f050299e1df53b19838b740` |
+| 传递包 | `persist-only-4ecec887-01c5.tar`，103772160字节，SHA256 `1aae607e309198aba274179646a07287d656f4fcaa7a11265a26fad5eb4bfcfa`；只含二进制、Dockerfile、两个 image-only Compose override 和准备脚本 |
+| Rocky 候选镜像 | `bitcomputing/im-server:dg2-rocky-persist-4ecec887-01c5`，ID `sha256:ed9e1addeb5344722faa92dedbe082597655fe3a77720381ca58ef90401f7145` |
+| 固定原运行镜像/回退目标 | `bitcomputing/im-server:dg2-rocky-b87fc79-diagnostic`，ID `sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7`；活体 binary SHA `bfdcaa5d73721472cce9af5b3debcd525f24ab0cfabe2ca1f3cb373540510c9a` |
+
+本批用缓存构建镜像 `sha256:49be686fa97bc62ee3d408d1f2208c8e6ce613941b16763ece970ff6c4366349` 内 Go1.25.12/Linux/amd64，network=none、GOPROXY/GOSUMDB=off、GOTOOLCHAIN=local、GOFLAGS=-mod=readonly、CGO_ENABLED=0，实际执行 `go build -buildvcs=false -trimpath -ldflags="-s -w" -o /out/imserver ./launcher` 和 `go vet ./services/conversation/...` 均 exit0。只挂载固定源码与空输出目录；临时本机构建容器 `--rm`，验后按本任务 label 查得0个保留容器。
+
+SCP 后五个文件 SHA 逐项与本机匹配。Rocky Dockerfile 仅以原诊断镜像为 FROM、添加来源标签并 COPY 新二进制；build exit0，基础层前缀完全相同，仅新增一层，Entrypoint/Cmd/WorkingDir/User/ExposedPorts/Volumes 分别相同。未执行镜像中的新二进制或创建候选容器；06:20:35 UTC 按该候选 image ID 查询容器数0。不是启动、原生消息或 DB 通过证据。
+
+第一次长 EncodedCommand 调用 exit1、返回无法可靠解码的错误。随后只读回查候选镜像0、build log/result不存在、已暂存二进制存在，原运行容器不变；没有把失败当成构建完成。改为上传同范围准备脚本后才有上述成功构建。脚本、文件哈希和前后快照均留在忽略目录；保留候选镜像/暂存目录是本次交付物，不清理其他人的镜像/卷。
+
+### 相对 b87 的变化、迁移与兼容性
+
+生产变更仅两个文件：`services/conversation/services/convercache.go`（SHA256 `d1638c461d2d3b200e4e36f139744bd0fd72605ab32b3e4062455685d3edeac5`）和 `converservice.go`（`38979c8fe471fe4a93d292f52cdac8720c481214cafeab870e9fb36b6fa5f37a`）。其余是 AGENTS、既有报告及三个测试文件；没有 SQL/迁移、proto、依赖、启动器或配置变化。
+
+- 延迟刷新消费最新冻结快照、深拷贝扩展，按用户串行提交；配额满非阻塞重排，暂时/未知存储错误重试，坏数据错误丢弃对应快照；缓存重载合并尚未落库的新状态。内部缓存键改为无歧义编码，不改变数据库键或客户端协议。
+- 全部已读先核 SQL 成功，再改缓存及排队快照；与在途 worker 共用提交锁。SQL失败返回既有内部错误，不能发成功通知。这不是独立 READ/last_seen_seq，也不修复专用群权限或可靠发送/回调。
+- **无迁移步骤、无 DDL、无数据回填。** 表模型、原 SQL 和 wire 与 b87 相同，具备源码级读写格式兼容依据；新镜像对 Rocky 现有数据及重启后的实际兼容性尚未复验。§9/§10 的旧数据库/原生记录仅作同源背景，不算新二进制本轮通过。
+- 刷新队列仍只有内存快照；异常退出可丢未落库状态。不能以“等60秒”代替 SQL 实查。旧 b87 另有摘要落库缺陷，持久数据保留不等于其进程内缓存可恢复；若切换前无法核清待刷状态，应报告影响并停止，不导出/重放消息或伪造摘要补齐。
+
+### 后续获批窗口内的复验稿（本批未执行）
+
+1. 先获 BIZ 明确释放手测，确定同租户现有合法发送者、接收者、可读会话及真实业务 Token 获取路径；不新建/替换现有主人映射，不传 Token/Secret。BIZ 的503诊断与本 IM 候选分开。窗口核准前还须明确“待刷确认＋停止/重建/启动＋健康等待＋真实恢复核验”的完整预算、最晚新动作时点及未持久化的异常退出方式；`--wait-timeout 60` 只限制健康等待，不是整段操作上界。现有材料没有这份实测预算，不能声称全流程适合5分钟；预算不明确时不提出可执行时段，先由二当家缩小步骤或拆成分别确认的窗口。仅这些材料齐备且 BIZ 释放后，才提出新的未来5分钟起止，由二当家确认**同一**候选/范围/回退与执行人。旧06:00–06:05 UTC 提议已过期、未获 BIZ/二当家确认、未执行；当前没有新窗口或定时任务。
+2. 窗口前再次确认原镜像/活体 hash、租户 `dg2c3350172f150`、用户 `test_6199931265070805`、映射、既有历史、卷及 loopback 19001/19002/19003/18090；只记录脱敏元数据。暂停本轮写者并用实际 SQL/摘要核待刷状态，不通过则停止；不得把旧浏览器关闭或容器 healthy 当空闲/数据已刷证明。
+3. 只对原 Compose project `dg2-rocky-im` 的 service `im-server` 叠加 `candidate.override.json`。该文件只有 image，不改原 `D:/projects/.evidence/DG2-20261106-002/im/compose.json`、私有配置或挂载。实际容器标签指定原 `stack.env`，且脱敏 Compose 有 DG2_MYSQL_PASSWORD 插值，必须保留同一个 `--env-file`（本批只核标签/文件存在，不读出凭据）；不得在缺少该上下文时执行。以 `--no-deps --no-build --pull never` 限定 IM 重建，BIZ/MySQL/Redis 均不启停。切换后核新 image ID、活体 binary hash、原端口/卷/映射与健康；不符先停止新步骤，只对本次可核定实例按已批准的持久化/回退分支处理，不按旧快照操作他人已变更的实例。
+4. 在已获批现有会话用已授权用户发最窄计数/不计数对照，分别核发送 ACK、接收端实际收取、历史消息 ID、最后摘要；普通 read/全部已读的 readIndex/unreadIndex/unread 先取得基线，再核实际 SQL。等候真实刷新并确认 DB 行命中，不把 ACK 或零未读当 last_seen。不要直接运行旧 `simulator/probes/mindlink` 夹具：它硬编码 F0 管理登录/建租户/端口，不适用于 Rocky 既有租户。
+5. 只有实际 DB 已命中，且按已核准的完整预算还能容纳重启、核验和安全回退，才按批准范围 IM-only 重启并重连，核同一消息 ID/摘要/合法阅读状态；不重发同一条业务消息“补证”。本次已持久新增消息继续保留，未持久部分明确列未知，不声称已保全。最晚新动作时点必须早于上述完整恢复预算，不能固定写成“第4分钟回退”。预计装不下时提前停止新增测试写入并报告，未覆盖如实记录；拆分/重排必须重新确认，不沿用过期窗口。
+
+**未落库时的安全退出须先获明确批准：** 停止新增测试写入，保留当前实例/卷及原结果，不因时钟触发重启、换镜像、删缓存或重发；报告二当家决定受控等待/新的窗口。该分支不自行延长停机许可，授权到期后不启动新的停机或切换动作。未明确接受这种异常分支，就不开始会产生写入的复验。数据保留优先于赶一个未经验证的恢复时点，不能把“DB未命中”改写成“已安全回退”。
+
+### 保留数据的回退稿（本批未执行）
+
+先暂停新增测试写入、实际确认需要保留的状态已持久化或确认本轮无待刷写入，并核剩余授权时间足够完整恢复；未确认则走上面的安全退出分支，**不得直接停止候选**。满足这些前置后，在同一原 project/service 和原 Compose 文件上只换回 `rollback.override.json`，预检其镜像标签仍对应上述 `09186cb7…`，保留全部原挂载及本轮已持久新增消息；不用旧数据库备份覆盖、不删除数据行/租户/用户、无 `down -v`/volume rm/prune。恢复后再次核旧 image/活体 hash、loopback端口/健康、同一现有用户登录/CONNECT、已确认持久的历史 ID 和数据计数；失败则停止后续业务测试并报告，不自动扩大到 BIZ/DB/配置修复。镜像回退会恢复 b87 的旧缓存/摘要缺陷，不能称 PERSIST 修复仍在，也不能保证未持久缓存可还原。
+
+获批后才可使用的命令骨架，当前没有运行（须先逐项核实当时的 image ID/上下文/期限）：
+
+```powershell
+$original='D:/projects/.evidence/DG2-20261106-002/im/compose.json'
+$prepared='D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5'
+$originalEnv='D:/projects/.evidence/DG2-20261106-002/im/stack.env'
+# 仅获批切换时使用；先核原 project/service/image 与批准单一致。
+docker compose --env-file $originalEnv -p dg2-rocky-im -f $original -f "$prepared/candidate.override.json" up -d --no-deps --no-build --pull never --wait --wait-timeout 60 im-server
+```
+
+仅获批回退时使用下列独立命令，不与切换块自动串联或失败后盲目重试：
+
+```powershell
+$original='D:/projects/.evidence/DG2-20261106-002/im/compose.json'
+$prepared='D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5'
+$originalEnv='D:/projects/.evidence/DG2-20261106-002/im/stack.env'
+docker compose --env-file $originalEnv -p dg2-rocky-im -f $original -f "$prepared/rollback.override.json" up -d --no-deps --no-build --pull never --wait --wait-timeout 60 im-server
+```
+
+本轮前后实际读回运行容器均为 `d16f0401…e3172a`、旧镜像09186cb7、旧活体hash及11-06 07:36:43UTC启动时间；BIZ PID26644/11-06 11:08:43UTC未变。这些是观察时点快照，不保证持续健康或环境空闲。本批未查询/更改业务 DB/Redis、未发原生消息、未重启/回退、未改监听或私有配置、未操作pre；当前缺 BIZ 释放及二当家新窗口，不能执行上述稿件。
+
+材料初审 `review_dg2_persist_material` 为 Critical0/Important1/Minor0：原“第4分钟/末60秒回退”没有覆盖完整恢复耗时，且可能停掉未落库状态。本稿已删除该无条件路径，增加完整预算与未持久化安全退出的先行审批门；原失败审查保留在本任务忽略目录，不把初审计作通过。实际运行/回退仍未验。
+
+同一审查方只读复审为 Critical0/Important0/Minor0，关闭上述材料问题；未执行 SSH/Docker/脚本或测试，不构成运行验收或执行许可。BIZ释放/合法测试身份与Token获取路径的请求已发送 `pbz59zqb6sshukeh`；本批已核材料中尚无其明确释放回执，不提出具体新窗口。

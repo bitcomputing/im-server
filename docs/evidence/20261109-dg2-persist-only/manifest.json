@@ -1,0 +1,116 @@
+{
+  "task": "DG2-20261106-002-PERSIST-only",
+  "preparation_batch": "01c5c1097c7062b8e4afbe7da6197f6a27c634a3d331abc771684e0dcef6ea5c",
+  "source_commit": "4ecec887fb38d2d81af4bf2773b05d304e8ced97",
+  "baseline_commit": "b87fc791400dafae0f3fb2e1665863419bad58f7",
+  "source_archive": {
+    "name": "source-4ecec887-canonical.tar",
+    "sha256": "2ebcb383e173bafd58c4165ecce557852f13e3ad2e5da0da7ad5e17eb63a5cbf",
+    "regular_files": 742,
+    "excluded_runtime_config": [
+      "launcher/conf/config.yml"
+    ],
+    "text_normalization": "CRLF to LF for listed text extensions; no working-tree source used"
+  },
+  "production_changes": [
+    "services/conversation/services/convercache.go",
+    "services/conversation/services/converservice.go"
+  ],
+  "nonproduction_changes": [
+    "AGENTS.md",
+    "docs/mindlink-conversations-probes.md",
+    "services/conversation/services/converpersist_integration_test.go",
+    "simulator/probes/mindlink/persist_runtime_test.go",
+    "simulator/probes/mindlink/probe_test.go"
+  ],
+  "sql_proto_dependencies_launcher_changes": false,
+  "builder": {
+    "image_id": "sha256:49be686fa97bc62ee3d408d1f2208c8e6ce613941b16763ece970ff6c4366349",
+    "go": "go1.25.12 linux/amd64",
+    "flags": "CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GOFLAGS=-mod=readonly; go build -buildvcs=false -trimpath -ldflags=\"-s -w\" -o /out/imserver ./launcher; go vet ./services/conversation/...",
+    "network": "none",
+    "build_and_vet_exit": 0,
+    "build_log_sha256": "6b69d81816fd9293ea818716088a16d960c6585b5caf470a780cdddf45c8b5ad",
+    "retained_build_containers": []
+  },
+  "artifacts": {
+    "binary_sha256": "551de72723dc3c4917c8666f67e8165a094800769f050299e1df53b19838b740",
+    "binary_bytes": 103760056,
+    "binary_format": "ELF64 Linux amd64, CGO disabled",
+    "bundle_name": "persist-only-4ecec887-01c5.tar",
+    "bundle_sha256": "1aae607e309198aba274179646a07287d656f4fcaa7a11265a26fad5eb4bfcfa",
+    "bundle_bytes": 103772160,
+    "files_sha256": {
+      "candidate.override.json": "4c8b17337e276a4fcf6cd76a3986c64256f44e60a344ef9387c563e1db2260cb",
+      "rollback.override.json": "04af265b9b7df8e83671ddbbd967c58d81a82ef8ad86a44ad694bc9b13440202",
+      "imserver": "551de72723dc3c4917c8666f67e8165a094800769f050299e1df53b19838b740",
+      "prepare-image.ps1": "25a35e414fd24ef40bf09995312022946d688bef8af7149b4a5b29b48602382d",
+      "Dockerfile": "ad55b4e0bfc90df2865493a022309a013c190901cb6811917f148f351c678bb3"
+    }
+  },
+  "candidate_image": {
+    "name": "bitcomputing/im-server:dg2-rocky-persist-4ecec887-01c5",
+    "id": "sha256:ed9e1addeb5344722faa92dedbe082597655fe3a77720381ca58ef90401f7145",
+    "base_id": "sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7",
+    "only_added_layer": "sha256:dc784b1d09b00081c5ebfa73141d0566db931e84c2c8963f442ccaf5daf08cc1",
+    "base_layers_prefix_equal": true,
+    "entrypoint_cmd_workdir_user_ports_volumes_equal": true,
+    "build_exit": 0,
+    "remote_staging": "D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5",
+    "candidate_container_ids_at_final_snapshot": [],
+    "observed_utc": "2026-11-09T06:20:35.3738823+00:00"
+  },
+  "live_runtime_after_preparation": {
+    "container_id": "d16f0401545078efc03206bd24fe01ae9ed43e19532eff3254befd1456e3172a",
+    "image_id": "sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7",
+    "started_at": "2026-11-06T07:36:43.635270669Z",
+    "binary_sha256": "bfdcaa5d73721472cce9af5b3debcd525f24ab0cfabe2ca1f3cb373540510c9a",
+    "biz_pid": 26644,
+    "biz_started_at": "2026-11-06T11:08:43.8150240Z",
+    "snapshot_only": true
+  },
+  "compose_identity": {
+    "project": "dg2-rocky-im",
+    "service": "im-server",
+    "config_files": "D:\\projects\\.evidence\\DG2-20261106-002\\im\\compose.json",
+    "working_directory": "D:\\projects\\.evidence\\DG2-20261106-002\\im",
+    "environment_file": "D:/projects/.evidence/DG2-20261106-002/im/stack.env",
+    "environment_file_evidence": "current container label and file existence only; credentials not read"
+  },
+  "execution_status": {
+    "switched_or_restarted": false,
+    "candidate_service_started": false,
+    "database_or_private_configuration_changed": false,
+    "scheduled_job_created": false,
+    "old_proposal_2026_11_09_0600_to_0605_UTC": "expired_without_BIZ_or_coordinator_confirmation; not executed",
+    "new_window_proposed": false,
+    "BIZ_release_received": false,
+    "coordinator_window_confirmed": false,
+    "complete_five_minute_timing_budget_verified": false,
+    "safe_non_durable_abort_branch_approved": false,
+    "BIZ_release_request_message_id": "pbz59zqb6sshukeh"
+  },
+  "verification_boundary": "This batch: fixed-source build, vet, binary transfer hashes, image/layer/config-shape and live runtime snapshots only. No native messages, SDK/page/DB, restart/rollback or PERSIST runtime retest. Old runtime evidence is historical, not this new binary acceptance.",
+  "required_execution_gates": [
+    "BIZ explicitly releases testing and identifies authorized existing peer/real Token flow without sharing secrets",
+    "Coordinator confirms exact future five-minute interval, exact candidate/image/binary and IM-only verification/rollback scope",
+    "At execution, all baseline/port/mount/volume/persisted-data preconditions are rechecked; no silence or old browser closure as release",
+    "Coordinator accepts measured full flush/stop/recreate/start/health/recovery budget and safe non-durable abort branch before any writable retest; otherwise no executable five-minute proposal"
+  ],
+  "review": {
+    "initial": {
+      "critical": 0,
+      "important": 1,
+      "minor": 0,
+      "finding": "Unconditional minute-four rollback could overrun window and lose unflushed state"
+    },
+    "revision": "Removed fixed deadline rollback; full budget and non-durable safe-exit require explicit approval before writable test",
+    "rereview": {
+      "critical": 0,
+      "important": 0,
+      "minor": 0,
+      "initial_finding_closed": true,
+      "scope": "Read-only material review only; no runtime verification or execution permission"
+    }
+  }
+}
