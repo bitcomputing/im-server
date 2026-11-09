@@ -4,7 +4,15 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。没有注册路由、原结果 GET、生产权限事务或结果生产者，不能调用或据此启用 ready。[可信调用候选](mindlink-trusted-rpc-candidate_zh.md) 中 RPC/最终屏障仍待实现。
 
-## 当前唯一源语义澄清（2026-11-09，c41835a2）
+## 当前N1技术确认登记（2026-11-09，8323676b）
+
+本批实读 BIZ 固定 `3cd520f4d371e0e351d7f6f1e41a01004c34db14` 的唯一契约，Git blob/LF SHA256 `3690217fa44a4521f24afdd5fe7de45beb2e85a395e1a6c05a7a092cec8f15dc`。§11.7已实际登记本方回执 `pbz5snzq6p2hukeh`；N1机器状态为 `technically_confirmed_runtime_closed`，`enabled_by_default=false`。因此“等待N1同版字段/角色/摘要技术确认”依赖已关闭，不再用99f旧单数/23字段/微秒重开等待。这是读取固定正式源后的登记事实，不再只是此前发信成功的推断。
+
+与46c25固定版直接比对：routing JSON字节未变，N1 JSON只有上述status文本替换；8 body/15摘要/22结果及nullable、向量、默认关闭及其他未定义操作保持。这个status是契约登记状态，不是OperationResult.state，更不等于ready或功能开关。下方旧版本/其他交接文档的hash保留各自原时点，不再据其旧“待确认”描述阻塞当前wire。
+
+只解除技术确认依赖：正式HTTP/原结果GET、生产结果校验与producer、权威投影/最终原生gate及实际撤权、F2 wire存储/适配、公共READ仍未实现或验收；ensure容量未齐继续关闭，不挡已有投影disable按原授权接线。此登记不新增真实密钥、配置、路由、合并/推送/部署或Rocky操作授权。提供方31规格及其独立31、IM旧红绿/SQL报告不作本批重跑；本批仅固定源/文档核对，未改Go/SQL或运行组件。
+
+## 46c25语义澄清记录（2026-11-09，c41835a2）
 
 回应 BIZ `pbz8cpbj65shukeh`，本方确认当前唯一契约固定 `46c25b90b0013b6cbb425224f572381692300e7f`、Git blob/LF SHA256 `c49a953cff22a5006068f3ad5974e4199d7de50a215d0073d693e05141410c80` 的 §11.5 N1 完整技术语义及 §11.6 时间/不可变原件、跨Actor与最终屏障候选边界。两段具名JSON与下节1d671版逐字一致，8 body/15摘要/22结果/nullable/UTC毫秒不变；d063/raw2daf仅是[历史草案观察](mindlink-trusted-rpc-candidate_zh.md)，不能用作当前确认版本。当前bb76类型/解析器也不再是§11.6核92e3120当时的99f旧DTO。
 
