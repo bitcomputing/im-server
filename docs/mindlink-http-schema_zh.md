@@ -6,6 +6,8 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 ## 当前业务权威来源登记（2026-11-09，dd39ef1b）
 
+后续 F2→F1 `306b9663` 的最小供给字段、现有 SQL 消费条件及撤权顺序见[停用授权供给边界](mindlink-disable-authority-source_zh.md)。该说明区分当前实现与待 BIZ 登记的内部快照候选，不新增 N1 HTTP 字段或启用入口。
+
 BIZ 有效回报 `pb2krbaa8twhukeh` / 固定 `0308ea55755d5674b676265033bfe68a9154099d` 在唯一契约 §11.8 登记了实际事实源，并更正 §13 对 IM `077d` 已注册查询/disable 路由的历史描述。该提交只改6个文档/证据文件。其提供方13项源断言、39项离线检查及独审不算本方重跑；本方实际固定源核对见[本批记录](evidence/20261109-mindlink-authority-source/verification.json)。
 
 - BIZ 源基线 `f509949507f04c1f70957886c4e8f5912d2bf069`：`manageagentavatarlogic.go` 从登录上下文取正 owner；`avatar_management.go` 在账户锁内核归属、代际，机器入口另限 client。`avatar.go:retireAvatar` 先写墓碑/增代际，再同事务 `syncMindlinkAvatar`；`mindlink_mapping.go` 保存业务映射、固定成员及9槽 pending 父意图。这些是业务事实源；预分配 principal、provisioning/desired state 或通用 `avatar_retired` outbox 不证明 IM 已创建主体或已撤权。
