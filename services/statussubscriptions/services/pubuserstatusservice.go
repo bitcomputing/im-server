@@ -174,7 +174,10 @@ func PublishUserStatus(ctx context.Context, upMsg *pbobjs.UpMsg) errs.IMErrorCod
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	userId := bases.GetTargetIdFromCtx(ctx)
 	msgConverCache := convercache.GetMsgConverCache(ctx, userId, "", pbobjs.ChannelType_SubStatus)
-	msgId, sendTime, _ := msgConverCache.GenerateMsgId(userId, pbobjs.ChannelType_SubStatus, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, _, err := msgConverCache.GenerateMsgId(userId, pbobjs.ChannelType_SubStatus, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL
+	}
 	downMsg := &pbobjs.DownMsg{
 		SenderId:    userId,
 		TargetId:    userId,

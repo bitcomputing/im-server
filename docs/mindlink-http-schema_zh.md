@@ -4,6 +4,16 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；未公开的停用 SQL 事务原语已有隔离验证，真实业务权威写入源和全部适用读取面仍未具备，POST 不能据此启用 ready。
 
+## 原生 READ 与持久序列整合（2026-11-09，066519ee，Task4）
+
+整合 READ 已交付的固定 `dcdd3a30ba4b802dce11ae396dc8f3711755ed4f`（含 `d336dec4` 的 WithTx 基础）及持久消息序列；未改业务公共 HTTP 契约。原生 `qry_conver_seen` / `set_conver_seen` 经过既有 Actor 拒绝屏障。查询和推进 seen 独立于未读计数；WithTx 只使用调用方事务，尚未接入公共 READ 的原操作快照与 typed 回执生产者。
+
+新增有序迁移 `20261111.sql`，覆盖已处于20261110、会跳过旧006/007文件的数据库；新库同步 seen/sequence 表及版本。私聊、群聊历史的序列列扩大为 nullable BIGINT，保留原 NULL 默认值与注释。实际旧 INT 升级、新库、历史/seen 更大水位保留、重播及2147483648/MaxInt64精确存储已核对。无效版本在 DDL 前拒绝，元数据 SQL 失败不视为首次建库；任一迁移失败停止后续文件及监听器启动。
+
+隔离重建制品已实跑原生 WS 查询/推进、Web/PC 共用 seen、普通与受保护目标、超大序列收取/历史解码、MaxInt64耗尽拒绝、历史物理删除后仅重启 IM 的保留行为。另用 Playwright 操作同一夹具的既有管理页面：普通私聊和群聊的发送、历史查询成功，新 ID 分别匹配唯一 DB 行、接收者43的 Go SDK 收取和持久水位，独立 seen 未变。该页面验证的是 schema 改动后的普通发送/历史流程，不是业务 READ 页面，也未证明已发布 JS/App 的 MaxInt64 精度。
+
+当前 Task4 制品、红绿、失败/跳过及资源清理记录见[整合验收记录](evidence/20261109-mindlink-read-integration/verification.md)。公共 READ/disable、生产权威供给、盲列表/聚合完整过滤、ensure/SendWithKey 仍未完成；本增量不改变 NOT_READY，也不完成父批次。
+
 ## 原生拒绝屏障增量（2026-11-09，066519ee）
 
 `20261110.sql` 将独立 `write_enabled` 默认设为 false，read_enabled 不授予控制写入；增加与原生 MySQL8 `utf8mb4_0900_ai_ci` 匹配的索引列，N1 的二进制 scope 仍精确比较。已投影 active/disabled 主体及包含其成员的群，均不因关闭公共 Mindlink 配置而恢复旧 Token、管理和消息权限。迁移可在完整 ALTER 步骤之间重跑；结构不符不推进版本。

@@ -39,7 +39,7 @@ func (conf GlobalConfDao) FindByKey(key string) (*GlobalConfDao, error) {
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
-	return &item, nil
+	return &item, err
 }
 
 func (conf GlobalConfDao) UpdateValue(key, val string) error {

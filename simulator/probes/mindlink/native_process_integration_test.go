@@ -12,7 +12,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"sync"
@@ -34,6 +33,10 @@ func TestNativePolicyRebuiltHTTPWS(t *testing.T) {
 	}
 	if os.Getenv("MINDLINK_TEST_NATIVE_BINARY") != "/opt/imserver" || os.Getenv("MINDLINK_TEST_NATIVE_ARTIFACT_DIR") != "/evidence" {
 		t.Fatal("refusing unrecognized runtime fixture")
+	}
+	uiWait := os.Getenv("MINDLINK_TEST_NATIVE_UI_WAIT")
+	if uiWait != "" && uiWait != "1" {
+		t.Fatal("invalid owned UI fixture mode")
 	}
 	bin, err := os.Open("/opt/imserver")
 	if err != nil {
@@ -75,57 +78,24 @@ func TestNativePolicyRebuiltHTTPWS(t *testing.T) {
 	if os.WriteFile(configPath, raw, 0600) != nil {
 		t.Fatal("write private runtime fixture config")
 	}
+	if os.Mkdir(filepath.Join(privateDir, "conf"), 0700) != nil || os.WriteFile(filepath.Join(privateDir, "conf", "config.yml"), raw, 0600) != nil {
+		t.Fatal("write management module's private relative config")
+	}
 	log, err := os.OpenFile("/evidence/native-process-private.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0600)
 	if err != nil {
 		t.Fatal("open private process evidence")
 	}
 	t.Cleanup(func() { log.Close() })
-	procCtx, cancel := context.WithTimeout(context.Background(), 50*time.Second)
+	lifetime := 90 * time.Second
+	if uiWait == "1" {
+		lifetime = 35 * time.Minute
+	}
+	procCtx, cancel := context.WithTimeout(context.Background(), lifetime)
 	t.Cleanup(cancel)
-	cmd := exec.CommandContext(procCtx, "/opt/imserver", "-config", configPath)
-	cmd.Stdout, cmd.Stderr = log, log
-	if cmd.Start() != nil {
-		t.Fatal("start rebuilt owned IM process")
-	}
-	done := make(chan struct{})
-	go func() { _ = cmd.Wait(); close(done) }()
-	t.Cleanup(func() {
-		select {
-		case <-done:
-			return
-		default:
-		}
-		_ = cmd.Process.Signal(os.Interrupt)
-		select {
-		case <-done:
-		case <-time.After(3 * time.Second):
-			_ = cmd.Process.Kill()
-			<-done
-		}
-	})
-	health := http.Client{Timeout: time.Second}
-	ready := false
-	for deadline := time.Now().Add(12 * time.Second); time.Now().Before(deadline); {
-		select {
-		case <-done:
-			t.Fatal("rebuilt IM exited before health; inspect private fixture log")
-		default:
-		}
-		resp, err := health.Get("http://127.0.0.1:9003/health")
-		if err == nil {
-			resp.Body.Close()
-			if resp.StatusCode == 200 {
-				ready = true
-				break
-			}
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if !ready {
-		t.Fatal("rebuilt IM did not become healthy")
-	}
+	stop := startNativeReadProcess(t, procCtx, configPath, log)
 	var received sync.Map
 	var illegalReceived atomic.Int32
+	var clients []*wsclients.WsImClient
 	connect := func(id string, allowed bool) *wsclients.WsImClient {
 		c := wsclients.NewWsImClient("ws://127.0.0.1:9003", nativeApp, nativeToken(t, id), func(msg *pbobjs.DownMsg) {
 			received.Store(id+":"+msg.MsgId, true)
@@ -135,6 +105,7 @@ func TestNativePolicyRebuiltHTTPWS(t *testing.T) {
 		}, nil, nil)
 		c.Verbose, c.Platform, c.DeviceId = false, "Web", "native-"+id
 		code, ack := c.Connect("", "")
+		clients = append(clients, c)
 		t.Cleanup(c.Disconnect)
 		if allowed {
 			if code != utils.ClientErrorCode_Success || ack == nil || ack.Code != 0 || c.UserId != id {
@@ -146,7 +117,7 @@ func TestNativePolicyRebuiltHTTPWS(t *testing.T) {
 		return c
 	}
 	owner := connect("42", true)
-	_ = connect("43", true)
+	peer := connect("43", true)
 	oldSession := connect(legacy, true)
 	_ = connect(nativePrincipal, false)
 	if _, err := db.Exec("UPDATE mindlink_principals SET state='disabled' WHERE principal_id=?", nativePrincipal); err != nil {
@@ -242,6 +213,15 @@ func TestNativePolicyRebuiltHTTPWS(t *testing.T) {
 	}) {
 		t.Fatal("ordinary namespace group did not reach SDK and history")
 	}
+	exerciseNativeRead(t, db, owner, peer, &received)
+	for _, client := range clients {
+		client.Disconnect()
+	}
+	stop()
+	_ = startNativeReadProcess(t, procCtx, configPath, log)
+	owner, peer = connect("42", true), connect("43", true)
+	exerciseNativeReadAfterRestart(t, db, owner, peer, &received)
+	waitNativeReadUI(t, db, &received)
 	for _, q := range []string{
 		"SELECT COUNT(*) FROM p_hismsgs WHERE app_key='fixture-app' AND (sender_id IN ('ma111111111111111111111111111111','ma333333333333333333333333333333') OR receiver_id IN ('ma111111111111111111111111111111','ma333333333333333333333333333333'))",
 		"SELECT COUNT(*) FROM g_hismsgs WHERE app_key='fixture-app' AND conver_id='protected-group'",

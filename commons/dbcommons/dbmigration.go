@@ -2,11 +2,14 @@ package dbcommons
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"im-server/commons/tools"
 	"io"
 	"sort"
 	"strings"
+
+	"gorm.io/gorm"
 )
 
 //go:embed sqls/*
@@ -21,22 +24,28 @@ type CountResult struct {
 	Count int64 `gorm:"count"`
 }
 
-func Upgrade() {
+func Upgrade() error {
 	var currVersion int64 = 0
 	dao := GlobalConfDao{}
 	conf, err := dao.FindByKey(JimDbVersionKey)
 	if err == nil {
 		ver, err := tools.String2Int64(conf.ConfValue)
-		if err == nil && ver > 0 {
-			currVersion = ver
+		if err != nil || ver <= 0 {
+			return fmt.Errorf("invalid existing database migration version")
 		}
+		currVersion = ver
 	} else {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
 		err = dao.Create(GlobalConfDao{
 			ConfKey:   JimDbVersionKey,
 			ConfValue: fmt.Sprintf("%d", initVersion),
 		})
 		if err == nil {
 			currVersion = initVersion
+		} else {
+			return err
 		}
 	}
 	fmt.Println("[DbMigration]current version:", currVersion)
@@ -59,16 +68,20 @@ func Upgrade() {
 				sqlFileName := fmt.Sprintf("sqls/%d.sql", ver)
 				fmt.Println("[DbMigration]start to execute sql file:", sqlFileName)
 				err := executeSqlFile(sqlFileName)
-				if err == nil {
-					fmt.Println("[DbMigration]execute sql file success:", sqlFileName)
-					dao.Upsert(GlobalConfDao{
-						ConfKey:   JimDbVersionKey,
-						ConfValue: fmt.Sprintf("%d", ver),
-					})
+				if err != nil {
+					return err
+				}
+				fmt.Println("[DbMigration]execute sql file success:", sqlFileName)
+				if err := dao.Upsert(GlobalConfDao{
+					ConfKey:   JimDbVersionKey,
+					ConfValue: fmt.Sprintf("%d", ver),
+				}); err != nil {
+					return err
 				}
 			}
 		}
 	}
+	return err
 }
 
 func executeSqlFile(fileName string) error {

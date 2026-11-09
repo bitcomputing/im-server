@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS `g_hismsgs` (
   `msg_type` varchar(50) DEFAULT NULL COMMENT '消息类型',
   `msg_id` varchar(20) DEFAULT NULL COMMENT '消息id',
   `send_time` bigint DEFAULT NULL COMMENT '发送时间',
-  `msg_seq_no` int DEFAULT NULL COMMENT '消息seq',
+  `msg_seq_no` bigint DEFAULT NULL COMMENT '消息seq',
   `msg_body` mediumblob COMMENT '消息体',
   `app_key` varchar(20) DEFAULT NULL COMMENT '应用key',
   `member_count` int DEFAULT '0' COMMENT '成员数',
@@ -671,7 +671,7 @@ CREATE TABLE IF NOT EXISTS `p_hismsgs` (
   `msg_type` varchar(50) DEFAULT NULL COMMENT '消息类型',
   `msg_id` varchar(20) DEFAULT NULL COMMENT '消息id',
   `send_time` bigint DEFAULT NULL COMMENT '发送时间',
-  `msg_seq_no` int DEFAULT NULL COMMENT '消息seq',
+  `msg_seq_no` bigint DEFAULT NULL COMMENT '消息seq',
   `msg_body` mediumblob COMMENT '消息体',
   `app_key` varchar(20) DEFAULT NULL COMMENT '应用key',
   `is_read` tinyint DEFAULT '0' COMMENT '是否已读 0未读，1已读',
@@ -990,7 +990,27 @@ CREATE TABLE IF NOT EXISTS `performance_metrics` (
   KEY `idx_metric_type_collect_time` (`metric_type`,`collect_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT = '统计-性能指标';
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261110');
+CREATE TABLE IF NOT EXISTS `conversation_seen` (
+  `app_key` varchar(20) NOT NULL,
+  `user_id` varchar(32) NOT NULL,
+  `target_id` varchar(32) NOT NULL,
+  `channel_type` tinyint NOT NULL,
+  `sub_channel` varchar(32) NOT NULL DEFAULT '',
+  `seen_seq` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`app_key`,`user_id`,`target_id`,`channel_type`,`sub_channel`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS `message_sequence` (
+  `app_key` varchar(20) NOT NULL,
+  `conver_id` varchar(100) NOT NULL,
+  `channel_type` tinyint NOT NULL,
+  `sub_channel` varchar(50) NOT NULL DEFAULT '',
+  `seq` bigint NOT NULL DEFAULT 0,
+  `send_time` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261111');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding

@@ -79,11 +79,11 @@ func nativeFixture(t *testing.T) *sql.DB {
 	if _, err := db.Exec("INSERT INTO mindlink_operations(issuer,operation_id,request_key,binding_hash,binding_json,reservation_id,result_json) VALUES('fixture-biz',?,UNHEX(REPEAT('11',32)),UNHEX(REPEAT('22',32)),'{}',UNHEX(REPEAT('33',32)),?)", strings.Repeat("a", 64), nativeMigrationOriginal); err != nil {
 		t.Fatal(err)
 	}
-	upgradeNativeFixture(t, db, cfg, "20261110")
+	upgradeNativeFixture(t, db, cfg, "20261111")
 	return db
 }
 
-func upgradeNativeFixture(t *testing.T, db *sql.DB, cfg *mysql.Config, wantVersion string) {
+func upgradeNativeFixture(t *testing.T, db *sql.DB, cfg *mysql.Config, wantVersion string) error {
 	t.Helper()
 	saved := configures.Config
 	configures.Config.Mysql.User = cfg.User
@@ -94,13 +94,14 @@ func upgradeNativeFixture(t *testing.T, db *sql.DB, cfg *mysql.Config, wantVersi
 	if err := dbcommons.InitMysql(); err != nil {
 		t.Fatal("open migration entry on owned scratch")
 	}
-	dbcommons.Upgrade()
+	migrationErr := dbcommons.Upgrade()
 	dbcommons.CloseDB()
 	configures.Config = saved
 	var version string
 	if err := db.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != wantVersion {
 		t.Fatal("real native migration entry did not reach required version")
 	}
+	return migrationErr
 }
 
 func TestNativeMigrationResumesAfterCommittedDDL(t *testing.T) {
@@ -119,7 +120,7 @@ func TestNativeMigrationResumesAfterCommittedDDL(t *testing.T) {
 			if err := db.QueryRow("SELECT DATABASE()").Scan(&cfg.DBName); err != nil {
 				t.Fatal(err)
 			}
-			upgradeNativeFixture(t, db, cfg, "20261110")
+			upgradeNativeFixture(t, db, cfg, "20261111")
 			if _, err := NewNativeFence(context.Background(), db); err != nil {
 				t.Fatal("resumed migration did not restore fence", err)
 			}

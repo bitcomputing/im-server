@@ -608,15 +608,21 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		dbcommons.CloseDB()
 		configures.Config = saved
 		var version string
-		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261110" {
+		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261111" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
 		var nickname string
 		if err := other.QueryRow("SELECT nickname FROM users WHERE app_key='guard-app' AND user_id='upgrade-sentinel'").Scan(&nickname); err != nil || nickname != "original" {
 			t.Fatal("upgrade changed existing data")
 		}
+		for _, table := range []string{"p_hismsgs", "g_hismsgs"} {
+			var kind string
+			if err := other.QueryRow("SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME='msg_seq_no'", table).Scan(&kind); err != nil || kind != "bigint" {
+				t.Fatalf("fresh=%t %s does not support the declared int64 sequence: %s err=%v", fresh, table, kind, err)
+			}
+		}
 		var pair []string
-		for _, table := range []string{"mindlink_operations", "mindlink_tickets", "mindlink_owner_barriers", "mindlink_principals"} {
+		for _, table := range []string{"mindlink_operations", "mindlink_tickets", "mindlink_owner_barriers", "mindlink_principals", "conversation_seen", "message_sequence"} {
 			var name, ddl string
 			if err := other.QueryRow("SHOW CREATE TABLE "+table).Scan(&name, &ddl); err != nil {
 				t.Fatal(err)

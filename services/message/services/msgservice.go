@@ -78,7 +78,10 @@ func SendPrivateMsg(ctx context.Context, senderId, receiverId string, upMsg *pbo
 		}
 	}
 	msgConverCache := convercache.GetMsgConverCache(ctx, converId, upMsg.SubChannel, pbobjs.ChannelType_Private)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_Private, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_Private, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0, upMsg.ClientUid, nil
+	}
 	preMsgId := bases.GetMsgIdFromCtx(ctx)
 	if preMsgId != "" {
 		msgId = preMsgId
