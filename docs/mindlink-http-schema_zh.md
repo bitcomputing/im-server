@@ -6,7 +6,7 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 ## 当前业务权威来源登记（2026-11-09，dd39ef1b）
 
-后续 F2→F1 `306b9663` 的最小供给字段、现有 SQL 消费条件及撤权顺序见[停用授权供给边界](mindlink-disable-authority-source_zh.md)。该说明区分当前实现与待 BIZ 登记的内部快照候选，不新增 N1 HTTP 字段或启用入口。
+后续F2→F1 `8ce3abd7` 已接收BIZ固定75739的实际只读源，新增默认关闭 `NewDisableAuthoritySource` / `Check(ctx, verifier, auth)` 预检组件：固定受信进程、有限输出/时间、严格21字段及N1原绑定检查，非SQL grant/writer，未启用HTTP效果。固定协议、原SQL消费条件和撤权顺序见[停用授权供给边界](mindlink-disable-authority-source_zh.md)；本方实际进程/race、反向试验、构建/审查及未覆盖范围见[接收验收记录](evidence/20261109-mindlink-authority-adapter/verification.md)。
 
 BIZ 有效回报 `pb2krbaa8twhukeh` / 固定 `0308ea55755d5674b676265033bfe68a9154099d` 在唯一契约 §11.8 登记了实际事实源，并更正 §13 对 IM `077d` 已注册查询/disable 路由的历史描述。该提交只改6个文档/证据文件。其提供方13项源断言、39项离线检查及独审不算本方重跑；本方实际固定源核对见[本批记录](evidence/20261109-mindlink-authority-source/verification.json)。
 

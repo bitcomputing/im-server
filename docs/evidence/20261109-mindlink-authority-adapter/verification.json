@@ -1,0 +1,119 @@
+{
+  "task": "DG-20261104-003 / 028 authority source preflight receiver",
+  "batch": "8ce3abd77db73d4c97aff723d338b0eb0028a4ddb7fe6a94eca8fab13a5081a0",
+  "message": "pb2lyhh2gxahukeh",
+  "recorded_utc": "2026-11-09T23:54:27.822728+00:00",
+  "base": "1cfcbbbb121149cbc3b884fde413f15aea1257b5",
+  "BIZ_fixed": "75739e949b7c1b5f08bf9f5f7013ed8c01eb4cba",
+  "BIZ_production_git_blob_sha256": {
+    "model/agentaccess/mindlink_authority_source.go": "e7cdf7551ccec531a516751f573a4abe215db4f0a5593f7e8ef6b0822ed1cdeb",
+    "cmd/mindlink_authority_source/main.go": "643efae80df4fdf677ce2fbcac0cf2b73ee1545e668dde239ba0d51084b48c01",
+    "cmd/mindlink_authority_source/private_file_unix.go": "1501df314f95a2292685b3b7662917f2eabd9e59ca925fc4771c031d7f96d55d",
+    "cmd/mindlink_authority_source/private_file_windows.go": "4f638351a3e647d6a184317ea05fd1fe7863534773339fcae6e7e80db1445db3"
+  },
+  "BIZ_changed_files": 16,
+  "BIZ_changed_file_classes": {
+    "production_go": 4,
+    "test_go": 5,
+    "docs_evidence_state": 7
+  },
+  "exact_snapshot_field_count": 21,
+  "N1_machine_sha256_unchanged": "87290e1f15325205806394546fcd190c029ffd5f56551354a5530f706cf87f9f",
+  "root_code_sha256": {
+    "commons/mindlink/authority_source.go": "25cbf55cea010194a789ecce0631f9354e8adff3d54da5cdc3c7f31efa07b1da",
+    "commons/mindlink/authority_process_windows.go": "344e1e4d1a1aaaa991009df25779ffb48d3996fa91f9f0d2d4ad0d45b7633338",
+    "commons/mindlink/authority_process_unix.go": "c932284cd0fe38ade879fe231dd128fdc03d2c10e3a430415b90fd5b300e44e6",
+    "commons/mindlink/authority_source_test.go": "1bbab8e851ee6cd6d31ee01bc1dcc5163d366dec6ac06adf97010a92cdd7ac5b"
+  },
+  "verification": {
+    "final_mindlink_race": {
+      "file": ".local/mindlink-policy/authority-source-final-mindlink-race.jsonl",
+      "sha256": "00b852955a5f13876e9b051528331aacf6eff73a55eefe8a1522072de8f8dee6",
+      "packages": {
+        "im-server/commons/mindlink": {
+          "top_pass": 30,
+          "sub_pass": 304,
+          "fail": 0,
+          "skip": 0,
+          "package_pass": true
+        }
+      }
+    },
+    "earlier_errs_tools_race": {
+      "im-server/commons/errs": {
+        "top_pass": 1,
+        "sub_pass": 8,
+        "fail": 0,
+        "skip": 0,
+        "package_pass": true
+      },
+      "im-server/commons/tools": {
+        "top_pass": 2,
+        "sub_pass": 8,
+        "fail": 0,
+        "skip": 0,
+        "package_pass": true
+      }
+    },
+    "earlier_scope_race_log": ".local/mindlink-policy/authority-source-final-race.jsonl",
+    "earlier_scope_race_sha256": "c289e5c53f36587a70747b5ce7689d1ba91884cb8b6bc267d34b22fbb78aa9c5",
+    "targeted_vet_exit": 0,
+    "linux_cross_test_build_exit": 0,
+    "linux_runtime": false,
+    "real_BIZ_source_build_exit": 0,
+    "real_BIZ_source_binary_sha256": "e0354ec8bf8e26f654375aa9775a0dd843ac233035fa6b06a3f61a479d4c26a7",
+    "real_BIZ_source_run": "owned private disabled fixture only: Check returns NOT_READY; actual binary exit3 and stdout empty; no DSN read/DB query",
+    "reds": {
+      "absent_feature_compile_exit": 1,
+      "skip_binding_runtime_exit": 1,
+      "ignore_nonzero_exit_runtime_exit": 1
+    },
+    "logs": {
+      "authority-source-red.log": {
+        "sha256": "4cfdc315f1e36b3f47d437fff9e7d5a520e887469a4992d150663b8235a6d460",
+        "bytes": 1080
+      },
+      "authority-source-red-skip_binding.log": {
+        "sha256": "f732272f3aecbb40cbfd9f691c1c805da5730f85672f7ccfc7a4984408fc24de",
+        "bytes": 324
+      },
+      "authority-source-red-ignore_exit.log": {
+        "sha256": "e6a409c8f7033223de336a2e68693498a5e73d0c92ccf300c1bf278dc84d10ce",
+        "bytes": 345
+      },
+      "authority-source-vet.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      },
+      "authority-source-linux-build.log": {
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "bytes": 0
+      }
+    }
+  },
+  "review": {
+    "agent": "/root/review_authority_source_adapter",
+    "critical": 0,
+    "important": 0,
+    "minor_original": 1,
+    "minor_closed": "boundary doc now reflects preflight and actual validation; evidence links created in this delivery",
+    "reviewer_run": "targeted source race pass; optional BIZ env test skipped on reviewer invocation; not added to Root counts",
+    "followup": "Production unchanged; inspected new10s/expiry tests, did not rerun long tests"
+  },
+  "provider_only_not_rerun": [
+    "BIZ SQL lifecycle/wire seven top-level/26 reported pass",
+    "six real source exe cases with database fingerprints",
+    "provider broad historical suites and cleanup snapshots"
+  ],
+  "not_verified": [
+    "real enabled BIZ SQL success consumed by IM",
+    "production owner barrier/grant/principal writer",
+    "source-freshness and cross-database revoke ordering",
+    "SQL/HTTP/WS/SDK/UI or process restart",
+    "Linux runtime/Go1.25.12 runtime",
+    "deployment/merge/push"
+  ],
+  "docker_probe": "this turn read-only /version returned HTTP500/exit1; no DB/container lifecycle mutation followed",
+  "scope": "isolated default-off preflight API; no changes to existing SQL transaction, HTTP/proto/config/migrations, BIZ/W1/W2/READ; no grants created",
+  "parent066_c82": "still open"
+}
