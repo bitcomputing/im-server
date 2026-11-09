@@ -4,6 +4,22 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。没有注册路由、原结果 GET、生产权限事务或结果生产者，不能调用或据此启用 ready。[可信调用候选](mindlink-trusted-rpc-candidate_zh.md) 中 RPC/最终屏障仍待实现。
 
+## 当前唯一源登记更新（2026-11-09，a9bcc68a）
+
+回应 BIZ `pbz76f48e4nhukeh`，本方确认唯一契约固定 `1d671dac7e0eeb122a695e420e9c3035fb6c65e5`，Git blob/LF SHA256 `3febb2f532dc091e6bd7c4a70a27ce0f0ffc0fb9ddc0f99018bef4ee432c12d2` 的 §11.5 N1 与新增 §11.6 四点技术边界。它继承前述6d0版，新增历史输入登记和错误字典事实修正，不把旧候选合并成第二套wire，也不等于双边冻结登记、启用或运行验收。BIZ唯一源仍由BIZ维护，本方不据发信声称其登记已更新。
+
+本批直接读取两固定Git blob，`routing-contract-v1` 与 `mindlink-policy-contract-v1` 两段JSON内容分别字节全等；SHA256依次为 `03a85a1d9728dd62176ec764804b91221cc174276f780dd9e4797096a71d6642`、`e7e97b58c5538f0f6421799b019989c178f578ee92724befe12c2da8b9355c5a`。以下严格区分§11.6核过的历史输入与本分支已有替代，不能把时间较晚的历史登记当作旧Go类型仍在使用。
+
+| 项目 | 固定99f7输入（§11.6所记历史） | 当前已提交的bb76f4b / 62da300 |
+| --- | --- | --- |
+| ensure / disable body | 13 / 12字段，含scope/projection旧命名 | 旧ensure DTO已删除且保持关闭；disable恰8字段，scope仅取JWS/原意图，正目标代际用target_avatar_generation，与actor代际0及policy分开 |
+| 操作名 / 结果 / 时间 | principal.*单数、23字段、recorded_at微秒 | principals.*精确复数、22字段及nullable形状、UTC毫秒；已有严格disable解析，仍无生产结果/状态组合校验器 |
+| 错误字典与入口 | 19001–19008/HTTP映射已落源 | 字典与ErrorHttpResp沿用；正式disable/query、最终撤权屏障/生产权威、READ/可信RPC仍未接通，不能以字典存在称入口可用 |
+
+四点按本版保持：先已有号disable＋operations.query，ensure关闭；名字沿业务Go规范化后80标量/320字节，不降为50或截断，承载/有序迁移/真实回读未补足前不接线；F2旧ID/九项摘要不动，首次网络前须持久独立wire子意图及完整原父ID/digest、scope/actor/目标/body绑定，unknown不新造child或换键，真实ready再推进；READ的desired_state={}、原query快照/时间复放与新的逻辑读取分开，不以native max代替原请求提交。后两项的适配存储/唯一性/迁移、公共结果生产者和正式query均未实现。
+
+本批实际为固定源、机器块字节及当前DTO字段/摘要顺序/时间格式对照；没有修改Go/唯一业务契约或重跑旧组件、Go/race/DB/HTTP/native。BIZ的31条规格及其独立31pass仅为提供方记录，不相加为62或算本方重跑；26/14、29顶层及容器状态同样不作本批新证据。仅本次同版反馈收口，c82/c328/READ及503仍保留各自任务边界。
+
 ## 首个主体操作
 
 | 路径与方法 | operation_type | body 类型 |
