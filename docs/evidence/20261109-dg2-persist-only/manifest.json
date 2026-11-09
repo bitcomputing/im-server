@@ -91,7 +91,15 @@
     "BIZ_release_request_message_id": "pbz59zqb6sshukeh",
     "all_actual_test_participant_release_evidence_received": false,
     "clarification_message_id": "pbz4zxr6wkjhukeh",
-    "historical_proposal_sha256": "6d01851ff443b542d3f6fccdaeed776f3c9fd44e0dced07b2c60da5df18ee2ed"
+    "historical_proposal_sha256": "6d01851ff443b542d3f6fccdaeed776f3c9fd44e0dced07b2c60da5df18ee2ed",
+    "BIZ_release_response_received": true,
+    "BIZ_release_status": "explicitly_not_released",
+    "BIZ_release_response_message_id": "pbz5bgrl6lwhukeh",
+    "BIZ_release_response_source_timestamp": "2026-11-09T13:22:53+08:00",
+    "actual_test_participant_list": null,
+    "participant_release_receipts_in_this_session": [],
+    "this_session_other_window_execution_completed": false,
+    "other_agent_window_completion": "unverified_no_delivery_evidence_received"
   },
   "verification_boundary": "This batch: fixed-source build, vet, binary transfer hashes, image/layer/config-shape and live runtime snapshots only. No native messages, SDK/page/DB, restart/rollback or PERSIST runtime retest. Old runtime evidence is historical, not this new binary acceptance.",
   "required_execution_gates": [
@@ -115,5 +123,27 @@
       "initial_finding_closed": true,
       "scope": "Read-only material review only; no runtime verification or execution permission"
     }
+  },
+  "coordination_recheck": {
+    "batch_id": "d1fa1797a2d46174f6feeeddb2f364ab01cb78ea5e630f2e5fa9e2949aba70df",
+    "source_message_id": "pbz5bgrl6lwhukeh",
+    "remote_read_only_snapshot": {
+      "observed_utc": "2026-11-09T06:54:39.8309102+00:00",
+      "candidate_image_id": "sha256:ed9e1addeb5344722faa92dedbe082597655fe3a77720381ca58ef90401f7145",
+      "candidate_revision": "4ecec887fb38d2d81af4bf2773b05d304e8ced97",
+      "staged_binary_sha256": "551de72723dc3c4917c8666f67e8165a094800769f050299e1df53b19838b740",
+      "candidate_container_ids": [],
+      "live_container_id": "d16f0401545078efc03206bd24fe01ae9ed43e19532eff3254befd1456e3172a",
+      "live_image_id": "sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7",
+      "live_started_at": "2026-11-06T07:36:43.635270669Z",
+      "live_status": "running",
+      "live_health": "healthy",
+      "live_binary_sha256": "bfdcaa5d73721472cce9af5b3debcd525f24ab0cfabe2ca1f3cb373540510c9a",
+      "snapshot_only": true,
+      "service_or_DB_mutations": false
+    },
+    "snapshot_raw_sha256": "3cf152aee944debfc136b76711fb1c0c3380950e80d633f10e07f08a706724a0",
+    "new_service_DB_configuration_mutations": false,
+    "old_proposal_preserved": true
   }
 }
