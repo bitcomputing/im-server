@@ -1,0 +1,79 @@
+{
+  "task": "DG-20261104-003 authority-source receipt",
+  "batch": "dd39ef1bab3bcd05ae2cc0518307fbe0f20b75b7ec8a3f7b53c1bc2f4d99d808",
+  "message": "pb2krbaa8twhukeh",
+  "sender": "01a1a0e1-3618-78b0-a5c7-81a37bff3a31",
+  "recorded_utc": "2026-11-09T22:15:04.498223+00:00",
+  "IM_base": "8e7cbea19a7920f3e16f0aae04e818bee06ddf7d",
+  "BIZ_handoff_commit": "0308ea55755d5674b676265033bfe68a9154099d",
+  "BIZ_source_base": "f509949507f04c1f70957886c4e8f5912d2bf069",
+  "root_source_sha256_git_blob": {
+    "model/agentaccess/mindlink_mapping.go": "1b78395687935c4baf9cdd2a08e99e4cd3e4fff220959d4e2c8930e73998a96a",
+    "model/agentaccess/avatar.go": "6baa68ac1b4ca9db6e6ce762d2ba18b861c8fba8b069b7d9b5733b78880756e4",
+    "model/agentaccess/avatar_management.go": "34c6e35d8ae5096e00b252feb2c16bc65cb101985e1d0149c6d355417e3f44d2",
+    "app/internal/logic/openapi/access/manageagentavatarlogic.go": "3973533505b080f580da3ea7f2924792e2c7f7bed317d3dfff58fd8d313c7ee5",
+    "app/internal/svc/agentaccess_store.go": "41fc4a316088af1fe00eb05e6c11a1629d60f483b4d3c319e02157a3d2398500"
+  },
+  "provider_IM077_source_blobs": {
+    "commons/mindlink/policy_authority.go": {
+      "sha256": "1d838be0397f895817c49c2c90cb1c1b0669a875f48237319de2baf5b38a2dfb",
+      "bytes": 1580
+    },
+    "commons/mindlink/http.go": {
+      "sha256": "f8d5d0d7960df37c8fe274a853d47eb7ce5311239b33da39c517791636a7b011",
+      "bytes": 2789
+    },
+    "services/apigateway/services/mindlink.go": {
+      "sha256": "6b84939c4a9bac32f6388eb23e276c4a721a7b5996276f70ae39a7fbd908e305",
+      "bytes": 1587
+    },
+    "docs/superpowers/plans/2026-11-09-mindlink-query-http.md": {
+      "sha256": "00c62c82f9281704442759d30541244a0d56d9ec3b9ebfed65a025671b75a445",
+      "bytes": 10924
+    }
+  },
+  "candidate_wire": {
+    "commits": [
+      "4f8ba0ee03445fe6321fbdaedc197b442bee9b4f",
+      "20ec98060c1241d20904506c4a944055a6668496"
+    ],
+    "path": "model/agentaccess/mindlink_wire.go",
+    "same_blob": true,
+    "sha256_git_blob": "43ca8e9b8a10acd50f804b7549d71b74ed597e13ed1cc33d185b686bb4d38c6d"
+  },
+  "N1_machine_sha256": "87290e1f15325205806394546fcd190c029ffd5f56551354a5530f706cf87f9f",
+  "N1_identical_to_parent": true,
+  "BIZ_commit_changed_paths": [
+    "STATE.md",
+    "docs/evidence/20261109-mindlink-f2-authority-source/README.md",
+    "docs/evidence/20261109-mindlink-f2-authority-source/contract-check.txt",
+    "docs/evidence/20261109-mindlink-f2-authority-source/review.md",
+    "docs/evidence/20261109-mindlink-f2-authority-source/verification.json",
+    "docs/mindlink-conversations-contract.md"
+  ],
+  "bounded_BIZ_source_search": {
+    "revision": "f509949507f04c1f70957886c4e8f5912d2bf069",
+    "tracked_production_go_files": 953,
+    "excluded_prefixes": [
+      "tmp/",
+      "admin/"
+    ],
+    "excluded_suffix": "_test.go",
+    "pattern": "mindlink_owner_barriers|mindlink_principals|NewMindlinkWireStore|PrepareMindlinkDisableWire",
+    "matches": [],
+    "limit": "fixed tracked source only; not runtime or external-writer absence proof"
+  },
+  "provider_only_not_rerun": [
+    "13 source assertions",
+    "39 offline contract/inventory checks",
+    "independent review C0/I0/M0"
+  ],
+  "not_run": [
+    "Go/build",
+    "SQL/HTTP/WS/SDK/UI/runtime probes",
+    "Docker/resource operations",
+    "config/credential inspection",
+    "integration/merge/push/deploy"
+  ],
+  "conclusion": "BIZ ownership/lifecycle facts and independent disable-wire candidate are locatable. No production writer offered by this handoff; IM read grant does not authorize new mutation. Original parent remains open."
+}

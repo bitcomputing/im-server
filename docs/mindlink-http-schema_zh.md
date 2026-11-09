@@ -4,6 +4,16 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；未公开的停用 SQL 事务原语已有隔离验证，真实业务权威写入源和全部适用读取面仍未具备，POST 不能据此启用 ready。
 
+## 当前业务权威来源登记（2026-11-09，dd39ef1b）
+
+BIZ 有效回报 `pb2krbaa8twhukeh` / 固定 `0308ea55755d5674b676265033bfe68a9154099d` 在唯一契约 §11.8 登记了实际事实源，并更正 §13 对 IM `077d` 已注册查询/disable 路由的历史描述。该提交只改6个文档/证据文件。其提供方13项源断言、39项离线检查及独审不算本方重跑；本方实际固定源核对见[本批记录](evidence/20261109-mindlink-authority-source/verification.json)。
+
+- BIZ 源基线 `f509949507f04c1f70957886c4e8f5912d2bf069`：`manageagentavatarlogic.go` 从登录上下文取正 owner；`avatar_management.go` 在账户锁内核归属、代际，机器入口另限 client。`avatar.go:retireAvatar` 先写墓碑/增代际，再同事务 `syncMindlinkAvatar`；`mindlink_mapping.go` 保存业务映射、固定成员及9槽 pending 父意图。这些是业务事实源；预分配 principal、provisioning/desired state 或通用 `avatar_retired` outbox 不证明 IM 已创建主体或已撤权。
+- W2 独立候选已有 `model/agentaccess/mindlink_wire.go`，不是“没有 wire 模型”。契约引用 `4f8ba0ee03445fe6321fbdaedc197b442bee9b4f` 与证据引用 `20ec98060c1241d20904506c4a944055a6668496` 的该文件 Git blob 实际相同，SHA256 `43ca8e9b8a10acd50f804b7549d71b74ed597e13ed1cc33d185b686bb4d38c6d`。它由服务端 WireConfig 固定 trust，保留原父摘要并持久独立 disable 8字段 body/15槽摘要子意图；不是签发器、生产投影 writer、send 协议或最终 gate。所核主线构造器仍只选 legacy/NewMindlinkStore；对上述固定基线953个受限 tracked production Go 文件的符号检索没有找到两张 IM 权威表或 WireStore/disable-wire 调用，不据此断言外部服务或当前运行配置不存在 writer。
+- 本次交接仍未提供可接线的生产 principal/生命周期/owner 授权投影 writer 及正式输入。IM `077d` 只消费当前 read 投影；当前 Root `8e7cbea` 已含 `028bb2a` 的未公开停用事务原语，新效果独立检查 `write_enabled`，原回执复放检查 `read_enabled`，不由签名、读 grant 或请求创建授权。真实业务输入/投影供给与全部适用 gate 未齐，公开 POST 仍 NOT_READY，不能靠直写共享库、开 trust 或夹具填补。
+
+本方实核5个 BIZ 源 blob、4个固定 IM blob、两版候选同源、6文件改动边界及 N1 整机器块不变（SHA256 `87290e1f15325205806394546fcd190c029ffd5f56551354a5530f706cf87f9f`）。公共22字段、disable 8/15/22、UTC毫秒和80标量/320字节名字规则保持已确认；ensure 的专属完整 body/desired_state/生产授权输入仍缺，不重开 N1。仅登记固定源码事实，未运行 Go/DB/HTTP/WS/SDK/UI 或操作 Docker、配置、凭据；不完成066/c82、F3或发布验收。
+
 ## 原生批量消息分类依赖（c74fc1cf）
 
 Root新增只读Go接口 `bases.FilterNativeMessages(ctx,appkey,[]proto.Message)([]bool,error)`，复用既有递归身份提取；结果按输入序号返回，true只表示所提供身份未命中native拒绝屏障，不授业务owner权限。SQL按有界批次及原生0900排序规则分类，保留用户/群命名空间与app隔离；失败返回nil mask，空候选也检查SQL可用。该接口不会加载缺失的真实history/mentions，也不新增HTTP/proto或替代最终核权。
