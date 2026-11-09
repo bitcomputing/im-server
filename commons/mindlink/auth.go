@@ -63,9 +63,10 @@ type binding struct {
 type Verifier struct{ bindings map[trustKey]binding }
 
 type Authorization struct {
-	claims   Claims
-	body     []byte
-	verifier *Verifier
+	claims     Claims
+	body       []byte
+	verifier   *Verifier
+	ticketHash [32]byte
 }
 
 func NewVerifier(trusts []Trust) (*Verifier, error) {
@@ -190,10 +191,7 @@ func (v *Verifier) Verify(r *http.Request, operation string, now time.Time) (*Au
 	} else if claims.ActorKind != "avatar" {
 		return nil, ErrForbidden
 	}
-	if claims.IssuedAt < 0 || claims.ExpiresAt <= claims.IssuedAt || claims.ExpiresAt-claims.IssuedAt > 60 || claims.IssuedAt > now.Add(5*time.Second).Unix() {
-		return nil, ErrForbidden
-	}
-	if now.After(time.Unix(claims.ExpiresAt, 0).Add(5 * time.Second)) {
+	if !validAt(claims, now) {
 		return nil, ErrForbidden
 	}
 	if r.URL.RawQuery != "" || r.URL.ForceQuery || r.URL.Fragment != "" || r.URL.Opaque != "" {
@@ -224,7 +222,14 @@ func (v *Verifier) Verify(r *http.Request, operation string, now time.Time) (*Au
 	if hex.EncodeToString(hash[:]) != claims.BodySHA256 {
 		return nil, ErrForbidden
 	}
-	return &Authorization{claims: claims, body: body, verifier: v}, nil
+	return &Authorization{claims: claims, body: body, verifier: v, ticketHash: sha256.Sum256([]byte(token))}, nil
+}
+
+func validAt(claims Claims, now time.Time) bool {
+	if claims.IssuedAt < 0 || claims.ExpiresAt <= claims.IssuedAt || claims.ExpiresAt-claims.IssuedAt > 60 || claims.IssuedAt > now.Add(5*time.Second).Unix() {
+		return false
+	}
+	return !now.After(time.Unix(claims.ExpiresAt, 0).Add(5 * time.Second))
 }
 
 func validClaims(c Claims) bool {
