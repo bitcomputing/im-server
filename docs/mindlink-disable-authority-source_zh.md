@@ -15,22 +15,25 @@ DG-20261104-003 / F2→F1，有效消息 `pb2kyn5wyvnhukeh`，当前批次 `306b
 
 ## 业务只读供给的最小候选
 
-建议 BIZ 内部版本名 `mindlink-disable-authority-source-v1`，仅用于原则上可供后续可信适配器核对的快照。它不是新 N1 wire/version，也不是已存在或已共同冻结的网络协议。BIZ可在其唯一契约登记实现差异；本方不创建第二份公共字段源。
+后续有效消息 `pb2k9hx8gwahukeh` / 批次 `de450ca8d5aa96e5b5b182702f5648006def619f85e9842ccc55f5b8eb8f761e` 给出一次性受控进程 `cmd/mindlink_authority_source`、只读065 wire原件及输入仅parent ID的实施计划。本方本批接受这些作为Reader候选的收口方向，不要求另建HTTP服务；这是提供方计划，未核其实现/构建/运行。内部候选版本沿其 `mindlink-disable-authority-v1`；`076367a` 中较早建议的长版本名不另开第二条兼容分支。该版本不是新 N1 wire，也不是已存在或已共同冻结的网络协议；精确外部形状仍由BIZ在唯一契约登记。
 
-建议内部 Go 读取形状为 `LoadDisableAuthority(ctx, trustedOwnerID, parentOperationID) (snapshot, error)`；名称由 BIZ 决定。owner 参数来自合法登录/自有机器核权链或已持久生命周期来源，不能因 HTTP 调用者传同名字段而授信。输入只定位已有父意图，不接收 grant、state、代际、policy 或目标的覆盖值，不创建意图或改映射。
+内部 Go 读取形状可为 `LoadDisableAuthority(ctx, parentOperationID) (snapshot, error)`，名称由 BIZ 决定。不要求caller传owner：在服务端固定environment/tenant范围内，按原parent定位并核其持久owner，再按该owner锁账户和重核原意图/identity/065完整关联；缺失或多义须拒绝，不能跨scope全局扫描或取第一条。owner归属来自真实管理/受限机器链所留下的持久事实，不能因请求自报同名字段而授信。输入不接收grant、state、代际、policy、目标或trust配置覆盖，不创建意图或改映射。
 
 | 快照字段 | 来源和约束 |
 | --- | --- |
 | source_version | 上述内部候选版本，不改 mindlink-policy-n1 |
-| environment / tenant_id / appkey / issuer / audience / system_actor_id | 当前服务端配置的完整 scope/trust 绑定；与原记录/后续 wire 绑定一致，客户端不得选择 |
+| environment / tenant_id / appkey / issuer / audience / system_actor_id | 原parent/065持久scope和trust绑定；当前固定服务配置必须逐项匹配，不能用新配置重建或覆盖旧绑定，客户端不得选择 |
 | owner_id | 原持久父意图及归属核验所得正十进制 uint64；当前账号可执行此生命周期操作，不从临时请求自报 |
 | parent_operation_id / parent_digest | 沿W2已有字段，保留原9槽父意图的原 ID/摘要；完整原 payload 的校验及 owner/scope/目标查询须通过；不覆盖原摘要、不冒充子意图摘要 |
+| wire_operation_id / wire_request_digest / wire_body_sha256 | 分别对应065的operation_id/request_digest/body_sha256，与本次IM操作和实际N1原body逐项绑定；核持久body与其hash及完整parent/owner/target/generation/policy关联，校验不等于改写或重新生成15槽摘要 |
 | principal_id / avatar_id | 060原映射与原父目标、当前归属一致；只引用既有业务映射，预分配ID不证明IM投影已存在 |
 | target_avatar_generation | 原已提交退役意图所绑定的目标代际，与当前墓碑及映射一致；不是控制面actor的generation=0 |
 | expected_policy_version / desired_policy_version | 从原父意图及其固定payload验证，desired=expected+1，正int64且无溢出；不能用当前IM结果或新造版本倒填 |
 | desired_state | 固定 disabled，表述业务停用意图；不表述IM当前state、IM ready或写grant |
 
-以上整数/字符串语义沿既有 N1 及持久模型；本候选未定义外部 JSON 编码、签名、路由、RPC/proto 或额外 claims。不要将快照塞进 N1 的8字段 body；独立 wire 子意图仍由 W2现有源负责。
+以上整数/字符串语义沿既有 N1 及持久模型；若额外返回当前业务generation/policy，必须与原target/expected/desired明确区分，不能用当前值替换旧意图版本。本候选未定义外部 JSON 编码、签名、路由、RPC/proto 或额外 claims。不要将快照塞进 N1 的8字段 body；独立 wire 子意图仍由 W2现有源负责。缺065/schema或wire不符必须失败，不能为供给临时生成/修改原wire。
+
+一次性进程是可信部署实例的Reader适配候选，不是可转发bearer grant。后续IM适配器只能调用自身固定配置的可信程序/实例并绑定本次原操作，不接HTTP调用者给的程序路径、DSN、JSON快照或缓存allow。进程边界至少须有调用方有限deadline、退出状态及完整版本/输出/原绑定检查；失败、不可达、超时、截断/无效输出和成功空对象都不能放行。不得把private DSN、密钥、JWS或原body写入诊断输出。此处没有实现该进程调用器，也不以一次exit0替代跨库屏障。
 
 源读取在业务账户锁及其一致事务下核当前 user_info 状态、归属、代际、已提交墓碑、identity和原 pending 停用父意图的完整关联。新效果必须来自真实退役/禁用生命周期，不能只凭业务映射的desired文字或任意管理密钥。错误状态、缺行、陈旧或不匹配的意图、配置绑定不符和SQL错误均返回错误，不补成功空对象或通用boolean grant。原操作已提交后的结果查询独立核当前读权，不重新要求一次新的退役效果或新的pending父意图。
 
