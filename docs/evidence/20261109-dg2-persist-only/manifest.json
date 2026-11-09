@@ -101,12 +101,14 @@
     "this_session_other_window_execution_completed": false,
     "other_agent_window_completion": "unverified_no_delivery_evidence_received"
   },
-  "verification_boundary": "This batch: fixed-source build, vet, binary transfer hashes, image/layer/config-shape and live runtime snapshots only. No native messages, SDK/page/DB, restart/rollback or PERSIST runtime retest. Old runtime evidence is historical, not this new binary acceptance.",
+  "verification_boundary": "Preparation batch 01c5: fixed-source build/vet, transfer hashes, image/layer/config shape and runtime snapshots only. Current execution-plan batch 4724: source/material review and read-only runtime budget/Compose-help checks only. No native messages, SDK/page/DB, restart/rollback or new-binary runtime retest.",
   "required_execution_gates": [
-    "BIZ supplies verifiable stop-test/release confirmations covering all actual test participants including the owner, identifies the effective interval/scope and authorized existing peer/real Token flow without sharing secrets; zero BIZ inflight requests alone is not release",
-    "Coordinator confirms exact future five-minute interval, exact candidate/image/binary and IM-only verification/rollback scope",
-    "At execution, all baseline/port/mount/volume/persisted-data preconditions are rechecked; no silence or old browser closure as release",
-    "Coordinator accepts measured full flush/stop/recreate/start/health/recovery budget and safe non-durable abort branch before any writable retest; otherwise no executable five-minute proposal"
+    "BIZ supplies verifiable stop-test/release confirmations covering all actual participants including the owner and Web, with effective interval/scope and authorized existing actors/real Token flow; zero inflight or own browser closure alone is not release",
+    "Coordinator confirms future phase intervals, exact candidate/image/binary, executor, per-phase end state, restart/write/read effects and full recovery reserve; no fixed five-minute constraint",
+    "Before any stop or switch, all protected state must be proven durable over the complete affected scope; targeted SQL equality does not prove process-wide drain, and no supported process-wide drain evidence is currently available",
+    "Coordinator accepts estimated phase budgets, unmeasured stop/start/full-recovery uncertainty and non-durable safe-exit responsibility; measured P1 durations recalibrate later phases before new actions",
+    "BIZ supplies legitimate existing dedicated users and closed conversations, all affected members, secret-safe Token flow and reviewed fixed driver; approve global read-time/unread_tag/mention side effects, verify receiver has no unrelated conversations/unread and both SQL/native mention baselines are empty, otherwise global-clear phase is blocked",
+    "At execution recheck actual image/binary/Compose env/ports/mounts/volumes/data and all release conditions; no expired proposal or automatically retained candidate authority"
   ],
   "review": {
     "initial": {
@@ -145,5 +147,86 @@
     "snapshot_raw_sha256": "3cf152aee944debfc136b76711fb1c0c3380950e80d633f10e07f08a706724a0",
     "new_service_DB_configuration_mutations": false,
     "old_proposal_preserved": true
+  },
+  "execution_plan": {
+    "batch_id": "4724d50c6b3140e5d6fe3224d7515d7a1d43bf514e71c3753038be6a062e0dcc",
+    "source_message_id": "pbz6dc7wwt6hukeh",
+    "path": "docs/dg2-persist-execution-plan_zh.md",
+    "status": "draft_not_executable_no_window_or_write_authority",
+    "timings_are": "planning_estimates_not_measured_upper_bounds",
+    "estimated_minutes": {
+      "P0_read_only_readiness": [
+        10,
+        15
+      ],
+      "P1_switch_and_recovery_envelope": 15,
+      "P2_native_read_summary_durability_envelope": 15,
+      "P3_restart_recovery_envelope": 15,
+      "P4_global_clear_durability_restart_envelope": 20,
+      "P1_through_P4_total": 65
+    },
+    "per_flush_observation_budget_seconds": 240,
+    "per_phase_provisional_recovery_reserve_seconds": 360,
+    "proposed_health_wait_seconds": 180,
+    "proposed_stop_timeout_seconds": 30,
+    "measured_stop_start_seconds": null,
+    "measured_full_rollback_seconds": null,
+    "process_wide_drain_evidence": null,
+    "approved_existing_actor_conversation_matrix": null,
+    "reviewed_Rocky_driver_artifact": null,
+    "phase_intervals_and_end_states": null,
+    "global_clear_scope": "all conversations of authenticated test receiver: read-index/read-time/unread_tag changes, in-memory MentionInfo clearing and deletion of all receiver mentionmsgs rows; payload cannot limit scope to one group",
+    "no_mutating_execution_in_this_batch": true,
+    "fresh_read_only_runtime_budget_snapshot": {
+      "observed_utc": "2026-11-09T07:10:39.6105597+00:00",
+      "container_id": "d16f0401545078efc03206bd24fe01ae9ed43e19532eff3254befd1456e3172a",
+      "image_id": "sha256:09186cb700fdb2e4fe21e163494af2c9dc1e81cb69e5fa1fdf8658b848ef45a7",
+      "started_at": "2026-11-06T07:36:43.635270669Z",
+      "stop_signal": null,
+      "stop_timeout_seconds": null,
+      "health_interval_ns": 5000000000,
+      "health_timeout_ns": 3000000000,
+      "health_retries": 20,
+      "health_start_period_ns": 20000000000,
+      "restart_policy": "no",
+      "measured_stop_start_seconds": null,
+      "measured_full_rollback_seconds": null
+    },
+    "fresh_read_only_compose_help": {
+      "observed_utc": "2026-11-09T07:16:39.7023528+00:00",
+      "version": "2.27.0-desktop.2",
+      "up_flags_present": [
+        "--timeout",
+        "--wait-timeout",
+        "--no-deps",
+        "--pull"
+      ],
+      "restart_flags_present": [
+        "--timeout",
+        "--no-deps"
+      ]
+    },
+    "review": {
+      "initial": {
+        "critical": 0,
+        "important": 1,
+        "minor": 0,
+        "finding": "P4 global mention deletion and read-time/unread_tag impact omitted"
+      },
+      "revision": "Added explicit all-conversation side effects, zero SQL/native mention baseline and recheck gates; nonzero or unverifiable state blocks P4; ACK does not prove mention deletion success",
+      "status": "material_review_passed_not_execution_permission",
+      "scope": "execution-plan material only; no operation or runtime acceptance",
+      "rereview": {
+        "critical": 0,
+        "important": 0,
+        "minor": 0,
+        "initial_finding_closed": true,
+        "reviewer": "review_dg2_persist_material",
+        "scope": "read-only local material review; no remote/container/business execution"
+      }
+    },
+    "required_mention_baseline": "successful scoped SQL count=0 and all native conversation MentionInfo empty before test and again before global-clear; no mention in M1-M4; query failure is not zero",
+    "plan_git_blob_sha256": "61b425c38a4c4d1c055209f3c5076df4b894f2cea9764e501050a481a4731efa",
+    "plan_hash_encoding": "UTF-8 with LF line endings, matching Git blob; working-copy CRLF may differ"
   }
 }

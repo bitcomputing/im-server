@@ -529,6 +529,8 @@ POLICY/RELIABLE/公共READ尚无同一已实现、已验的commit/image/binary�
 
 ## 22. Rocky 原 PERSIST-only 固定制品与复验稿（2026-11-09，未切换）
 
+二当家后续 `pbz6dc7wwt6hukeh` 明确不为固定5分钟压缩验证。[完整分阶段执行单](dg2-persist-execution-plan_zh.md) 给出准入、预计时长、原生消息/清读/SQL步骤、中止和保留数据的回退边界；替代本节原固定5分钟安排，仍未授予执行窗口。全部已读须有专用合法用户及全局影响确认；停止前缺全范围待刷/持久化证据则不切换。以下历史记录保持其原观察时间，不算新binary运行验收。
+
 来源二当家 `pbz4w6wdnjwhukeh`，有效批次 `01c5c1097c7062b8e4afbe7da6197f6a27c634a3d331abc771684e0dcef6ea5c`。范围只含原 `4ecec887fb38d2d81af4bf2773b05d304e8ced97` 复验准备，不包含本机 POLICY/公共 READ/序列后续 HEAD，不授予启停、部署或迁移。二当家报告主人仍在手测、接入码 POST503 待 BIZ 诊断；这不是本批重现的业务错误。本轮已在本机构建二进制、向 Rocky 本任务新目录暂存文件并构建一个候选镜像，**没有启动候选服务或替换运行容器**。
 
 ### 固定候选与本批实际检查
@@ -561,7 +563,7 @@ SCP 后五个文件 SHA 逐项与本机匹配。Rocky Dockerfile 仅以原诊断
 
 ### 后续获批窗口内的复验稿（本批未执行）
 
-1. 先获 BIZ 明确释放手测，确定同租户现有合法发送者、接收者、可读会话及真实业务 Token 获取路径；不新建/替换现有主人映射，不传 Token/Secret。BIZ 的503诊断与本 IM 候选分开。窗口核准前还须明确“待刷确认＋停止/重建/启动＋健康等待＋真实恢复核验”的完整预算、最晚新动作时点及未持久化的异常退出方式；`--wait-timeout 60` 只限制健康等待，不是整段操作上界。现有材料没有这份实测预算，不能声称全流程适合5分钟；预算不明确时不提出可执行时段，先由二当家缩小步骤或拆成分别确认的窗口。仅这些材料齐备且 BIZ 释放后，才提出新的未来5分钟起止，由二当家确认**同一**候选/范围/回退与执行人。旧06:00–06:05 UTC 提议已过期、未获 BIZ/二当家确认、未执行；当前没有新窗口或定时任务。
+1. 先获 BIZ 明确释放手测，确定同租户现有合法发送者、接收者、可读会话及真实业务 Token 获取路径；不新建/替换现有主人映射，不传 Token/Secret。BIZ 的503诊断与本 IM 候选分开。窗口核准前还须明确“待刷确认＋停止/重建/启动＋健康等待＋真实恢复核验”的完整预算、最晚新动作时点及未持久化的异常退出方式；健康等待参数只限制健康等待，不是整段操作上界。完整分阶段执行单现提供预计预算及未实测项，由二当家统一审查，准入齐备后再确认相应未来起止、**同一**候选/范围/回退与执行人，不再预设5分钟。旧06:00–06:05 UTC 提议已过期、未获 BIZ/二当家确认、未执行；当前没有新窗口或定时任务。
 
    二当家后续 `pbz4zxr6wkjhukeh`（有效批次 `74e672d2`）进一步明确：释放证据须列明所有实际测试参与者，覆盖主人本人及其对应的停止测试确认、有效时段和范围，由 BIZ 协调汇总可核验记录。BIZ无在途请求、容器healthy、旧浏览器关闭均不能代替参与者已停止测试。当前未取得这份完整释放证据。该消息审查的旧 `window-replan-0ae6c577.json` SHA256仍为 `6d01851ff443b542d3f6fccdaeed776f3c9fd44e0dced07b2c60da5df18ee2ed`，作为04:56UTC历史提议原件保留；后续固定制品见本节/清单，不把新制品倒填为旧窗口已批准。
 2. 窗口前再次确认原镜像/活体 hash、租户 `dg2c3350172f150`、用户 `test_6199931265070805`、映射、既有历史、卷及 loopback 19001/19002/19003/18090；只记录脱敏元数据。暂停本轮写者并用实际 SQL/摘要核待刷状态，不通过则停止；不得把旧浏览器关闭或容器 healthy 当空闲/数据已刷证明。
@@ -575,24 +577,7 @@ SCP 后五个文件 SHA 逐项与本机匹配。Rocky Dockerfile 仅以原诊断
 
 先暂停新增测试写入、实际确认需要保留的状态已持久化或确认本轮无待刷写入，并核剩余授权时间足够完整恢复；未确认则走上面的安全退出分支，**不得直接停止候选**。满足这些前置后，在同一原 project/service 和原 Compose 文件上只换回 `rollback.override.json`，预检其镜像标签仍对应上述 `09186cb7…`，保留全部原挂载及本轮已持久新增消息；不用旧数据库备份覆盖、不删除数据行/租户/用户、无 `down -v`/volume rm/prune。恢复后再次核旧 image/活体 hash、loopback端口/健康、同一现有用户登录/CONNECT、已确认持久的历史 ID 和数据计数；失败则停止后续业务测试并报告，不自动扩大到 BIZ/DB/配置修复。镜像回退会恢复 b87 的旧缓存/摘要缺陷，不能称 PERSIST 修复仍在，也不能保证未持久缓存可还原。
 
-获批后才可使用的命令骨架，当前没有运行（须先逐项核实当时的 image ID/上下文/期限）：
-
-```powershell
-$original='D:/projects/.evidence/DG2-20261106-002/im/compose.json'
-$prepared='D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5'
-$originalEnv='D:/projects/.evidence/DG2-20261106-002/im/stack.env'
-# 仅获批切换时使用；先核原 project/service/image 与批准单一致。
-docker compose --env-file $originalEnv -p dg2-rocky-im -f $original -f "$prepared/candidate.override.json" up -d --no-deps --no-build --pull never --wait --wait-timeout 60 im-server
-```
-
-仅获批回退时使用下列独立命令，不与切换块自动串联或失败后盲目重试：
-
-```powershell
-$original='D:/projects/.evidence/DG2-20261106-002/im/compose.json'
-$prepared='D:/projects/.evidence/DG2-20261106-002/im/persist-only-4ecec887-01c5'
-$originalEnv='D:/projects/.evidence/DG2-20261106-002/im/stack.env'
-docker compose --env-file $originalEnv -p dg2-rocky-im -f $original -f "$prepared/rollback.override.json" up -d --no-deps --no-build --pull never --wait --wait-timeout 60 im-server
-```
+获批后才可使用的切换、单次重启和独立回退命令现统一见[完整执行单§5](dg2-persist-execution-plan_zh.md#5-获批后使用的停机命令与回退边界)，本批均未运行。原60秒健康等待骨架由新稿的180秒观察预算替代；实际停止/启动/完整回退仍未测量，不保证该预算足够，不把参数当排空证据。
 
 本轮前后实际读回运行容器均为 `d16f0401…e3172a`、旧镜像09186cb7、旧活体hash及11-06 07:36:43UTC启动时间；BIZ PID26644/11-06 11:08:43UTC未变。这些是观察时点快照，不保证持续健康或环境空闲。本批未查询/更改业务 DB/Redis、未发原生消息、未重启/回退、未改监听或私有配置、未操作pre；当前缺 BIZ 释放及二当家新窗口，不能执行上述稿件。
 
