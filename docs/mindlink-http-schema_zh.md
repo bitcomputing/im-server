@@ -15,7 +15,7 @@ disable body 恰八字段：operation_id、request_id、request_digest、princip
 
 票据 actor avatar_generation=0；body target_avatar_generation 为正 int64 的目标代际。expected_policy_version>=1，desired=expected+1，拒绝溢出；这些值及原 operation/request/digest/principal target 逐项绑定票据。15项摘要按唯一源 N1 顺序使用 Go json.Marshal 后 SHA256，不经 float、trim 或 Unicode 归一化。解析器不证明持久生命周期快照、目标代际不倒退或最终撤权屏障；这些仍须同事务核权，缺 gate 返回 NOT_READY，不写投影。
 
-principal_id 为 ma+30位小写 hex；avatar_id 为有效 UTF-8、1..100字节；operation/digest 为64位小写 hex，request_id 为1..64 ASCII原键。owner_id 为无前导零的正 uint64 十进制字符串。未来 ensure 名称沿 BIZ Go NFC/TrimSpace 后1..80标量/最多320字节的规范快照，当前 nickname varchar(50) 不满足；完整读写/新旧库能力未验前保持关闭，不截断或降低业务上限。不能向终端返回内部号 Token。
+principal_id 为 ma+30位小写 hex；avatar_id 为有效 UTF-8、1..100字节；operation/digest 为64位小写 hex，request_id 为1..64 ASCII原键。owner_id 为无前导零的正 uint64 十进制字符串。未来 ensure 名称为严格UTF-8、非null string，沿 BIZ `x/text v0.37.0` 的 `norm.NFC.String(strings.TrimSpace(name))` 后1..80 Unicode标量/最多320 UTF-8字节，包含 stream-safe 插入的 CGJ；按规范快照拒绝 Cc，不笼统禁止 Cf，不按UTF-16单元或视觉字素计数。IM核规范快照原字节，不在验签后trim/归一化/截断。当前源码 nickname varchar(50) 不满足完整80标量承载要求；完整读写/新旧库能力未验前保持关闭，不降低业务上限。不能向终端返回内部号 Token。
 
 F2-A 九项旧摘要不等于 N1 wire 摘要；BIZ须先持久化与本地意图关联的固定 wire body/digest，沿原件重试，不能覆盖旧意图。本批不改 BIZ 表/适配器。
 
@@ -58,6 +58,25 @@ READ GET 沿 `{operation,state,state_observed_at,replayed}`，state_observed_at 
 | 独立审查 `review_n1_disable_wire` | Critical0/Important0/Minor0；审查方另实际运行 `go test -count=1 ./commons/mindlink` exit0，不冒称本方重跑其命令 |
 
 Go1.26.1/Windows；gofmt 检查及 Git whitespace 检查无差异。以上为无 integration tag 的 wire/默认包测试，不含 DB 用例；本批未运行 SQL、HTTP 页面、WS/SDK、Token/登录或撤权后原生提交拒绝。结果测试覆盖22字段/nullable零值及毫秒格式常量，没有验证实际生产者的非空结果/状态组合；没有可运行的生产者，不以结构类型通过报告停用生效或 ready。
+
+## 显示名补充的同源核对（批次 b99bf22a）
+
+回应 BIZ `pbz4yeatwj2hukeh`，本方确认固定 `6d0b3e7f81fe9f6f5ccba0f3fa6c797940bce538` 中显示名补充，Git blob SHA256 `3a36bc181526cb3e1ac02e67ddbbf9176af4b9abfb8b7fcf75eb657cc279a260`。本批实际比较：移除唯一新增 display_name_policy 后，整个 N1 机器块与 `7272e1afb65ba592b996f9ee1f3d83626abf0a7e` 一致；disable八字段/结果22字段/摘要15槽及其角色/代际/版本/原结果query规则不变。
+
+本批从固定提交取出并逐份核对显示名证据清单19份 Git 原件的规范 LF SHA，全部匹配；失败草稿、KeyError准备失败、Go/Python红例及初审问题继续保留，不计作通过。BIZ的31项规格/独立复审属于其既有记录，本批没有重跑或改称本方验证。
+
+已经检查所提供参考源码，仅用字符串/Unicode/JSON，无业务/DB调用。在 IM 当前模块（同为 x/text v0.37.0）实际运行该固定 `name_bounds.go.txt` 原件：Go1.26.1/Windows，GOTOOLCHAIN=local、GOWORK=off、GOPROXY/GOSUMDB=off、GOFLAGS=-mod=readonly，`go run .local/mindlink-name-b99/name_bounds.go` exit0。七个向量与固定 BIZ 输出全部字段相同，且两条机器块 canonical hex/计数/allowed 逐项一致；原程序的 Cc/Cf 边界断言亦执行。
+
+| 合成向量 | 本批 Go 实际标量/UTF-8字节/CGJ | 契约含义 |
+| --- | --- | --- |
+| 51个ASCII / 80个汉字 | 51/51/0；80/240/0 | 超过旧50字符存储能力的合法名字输入，未运行实际保存 |
+| 80 / 81个四字节emoji | 80/320/0；81/324/0 | 前者在上限内，后者超限 |
+| 空白包围的 e+组合重音 | 1/2/0 | BIZ持久意图前处理，IM接收并保存其规范原字节 |
+| a+31 / a+78个U+0305 | 33/65/1；81/161/2 | 后者因处理后81标量应拒绝；不以 Python 普通NFC代替Go字节oracle |
+
+参考源码 SHA256 `598a902363d9fbb8588b48258a3e58607fa8ca1b859eca15f140a285dfd2ddb4`；本方新执行输出 `.local/mindlink-name-b99/actual-vectors.json` raw SHA256 `20a3c8a24f7d9f54f0ca39e56758ce02348395f03f416f131ab2e02ac9bdaee3`，规范LF内容与提供方固定输出相同。核查及比较结果见同目录 input-audit.json/verification.json，均为忽略的合成材料。
+
+本轮只补交接说明和字符串参考验证，未新增生产名字校验器、ensure DTO/路由/迁移或改依赖/SQL。当前 sql/imserver.sql 的 nickname varchar(50) 是源码观察，live DB未核；未来还须按实际资料/标题调用链补足无损承载，并分别实查新库/升级/真实保存回读。此前不注册 ensure，不用截断回显或普通users/register代替。disable不接display_name且定义不受该后续缺口阻塞；本批不宣称禁用效果、原结果GET或完整POLICY已实现。
 
 ## Web 实施输入核对（2026-11-09）
 
