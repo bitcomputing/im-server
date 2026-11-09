@@ -4,7 +4,13 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 
 当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。没有注册路由、原结果 GET、生产权限事务或结果生产者，不能调用或据此启用 ready。[可信调用候选](mindlink-trusted-rpc-candidate_zh.md) 中 RPC/最终屏障仍待实现。
 
-## 当前唯一源登记更新（2026-11-09，a9bcc68a）
+## 当前唯一源语义澄清（2026-11-09，c41835a2）
+
+回应 BIZ `pbz8cpbj65shukeh`，本方确认当前唯一契约固定 `46c25b90b0013b6cbb425224f572381692300e7f`、Git blob/LF SHA256 `c49a953cff22a5006068f3ad5974e4199d7de50a215d0073d693e05141410c80` 的 §11.5 N1 完整技术语义及 §11.6 时间/不可变原件、跨Actor与最终屏障候选边界。两段具名JSON与下节1d671版逐字一致，8 body/15摘要/22结果/nullable/UTC毫秒不变；d063/raw2daf仅是[历史草案观察](mindlink-trusted-rpc-candidate_zh.md)，不能用作当前确认版本。当前bb76类型/解析器也不再是§11.6核92e3120当时的99f旧DTO。
+
+本次同版确认覆盖三类时间记录点、首条ready生产约束、READ原快照复放及RPC候选；不是已经联合登记、生成proto/注册procedure、生产效果或运行验收。首条同进程效果沿同一sql.Tx，不加RPC；确需跨Actor时的封装/重新验签及完整四维owner屏障、锁序和全入口gate仍按[候选说明](mindlink-trusted-rpc-candidate_zh.md)，均未实现。BIZ收到本回执后的唯一源登记由其负责，当前发信不证明其登记完成。
+
+## 唯一源1d671登记记录（2026-11-09，a9bcc68a）
 
 回应 BIZ `pbz76f48e4nhukeh`，本方确认唯一契约固定 `1d671dac7e0eeb122a695e420e9c3035fb6c65e5`，Git blob/LF SHA256 `3febb2f532dc091e6bd7c4a70a27ce0f0ffc0fb9ddc0f99018bef4ee432c12d2` 的 §11.5 N1 与新增 §11.6 四点技术边界。它继承前述6d0版，新增历史输入登记和错误字典事实修正，不把旧候选合并成第二套wire，也不等于双边冻结登记、启用或运行验收。BIZ唯一源仍由BIZ维护，本方不据发信声称其登记已更新。
 
@@ -45,14 +51,18 @@ F2-A 九项旧摘要不等于 N1 wire 摘要；BIZ须先持久化与本地意图
 | state | 沿 N1 accepted/ready/persisted/failed/unknown；首条 disable 只在同事务禁用及全部适用 gate 落地后 ready。READ query 的 ready 仅证明原查询快照/回执保存，不证明 seen 写入 |
 | effective_policy_version/effective_avatar_generation | nullable int64；disable ready 分别是原 desired 和目标代际；READ 后者为 null；accepted/failed/unknown 的未证明效果字段为 null |
 | commit_version | nullable 64小写hex，不透明同事务原回执 token；不排序，不是 policy/MsgSeqNo/全局revision，不在重查时重新分配 |
-| accepted_at/committed_at | 固定 UTC 毫秒 `YYYY-MM-DDTHH:mm:ss.SSSZ`；后者 nullable，是事务内提交记录时间，commit成功后返回，不是存储引擎完成提交的精确物理时刻 |
+| accepted_at/committed_at | 固定 UTC 毫秒 `YYYY-MM-DDTHH:mm:ss.SSSZ`；accepted_at取原wire意图首次记录点，与首次持久化一起保存；committed_at为nullable，取效果/终结回执在事务内的记录点，仅整个commit成功后随原件返回，不是存储引擎物理提交瞬间 |
 | failure | nullable；N1未知结果仅沿原 operation 查，不换键重做；超时/查询失败不代造确定失败回执 |
 
 回执只有整个事务提交成功后才能返回；commit 应答异常为 UNKNOWN_RESULT，不能推断没有写。相同原操作重试返回原回执，不能用新的 policy/time 覆盖它。`ready` 不可用一次映射 INSERT 或 accepted 代替；如果后续安装尚未完成，BIZ 仍保持 provisioning。
 
+通用state枚举不是首条producer的阶段更新许可：当前Transact只保存不可变原件，不承接accepted→ready；其generic JSON对象检查也不是ready语义校验。首条生产接线仅在全部约束同事务落地后保存/返回ready，参数/权限/能力或提交未知走非成功错误，不拼operation回执。F2父意图的准备/unknown与已提交IM原件分开；未来非终结阶段能力须另行实现，不能改写原终结结果。
+
 首条 POST/operations.query 成功 data 为 `{operation,replayed}`。GET `/apigateway/mindlink/operations/:operation_id` 只查已有 disable，按已验证 issuer+路径原ID定位并核原 audience、原 scope/目标/request/digest及当前读权，两 policy 字段相等于当前读授权版本；不能全局扫描或改写原 actor/版本，不新建 mutation、不再 effect。此入口尚未实现。
 
 READ GET 沿 `{operation,state,state_observed_at,replayed}`，state_observed_at 统一UTC毫秒，与原快照回执复放；PUT `{operation,state}` 的当前 state 与原回执分开。N1 的后续阶段转换尚未实现：当前 Transact 只保存不可变终结结果，首条不会提交 accepted 再期待重试覆盖 ready。控制面仅owner/system；system不得发送消息或扩pair成员/解除主人禁言；READ首个入口仅owner。测试信任只接受 N1 默认关闭结构，使用临时 fixture 公钥替代不可用占位，不新增真实密钥/签发入口。
+
+state_observed_at取该逻辑query首次取得授权阅读快照的记录点，与原快照/回执同事务保存复放，不以重查时间覆盖；query的ready/token只证明快照/回执已保存，不证明创建或推进seen。新逻辑读取另立query意图，复放不是新读当前state。operations.query仍只读原operation，不创建这个逻辑query意图或改原mutation/版本。
 
 新路由、生产权限投影、结果/query生产者、可信RPC及原生入口gate均未具备；HTTP/WS/Token/登录/消息持久化最终检查须共用同一权威屏障，不能由解析成功或一次disabled UPDATE宣布ready。
 

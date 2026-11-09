@@ -2,6 +2,8 @@
 
 后续 `1d4a6f92` 批次已对固定 BIZ N1 作 IM 技术确认，并替代旧 Go 值类型、实现 disable body/摘要解析，见 [当前字段源](mindlink-http-schema_zh.md)。下文保留 `7f424c2f` 当次候选及差异记录；其中旧23字段/微秒和“尚未接受”不再描述当前字段状态。RPC/生产最终屏障仍是未实现候选。
 
+本次 `c41835a2` 对 BIZ 固定 `46c25b90b0013b6cbb425224f572381692300e7f`（契约Git blob/LF SHA256 `c49a953cff22a5006068f3ad5974e4199d7de50a215d0073d693e05141410c80`）作同版技术确认：§11.5已澄清三个时间记录点、当前journal不可变及READ query只保存快照/回执；§11.6登记下列RPC/最终屏障候选。d063/raw2daf不再作为当前版本引用。确认候选不等于新增正式proto/tag、procedure、屏障SQL、生产回执或相关入口gate，仍未启用/验收；具体当前语义见[字段源](mindlink-http-schema_zh.md)。
+
 DG-20261104-003；回应 BIZ 消息 `pbz2k6sm5y8hukeh`，本批 `7f424c2fd98833786aa20f71bf0dca213bbdd8066d97292a65364ccd44685b47`。本文件补充可核定设计，不是已注册的 RPC、生成 proto、生产权限实现或放行依据。
 
 ## 当次固定源（7f424c2f）
