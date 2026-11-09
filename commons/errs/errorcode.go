@@ -15,6 +15,17 @@ var IMErrorCode_SUCCESS IMErrorCode = 0
 var IMErrorCode_PBILLEGAL IMErrorCode = 1 //pb解析失败，内部错误码
 var IMErrorCode_DEFAULT IMErrorCode = 2
 
+const (
+	IMErrorCode_MINDLINK_INVALID_REQUEST    IMErrorCode = 19001
+	IMErrorCode_MINDLINK_SCOPE_MISMATCH     IMErrorCode = 19002
+	IMErrorCode_MINDLINK_REQUEST_CONFLICT   IMErrorCode = 19003
+	IMErrorCode_MINDLINK_STALE_POLICY       IMErrorCode = 19004
+	IMErrorCode_MINDLINK_NOT_READY          IMErrorCode = 19005
+	IMErrorCode_MINDLINK_PRINCIPAL_DISABLED IMErrorCode = 19006
+	IMErrorCode_MINDLINK_UNKNOWN_RESULT     IMErrorCode = 19007
+	IMErrorCode_MINDLINK_FORBIDDEN          IMErrorCode = 19008
+)
+
 // api errorcode
 var (
 	IMErrorCode_API_DEFAULT            IMErrorCode = 10000
@@ -200,6 +211,14 @@ var (
 )
 
 var imCode2ApiErrorMap map[IMErrorCode]*ApiErrorMsg = map[IMErrorCode]*ApiErrorMsg{
+	IMErrorCode_MINDLINK_INVALID_REQUEST:    newApiErrorMsg(400, IMErrorCode_MINDLINK_INVALID_REQUEST, "INVALID_REQUEST"),
+	IMErrorCode_MINDLINK_SCOPE_MISMATCH:     newApiErrorMsg(403, IMErrorCode_MINDLINK_SCOPE_MISMATCH, "SCOPE_MISMATCH"),
+	IMErrorCode_MINDLINK_REQUEST_CONFLICT:   newApiErrorMsg(409, IMErrorCode_MINDLINK_REQUEST_CONFLICT, "REQUEST_CONFLICT"),
+	IMErrorCode_MINDLINK_STALE_POLICY:       newApiErrorMsg(409, IMErrorCode_MINDLINK_STALE_POLICY, "STALE_POLICY"),
+	IMErrorCode_MINDLINK_NOT_READY:          newApiErrorMsg(409, IMErrorCode_MINDLINK_NOT_READY, "NOT_READY"),
+	IMErrorCode_MINDLINK_PRINCIPAL_DISABLED: newApiErrorMsg(409, IMErrorCode_MINDLINK_PRINCIPAL_DISABLED, "PRINCIPAL_DISABLED"),
+	IMErrorCode_MINDLINK_UNKNOWN_RESULT:     newApiErrorMsg(503, IMErrorCode_MINDLINK_UNKNOWN_RESULT, "UNKNOWN_RESULT"),
+	IMErrorCode_MINDLINK_FORBIDDEN:          newApiErrorMsg(403, IMErrorCode_MINDLINK_FORBIDDEN, "FORBIDDEN"),
 	//api
 	IMErrorCode_SUCCESS:                newApiErrorMsg(200, IMErrorCode_SUCCESS, "success"),
 	IMErrorCode_API_DEFAULT:            newApiErrorMsg(200, IMErrorCode_API_DEFAULT, "default error"),
