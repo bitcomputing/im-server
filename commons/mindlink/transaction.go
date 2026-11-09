@@ -63,7 +63,8 @@ func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization
 		return nil, ErrUnknownResult
 	}
 	defer tx.Rollback()
-	_, err = tx.ExecContext(ctx, `INSERT INTO mindlink_operations (issuer,operation_id,request_key,binding_hash,binding_json,reservation_id) VALUES(?,?,?,?,?,?) ON DUPLICATE KEY UPDATE operation_id=operation_id`, c.Issuer, c.OperationID, requestKey[:], bindingHash[:], metadata, reservation[:])
+	// DATETIME does not carry a zone; store the first observation explicitly in UTC.
+	_, err = tx.ExecContext(ctx, `INSERT INTO mindlink_operations (issuer,operation_id,request_key,binding_hash,binding_json,reservation_id,created_time) VALUES(?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE operation_id=operation_id`, c.Issuer, c.OperationID, requestKey[:], bindingHash[:], metadata, reservation[:], time.Now().UTC().Format("2006-01-02 15:04:05.000000"))
 	if err != nil {
 		return nil, ErrUnknownResult
 	}

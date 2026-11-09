@@ -20,23 +20,37 @@ func authorizeOperationRead(ctx context.Context, tx *sql.Tx, query, original Cla
 	if !readable {
 		return ErrForbidden
 	}
-	var environment, tenant, owner, avatar, state string
-	var generation, policy int64
-	err = tx.QueryRowContext(ctx, `SELECT environment,tenant_id,owner_id,avatar_id,avatar_generation,policy_version,state FROM mindlink_principals WHERE appkey=? AND principal_id=? FOR UPDATE`, query.AppKey, original.TargetID).Scan(&environment, &tenant, &owner, &avatar, &generation, &policy, &state)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNotReady
-	}
+	principal, err := lockPolicyPrincipal(ctx, tx, original)
 	if err != nil {
-		return ErrUnknownResult
+		return err
 	}
-	if environment != query.Environment || tenant != query.TenantID || owner != query.OwnerID {
-		return ErrScopeMismatch
-	}
-	if avatar == "" || generation <= 0 || policy <= 0 || state != "active" && state != "disabled" {
-		return ErrNotReady
-	}
-	if query.ExpectedPolicyVersion != policy || query.DesiredPolicyVersion != policy {
+	if query.ExpectedPolicyVersion != principal.policy || query.DesiredPolicyVersion != principal.policy {
 		return ErrStalePolicy
 	}
 	return nil
+}
+
+type policyPrincipal struct {
+	avatar             string
+	generation, policy int64
+	state              string
+}
+
+func lockPolicyPrincipal(ctx context.Context, tx *sql.Tx, c Claims) (*policyPrincipal, error) {
+	var environment, tenant, owner, avatar, state string
+	var generation, policy int64
+	err := tx.QueryRowContext(ctx, `SELECT environment,tenant_id,owner_id,avatar_id,avatar_generation,policy_version,state FROM mindlink_principals WHERE appkey=? AND principal_id=? FOR UPDATE`, c.AppKey, c.TargetID).Scan(&environment, &tenant, &owner, &avatar, &generation, &policy, &state)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotReady
+	}
+	if err != nil {
+		return nil, ErrUnknownResult
+	}
+	if environment != c.Environment || tenant != c.TenantID || owner != c.OwnerID {
+		return nil, ErrScopeMismatch
+	}
+	if avatar == "" || generation <= 0 || policy <= 0 || state != "active" && state != "disabled" {
+		return nil, ErrNotReady
+	}
+	return &policyPrincipal{avatar, generation, policy, state}, nil
 }

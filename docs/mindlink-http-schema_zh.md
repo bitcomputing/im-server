@@ -2,7 +2,7 @@
 
 DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本页不替换它。回应 BIZ `pbz32ne2eduhukeh` / 批次 `1d4a6f925381dde9a316bbf3530d7c2f71081ba330c6a805810fd354b7c1d5e5`，本方确认固定 `6d0b3e7f81fe9f6f5ccba0f3fa6c797940bce538` 的 §11.5 N1 字段与技术语义，文件 raw SHA256 `c2b5cce47269976487fd0ddc26a0ac3e1c5bac8fce3a2027b2d06b384505d0dc`。BIZ 候选状态由其收到回执后登记，发信不作已登记证据。
 
-当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；disable 结果生产者、真实业务权威写入源和全部适用读取面仍未具备，不能据此启用 ready。
+当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；未公开的停用 SQL 事务原语已有隔离验证，真实业务权威写入源和全部适用读取面仍未具备，POST 不能据此启用 ready。
 
 ## 原生拒绝屏障增量（2026-11-09，066519ee）
 
@@ -13,6 +13,14 @@ DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 
 已重建隔离镜像 `0b385f7cd50807ba97e966afc08fa4c8bca02ea549cd7820b3384f9e995bb09d`（服务二进制 SHA256 `e984fb5b00b1ebb2b7cb4d71875aa82d28ab351ce4c2804008e8d5ac9477fcbf`，Go1.25.12），在公共 API 配置关闭的实际进程中验证 active/disabled/旧会话拒绝、签名 HTTP 和 WS 管控通道/历史拒绝。普通 HTTP 私聊及 WS 同名普通群由 SDK 接收者43收到，并核对同消息ID的唯一历史行；所列非法写入条件为零行。夹具进程和数据库已清理，无长期测试URL；保留专用 MySQL、镜像和忽略的证据目录。
 
 范围限制：这是所列 native 入口/写入路径的实现与验证，不是完整 READ、流式超时实测、实际 push 提供方、真实业务投影供给或 N1 停用 ready。盲会话列表/聚合筛除已交现有 READ 负责人评估。POST disable 继续 NOT_READY；未推送、合并或切换生产。详细红绿、跳过及旧环境失败见[接线计划](superpowers/plans/2026-11-09-mindlink-disable-native-gates.md)。
+
+### 未公开的停用事务原语（Task3A）
+
+`disable_transaction.go` 的 unexported `transactPrincipalDisable` 复用原 journal：锁既有 owner 写权限与不可变 principal/avatar，核目标代际不退和 policy CAS，再在同一事务写 disabled、目标版本及严格22字段原件/随机 token。`created_time` 首次插入显式使用 UTC，回执 accepted_at 取这条原记录；committed_at 为事务内观察时间，只有 commit 成功才返回。原操作重试仅核当前读权并复放原 ready，投影后来推进版本也不改写它；损坏或非终结原件不补成功。请求不能创建 grant 或 projection。
+
+实际自有 MySQL 测试覆盖状态/原件原子提交、回执写失败回滚、读写权限区分、错 scope/avatar/代际/版本、永久墓碑、丢 COMMIT 应答后已提交原件恢复，以及撤权竞争两种顺序。Windows domain/base/db/errs/tools race 为71顶层+326子例 PASS、0FAIL、1可选 gateway-process SKIP；Linux Go1.25.12 的本原语 SQL 测试6顶层+12子例 PASS、0FAIL/SKIP。最初锁等待观测失败保留为失败；改用实际库/表的 performance_schema 锁对象后通过，并记录真实等待1而旧查询文本观测为0。受影响 Linux 编译测试及 vet 通过，独审 C0/I0/M0；原件哈希与命令见接线计划。
+
+原语无生产调用，PolicyHTTP 的 POST 仍硬返回 NOT_READY。测试中的 write_enabled=true、投影和原件来自隔离夹具，不是生产生命周期授权供给；新 SQL pool 也不是 IM 进程重启。尚无此 producer 的公开 HTTP/重启验收，不称完整 F1 或停用 ready；无新路由、配置开关、proto、迁移或权限投影写入接口。
 
 ## 本轮查询接线（2026-11-09，066519ee）
 
