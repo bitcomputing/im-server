@@ -88,11 +88,14 @@
     "coordinator_window_confirmed": false,
     "complete_five_minute_timing_budget_verified": false,
     "safe_non_durable_abort_branch_approved": false,
-    "BIZ_release_request_message_id": "pbz59zqb6sshukeh"
+    "BIZ_release_request_message_id": "pbz59zqb6sshukeh",
+    "all_actual_test_participant_release_evidence_received": false,
+    "clarification_message_id": "pbz4zxr6wkjhukeh",
+    "historical_proposal_sha256": "6d01851ff443b542d3f6fccdaeed776f3c9fd44e0dced07b2c60da5df18ee2ed"
   },
   "verification_boundary": "This batch: fixed-source build, vet, binary transfer hashes, image/layer/config-shape and live runtime snapshots only. No native messages, SDK/page/DB, restart/rollback or PERSIST runtime retest. Old runtime evidence is historical, not this new binary acceptance.",
   "required_execution_gates": [
-    "BIZ explicitly releases testing and identifies authorized existing peer/real Token flow without sharing secrets",
+    "BIZ supplies verifiable stop-test/release confirmations covering all actual test participants including the owner, identifies the effective interval/scope and authorized existing peer/real Token flow without sharing secrets; zero BIZ inflight requests alone is not release",
     "Coordinator confirms exact future five-minute interval, exact candidate/image/binary and IM-only verification/rollback scope",
     "At execution, all baseline/port/mount/volume/persisted-data preconditions are rechecked; no silence or old browser closure as release",
     "Coordinator accepts measured full flush/stop/recreate/start/health/recovery budget and safe non-durable abort branch before any writable retest; otherwise no executable five-minute proposal"
