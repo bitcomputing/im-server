@@ -189,6 +189,8 @@ func TestMySQLPolicyHTTPGatewayProcessRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		// Reuse the owned fixture without changing production initialization SQL.
+		initial = bytes.ReplaceAll(initial, []byte("CREATE TABLE `"), []byte("CREATE TABLE IF NOT EXISTS `"))
 		if _, err := db.Exec(string(initial)); err != nil {
 			t.Fatal(err)
 		}
@@ -203,6 +205,11 @@ func TestMySQLPolicyHTTPGatewayProcessRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal("invalid owned DSN")
 		}
+		// The query fixture may predate the fresh schema's current version marker.
+		if _, err := db.Exec("UPDATE globalconfs SET conf_value='20261109' WHERE conf_key='jimdb_version'"); err != nil {
+			t.Fatal(err)
+		}
+		upgradeNativeFixture(t, db, cfg, "20261110")
 		cfg.Addr = "127.0.0.1:3306"
 		trust, _ := fixtureTrust()
 		runtime := map[string]any{

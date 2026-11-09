@@ -2,7 +2,17 @@
 
 DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本页不替换它。回应 BIZ `pbz32ne2eduhukeh` / 批次 `1d4a6f925381dde9a316bbf3530d7c2f71081ba330c6a805810fd354b7c1d5e5`，本方确认固定 `6d0b3e7f81fe9f6f5ccba0f3fa6c797940bce538` 的 §11.5 N1 字段与技术语义，文件 raw SHA256 `c2b5cce47269976487fd0ddc26a0ac3e1c5bac8fce3a2027b2d06b384505d0dc`。BIZ 候选状态由其收到回执后登记，发信不作已登记证据。
 
-当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心已提交 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，本轮继续接其公共 HTTP 和当前读投影。disable 结果生产者及[可信调用候选](mindlink-trusted-rpc-candidate_zh.md)中的最终原生屏障仍未具备，不能据此启用 ready。
+当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。原结果查询核心为 `8f200ea23fe9b48fd558eb14ccf6ed59eebb6449`，公共查询接线为 `077d5dbb91b0c95e6cab527be44be414b7032cdf`。原生拒绝屏障已有下述实际接线与隔离验收；disable 结果生产者、真实业务权威写入源和全部适用读取面仍未具备，不能据此启用 ready。
+
+## 原生拒绝屏障增量（2026-11-09，066519ee）
+
+`20261110.sql` 将独立 `write_enabled` 默认设为 false，read_enabled 不授予控制写入；增加与原生 MySQL8 `utf8mb4_0900_ai_ci` 匹配的索引列，N1 的二进制 scope 仍精确比较。已投影 active/disabled 主体及包含其成员的群，均不因关闭公共 Mindlink 配置而恢复旧 Token、管理和消息权限。迁移可在完整 ALTER 步骤之间重跑；结构不符不推进版本。
+
+登录与解码后 Actor 检查已提交 `98b93e5b9c7461f7d120d75aa08fb7e0aee0e5f7`。后续增量补齐业务 ServerPub、发送/导入/流式缓存、最终历史与收发件箱、在线发布和 push 接收者检查；异步 HTTP 在承诺成功或生成消息 ID 前拒绝，批量显式选择器不返回普通部分的假成功。数据库检查错误不伪装成离线回执。用户、群及会话哈希分别解释，消息正文与任意 KV 不作为身份字段。
+
+已重建隔离镜像 `0b385f7cd50807ba97e966afc08fa4c8bca02ea549cd7820b3384f9e995bb09d`（服务二进制 SHA256 `e984fb5b00b1ebb2b7cb4d71875aa82d28ab351ce4c2804008e8d5ac9477fcbf`，Go1.25.12），在公共 API 配置关闭的实际进程中验证 active/disabled/旧会话拒绝、签名 HTTP 和 WS 管控通道/历史拒绝。普通 HTTP 私聊及 WS 同名普通群由 SDK 接收者43收到，并核对同消息ID的唯一历史行；所列非法写入条件为零行。夹具进程和数据库已清理，无长期测试URL；保留专用 MySQL、镜像和忽略的证据目录。
+
+范围限制：这是所列 native 入口/写入路径的实现与验证，不是完整 READ、流式超时实测、实际 push 提供方、真实业务投影供给或 N1 停用 ready。盲会话列表/聚合筛除已交现有 READ 负责人评估。POST disable 继续 NOT_READY；未推送、合并或切换生产。详细红绿、跳过及旧环境失败见[接线计划](superpowers/plans/2026-11-09-mindlink-disable-native-gates.md)。
 
 ## 本轮查询接线（2026-11-09，066519ee）
 

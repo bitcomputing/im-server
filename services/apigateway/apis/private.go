@@ -18,11 +18,15 @@ func AddPrivateGlobalMuteMembers(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, req.UserIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := bases.GroupTargets("pri_global_mute", req.UserIds)
 	for _, ids := range groups {
 		uIds := ids
 		go func() {
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "pri_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "pri_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
 				UserIds:  uIds,
 				IsDelete: false,
 			})
@@ -37,11 +41,15 @@ func DelPrivateGlobalMuteMembers(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, req.UserIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := bases.GroupTargets("pri_global_mute", req.UserIds)
 	for _, ids := range groups {
 		uIds := ids
 		go func() {
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "pri_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "pri_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
 				UserIds:  uIds,
 				IsDelete: true,
 			})

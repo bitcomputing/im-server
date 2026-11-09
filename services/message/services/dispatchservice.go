@@ -20,6 +20,13 @@ func init() {
 
 func DispatchMsg(ctx context.Context, downMsg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	users := append([]string{bases.GetRequesterIdFromCtx(ctx)}, bases.GetTargetIdsFromCtx(ctx)...)
+	if downMsg != nil && (downMsg.ChannelType == pbobjs.ChannelType_Private || downMsg.ChannelType == pbobjs.ChannelType_System) {
+		users = append(users, bases.GetTargetIdFromCtx(ctx))
+	}
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, users, []string{bases.GetGroupIdFromCtx(ctx)}) != nil {
+		return
+	}
 	if downMsg.ChannelType == pbobjs.ChannelType_Private || downMsg.ChannelType == pbobjs.ChannelType_System {
 		receiverId := bases.GetTargetIdFromCtx(ctx)
 		MsgSinglePools.GetPool(strings.Join([]string{appkey, receiverId}, "_")).Submit(func() {
@@ -91,6 +98,9 @@ func preheat(ctx context.Context, appkey string, memberIds []string) {
 
 func doDispatch(ctx context.Context, receiverId string, msg *pbobjs.DownMsg, closeOffline bool) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, msg, []string{receiverId}, nil) != nil {
+		return
+	}
 	//TODO save imediately when user online, other wise, use async queue.
 	//TODO batch insert
 	sendTime := RegenateSendTime(appkey, receiverId, msg.MsgTime)
@@ -194,6 +204,9 @@ func copyDownMsg(msg *pbobjs.DownMsg, receiverId string) *pbobjs.DownMsg {
 func UserPush(ctx context.Context, msg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	targetId := bases.GetTargetIdFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, msg, []string{targetId}, nil) != nil {
+		return
+	}
 	if !UserStatusCacheContains(appkey, targetId) {
 		BatchInitUserStatus(ctx, appkey, []string{targetId})
 	}
@@ -211,6 +224,9 @@ func UserPush(ctx context.Context, msg *pbobjs.DownMsg) {
 
 func dispatchStatusSubMsgs(ctx context.Context, receiverId string, msg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, msg, []string{receiverId}, nil) != nil {
+		return
+	}
 	sendTime := RegenateSendTime(appkey, receiverId, msg.MsgTime)
 	msg.MsgTime = sendTime
 	MsgOrNtf(ctx, receiverId, msg, true)

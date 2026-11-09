@@ -7,12 +7,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -23,8 +25,10 @@ import (
 	"im-server/commons/errs"
 	"im-server/commons/gmicro/actorsystem"
 	"im-server/commons/logs"
+	policy "im-server/commons/mindlink"
 	"im-server/commons/pbdefines/pbobjs"
 	"im-server/commons/tools"
+	"im-server/services/commonservices"
 	"im-server/services/commonservices/tokens"
 	connectactors "im-server/services/connectmanager/actors"
 	"im-server/services/connectmanager/server/codec"
@@ -35,6 +39,8 @@ import (
 	friendactors "im-server/services/friendmanager/actors"
 	groupactors "im-server/services/group/actors"
 	historyactors "im-server/services/historymsg/actors"
+	history "im-server/services/historymsg/services"
+	messages "im-server/services/message/services"
 	useractors "im-server/services/usermanager/actors"
 
 	"google.golang.org/protobuf/proto"
@@ -128,14 +134,148 @@ func nativeBoundaryDB(t *testing.T) *sql.DB {
 	return db
 }
 
-type nativeLoginContext struct{ attachment imcontext.Attachment }
+func TestNativePolicyFinalPersistenceBarrier(t *testing.T) {
+	db := nativeBoundaryDB(t)
+	ctx := bases.CreateRpcCtx(nativeApp, "42")
+	msg := &pbobjs.DownMsg{TargetId: nativePrincipal, SenderId: "42", ChannelType: pbobjs.ChannelType_Private, MsgId: "rej-inbox", MsgTime: time.Now().UnixMilli(), MsgSeqNo: 1, MsgType: "JG:Txt", MsgContent: []byte(`{"content":"isolated fixture"}`)}
+	if err := messages.SaveMsg2Inbox(nativeApp, nativePrincipal, msg); !errors.Is(err, policy.ErrForbidden) {
+		t.Error("final inbox accepted an internal recipient")
+	}
+	msg.MsgId = "rej-send"
+	if err := messages.SaveMsg2Sendbox(ctx, nativeApp, "42", msg); !errors.Is(err, policy.ErrForbidden) {
+		t.Error("final sendbox accepted an internal peer")
+	}
+	msg.MsgId = "rej-p"
+	callNativeStorage(t, func() { history.SavePrivateHisMsg(ctx, "fixture-private-conver", "42", nativePrincipal, msg) })
+	msg.MsgId, msg.ChannelType, msg.TargetId = "rej-g", pbobjs.ChannelType_Group, "protected-group"
+	groupCtx := context.WithValue(ctx, bases.CtxKey_TargetId, "protected-group")
+	callNativeStorage(t, func() { history.SaveGroupHisMsg(groupCtx, "protected-group", msg, 2) })
+	if err := messages.SaveMsg2Inbox(nativeApp, "42", msg); !errors.Is(err, policy.ErrForbidden) {
+		t.Error("final inbox accepted a managed group")
+	}
+	msg.MsgId, msg.ChannelType, msg.TargetId, msg.SenderId = "rej-s", pbobjs.ChannelType_System, "42", nativePrincipal
+	history.SaveSystemHisMsg(ctx, "fixture-system-conver", nativePrincipal, "42", msg)
+	msg.MsgId, msg.ChannelType = "rej-gc", pbobjs.ChannelType_GroupCast
+	history.SaveGroupCastHisMsg(ctx, "fixture-groupcast-conver", nativePrincipal, "42", msg)
+	msg.MsgId, msg.ChannelType = "rej-brd", pbobjs.ChannelType_BroadCast
+	if code := messages.SaveBroadcastMsg(ctx, msg); code != errs.IMErrorCode_MINDLINK_FORBIDDEN {
+		t.Errorf("final broadcast accepted internal sender code=%d", code)
+	}
+	for _, table := range []string{"inboxmsgs", "sendboxmsgs", "p_hismsgs", "g_hismsgs", "s_hismsgs", "gc_hismsgs", "brdinboxmsgs"} {
+		var count int
+		if err := db.QueryRow("SELECT COUNT(*) FROM `"+table+"` WHERE app_key=?", nativeApp).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Errorf("illegal native message rows table=%s count=%d", table, count)
+		}
+	}
+}
 
-func (c *nativeLoginContext) Write(any)                            {}
+func callNativeStorage(t *testing.T, call func()) {
+	t.Helper()
+	defer func() {
+		if recover() != nil {
+			t.Error("direct storage panicked instead of rejecting; row verification still required")
+		}
+	}()
+	call()
+}
+
+type nativeLoginContext struct {
+	attachment imcontext.Attachment
+	writes     atomic.Int32
+}
+
+func (c *nativeLoginContext) Write(any)                            { c.writes.Add(1) }
 func (c *nativeLoginContext) Close(error)                          {}
 func (c *nativeLoginContext) Attachment() imcontext.Attachment     { return c.attachment }
 func (c *nativeLoginContext) SetAttachment(a imcontext.Attachment) { c.attachment = a }
 func (c *nativeLoginContext) IsActive() bool                       { return true }
 func (c *nativeLoginContext) RemoteAddr() string                   { return "127.0.0.1:10000" }
+
+func TestNativePolicyExistingSessionAndStreamCache(t *testing.T) {
+	db := nativeBoundaryDB(t)
+	ctx := bases.CreateRpcCtx(nativeApp, "42")
+	blocked := &history.StreamMsgCacheItem{Appkey: nativeApp, SenderId: "42", TargetId: nativePrincipal, StreamMsgId: "blocked-stream", MaxSeq: 1}
+	if history.AddStreamMsg(ctx, blocked) {
+		t.Error("native stream cache admitted projected peer")
+	}
+	history.RemoveStreamMsg(ctx, "blocked-stream")
+	for _, tc := range []struct {
+		id, target string
+		project    bool
+	}{
+		{"bound-stream", "ma222222222222222222222222222222", true},
+		{"ordinary-stream", "43", false},
+	} {
+		item := &history.StreamMsgCacheItem{Appkey: nativeApp, SenderId: "42", TargetId: tc.target, StreamMsgId: tc.id, MaxSeq: 1}
+		if !history.AddStreamMsg(ctx, item) {
+			t.Fatal("unprojected ordinary stream was refused")
+		}
+		t.Cleanup(func() { history.RemoveStreamMsg(ctx, tc.id) })
+		item.Append(&history.PartialContent{Content: "fixture", Seq: 1})
+		if tc.project {
+			if _, err := db.Exec("INSERT INTO mindlink_principals(environment,tenant_id,appkey,owner_id,principal_id,avatar_id,avatar_generation,policy_version,state) VALUES('dev','fixture-tenant','fixture-app','42',?,'avatar-B',1,1,'active')", tc.target); err != nil {
+				t.Fatal(err)
+			}
+		}
+		callNativeStorage(t, func() {
+			if code := history.SendStreamMsg(ctx, &pbobjs.StreamMsg{StreamMsgId: tc.id, TargetId: "42", Seq: 2, PartialContent: []byte("must-not-append")}); code != errs.IMErrorCode_MINDLINK_FORBIDDEN {
+				t.Errorf("forged stream continuation accepted code=%d", code)
+			}
+		})
+		if content, seq := item.FinalContent(); content != "fixture" || seq != 1 {
+			t.Error("rejected continuation changed cached content")
+		}
+		if tc.project {
+			if code := history.SendStreamMsg(ctx, &pbobjs.StreamMsg{StreamMsgId: tc.id, TargetId: tc.target, Seq: 2, PartialContent: []byte("must-not-append")}); code != errs.IMErrorCode_MINDLINK_FORBIDDEN {
+				t.Error("matching projected stream continuation escaped")
+			}
+			if content, seq := item.FinalContent(); content != "fixture" || seq != 1 {
+				t.Error("matching projected continuation changed cache")
+			}
+		}
+	}
+	online := &nativeLoginContext{}
+	imcontext.SetContextAttr(online, imcontext.StateKey_Appkey, nativeApp)
+	imcontext.SetContextAttr(online, imcontext.StateKey_UserID, nativePrincipal)
+	imcontext.SetContextAttr(online, imcontext.StateKey_ConnectSession, "fixture-internal-session")
+	imcontext.SetContextAttr(online, imcontext.StateKey_Platform, "Web")
+	connections.PutInContextCache(online)
+	t.Cleanup(func() { connections.RemoveFromContextCache(online) })
+	callbacks := 0
+	connections.PublishServerPubMessage(nativeApp, nativePrincipal, "", "fixture-message", time.Now().UnixMilli(), &codec.PublishMsgBody{Topic: "ntf"}, commonservices.PublishType_AllSession, func(*pbobjs.OnlineStatus) { callbacks++ })
+	if online.writes.Load() != 0 {
+		t.Error("existing internal native session received a server publication")
+	}
+	if callbacks != 0 {
+		t.Error("policy rejection masqueraded as offline status")
+	}
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	callbacks = 0
+	connections.PublishServerPubMessage(nativeApp, "42", "", "fixture-message", time.Now().UnixMilli(), &codec.PublishMsgBody{Topic: "ntf"}, commonservices.PublishType_AllSession, func(*pbobjs.OnlineStatus) { callbacks++ })
+	if callbacks != 0 {
+		t.Error("database failure masqueraded as ordinary-user offline status")
+	}
+}
+
+func TestNativePolicyServerPubCannotUpdatePrincipal(t *testing.T) {
+	db := nativeBoundaryDB(t)
+	sender := &nativeBoundarySender{}
+	wrapped := bases.BaseProcessActor(&useractors.UpdUserInfoActor{}, "usermanager")
+	wrapped.(actorsystem.ISenderHandler).SetSender(sender)
+	data, _ := tools.PbMarshal(&pbobjs.UserInfo{UserId: nativePrincipal, Nickname: "must-not-update"})
+	callNativeStorage(t, func() {
+		wrapped.(actorsystem.IReceiveHandler).OnReceive(context.Background(), &pbobjs.RpcMessageWraper{RpcMsgType: pbobjs.RpcMsgType_ServerPub, AppKey: nativeApp, Method: "upd_user_info", TargetId: nativePrincipal, IsFromApi: true, AppDataBytes: data})
+	})
+	var nickname string
+	if err := db.QueryRow("SELECT nickname FROM users WHERE app_key=? AND user_id=?", nativeApp, nativePrincipal).Scan(&nickname); err != nil || nickname != "internal fixture" {
+		t.Fatal("actual async ServerPub mutated internal principal")
+	}
+}
 
 func nativeToken(t *testing.T, id string) string {
 	t.Helper()

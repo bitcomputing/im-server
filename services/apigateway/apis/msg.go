@@ -37,6 +37,9 @@ func SendPrivateMsg(ctx *gin.Context) {
 	}
 	targetIds = append(targetIds, sendMsgReq.TargetIds...)
 	targetIds = purgeTargetIds(targetIds)
+	if !nativeSendAllowed(ctx, sendMsgReq, targetIds, pbobjs.ChannelType_Private) {
+		return
+	}
 	ret := []*models.SendMsgRespItem{}
 	msgIdMap := map[string]string{}
 	for _, targetId := range targetIds {
@@ -92,6 +95,9 @@ func SendSystemMsg(ctx *gin.Context) {
 	}
 	targetIds = append(targetIds, sendMsgReq.TargetIds...)
 	targetIds = purgeTargetIds(targetIds)
+	if !nativeSendAllowed(ctx, sendMsgReq, targetIds, pbobjs.ChannelType_System) {
+		return
+	}
 	ret := []*models.SendMsgRespItem{}
 	msgIdMap := map[string]string{}
 	for _, targetId := range targetIds {
@@ -138,6 +144,9 @@ func SendGroupMsg(ctx *gin.Context) {
 	}
 	targetIds = append(targetIds, sendMsgReq.TargetIds...)
 	targetIds = purgeTargetIds(targetIds)
+	if !nativeSendAllowed(ctx, sendMsgReq, targetIds, pbobjs.ChannelType_Group) {
+		return
+	}
 	ret := []*models.SendMsgRespItem{}
 	msgIdMap := map[string]string{}
 	for _, targetId := range targetIds {
@@ -185,6 +194,22 @@ func SendGroupCastMsg(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	users, groups := []string{req.SenderId}, []string{}
+	for _, conver := range req.TargetConvers {
+		if conver == nil {
+			tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+			return
+		}
+		if conver.ChannelType == int(pbobjs.ChannelType_Private) {
+			users = append(users, conver.TargetId)
+		}
+		if conver.ChannelType == int(pbobjs.ChannelType_Group) {
+			groups = append(groups, conver.TargetId)
+		}
+	}
+	if !nativeHTTPAllowed(ctx, users, groups, nil) {
+		return
+	}
 	if req.TargetId != "" {
 		//add group cast msg
 		bases.AsyncRpcCall(services.ToRpcCtx(ctx, req.SenderId), "gc_msg", req.TargetId, &pbobjs.UpMsg{
@@ -220,6 +245,9 @@ func SendBroadCastMsg(ctx *gin.Context) {
 	var req models.SendBrdCastMsgReq
 	if err := ctx.BindJSON(&req); err != nil || req.SenderId == "" || req.MsgType == "" || req.MsgContent == "" {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+		return
+	}
+	if !nativeHTTPAllowed(ctx, []string{req.SenderId}, nil, nil) {
 		return
 	}
 	flag := msgdefines.SetStoreMsg(0)

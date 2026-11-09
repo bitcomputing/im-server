@@ -60,6 +60,9 @@ func UpdateUser(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, []string{req.UserId}, nil, nil) {
+		return
+	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "upd_user_info", req.UserId, &pbobjs.UserInfo{
 		UserId:       req.UserId,
 		Nickname:     req.Nickname,
@@ -83,6 +86,9 @@ func SetUserSettings(ctx *gin.Context) {
 	}
 	if len(kvMap) <= 0 {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+		return
+	}
+	if !nativeHTTPAllowed(ctx, []string{req.UserId}, nil, nil) {
 		return
 	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "set_user_settings", req.UserId, &pbobjs.UserInfo{
@@ -187,6 +193,12 @@ func QryUserOnlineStatus(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_PARAM_REQUIRED)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, userOnlineReq.UserIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
+	var resultMu sync.Mutex
+	resultCode := errs.IMErrorCode_SUCCESS
 	ret := models.UserOnlineStatusResp{
 		Items: []*models.UserOnlineStatusItem{},
 	}
@@ -198,13 +210,33 @@ func QryUserOnlineStatus(ctx *gin.Context) {
 		userIds := ids
 		go func() {
 			defer wg.Done()
-			_, resp, err := bases.SyncRpcCall(services.ToRpcCtx(ctx, ""), "qry_online_status", userIds[0], &pbobjs.UserOnlineStatusReq{
+			code, resp, err := bases.SyncRpcCall(rpcCtx, "qry_online_status", userIds[0], &pbobjs.UserOnlineStatusReq{
 				UserIds: userIds,
 			}, func() proto.Message {
 				return &pbobjs.UserOnlineStatusResp{}
 			})
+			resultMu.Lock()
+			defer resultMu.Unlock()
+			if err != nil {
+				if resultCode == errs.IMErrorCode_SUCCESS {
+					resultCode = errs.IMErrorCode_API_INTERNAL_TIMEOUT
+				}
+				return
+			}
+			if code != errs.IMErrorCode_SUCCESS {
+				if resultCode == errs.IMErrorCode_SUCCESS {
+					resultCode = code
+				}
+				return
+			}
 			if err == nil {
 				onlineResp, ok := resp.(*pbobjs.UserOnlineStatusResp)
+				if !ok {
+					if resultCode == errs.IMErrorCode_SUCCESS {
+						resultCode = errs.IMErrorCode_API_INTERNAL_RESP_FAIL
+					}
+					return
+				}
 				if ok && len(onlineResp.Items) > 0 {
 					for _, item := range onlineResp.Items {
 						tmpMap.Store(item.UserId, item)
@@ -214,6 +246,10 @@ func QryUserOnlineStatus(ctx *gin.Context) {
 		}()
 	}
 	wg.Wait()
+	if resultCode != errs.IMErrorCode_SUCCESS {
+		tools.ErrorHttpResp(ctx, resultCode)
+		return
+	}
 	tmpMap.Range(func(key, value any) bool {
 		item := value.(*pbobjs.UserOnlineItem)
 		ret.Items = append(ret.Items, &models.UserOnlineStatusItem{
@@ -235,6 +271,18 @@ func UserBan(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_PARAM_REQUIRED)
 		return
 	}
+	userIds := []string{}
+	for _, user := range banReq.Items {
+		if user == nil {
+			tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+			return
+		}
+		userIds = append(userIds, user.UserId)
+	}
+	if !nativeHTTPAllowed(ctx, userIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := map[string][]*pbobjs.BanUser{}
 	for _, user := range banReq.Items {
 		node := bases.GetCluster().GetTargetNode("ban_users", user.UserId)
@@ -266,7 +314,7 @@ func UserBan(ctx *gin.Context) {
 		users := banUsers
 		go func() {
 			defer wg.Done()
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "ban_users", users[0].UserId, &pbobjs.BanUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "ban_users", users[0].UserId, &pbobjs.BanUsersReq{
 				BanUsers: users,
 				IsAdd:    true,
 			})
@@ -286,6 +334,18 @@ func UserUnBan(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_PARAM_REQUIRED)
 		return
 	}
+	userIds := []string{}
+	for _, user := range banReq.Items {
+		if user == nil {
+			tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+			return
+		}
+		userIds = append(userIds, user.UserId)
+	}
+	if !nativeHTTPAllowed(ctx, userIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := map[string][]*pbobjs.BanUser{}
 	for _, user := range banReq.Items {
 		node := bases.GetCluster().GetTargetNode("ban_users", user.UserId)
@@ -312,7 +372,7 @@ func UserUnBan(ctx *gin.Context) {
 		users := banUsers
 		go func() {
 			defer wg.Done()
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "ban_users", users[0].UserId, &pbobjs.BanUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "ban_users", users[0].UserId, &pbobjs.BanUsersReq{
 				BanUsers: users,
 				IsAdd:    false,
 			})
@@ -378,6 +438,9 @@ func BlockUser(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_PARAM_REQUIRED)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, append([]string{blockReq.UserId}, blockReq.BlockUserIds...), nil, nil) {
+		return
+	}
 	for _, blockUserId := range blockReq.BlockUserIds {
 		targetId := commonservices.GetConversationId(blockReq.UserId, blockUserId, pbobjs.ChannelType_Private)
 		bases.AsyncRpcCall(services.ToRpcCtx(ctx, blockReq.UserId), "block_users", targetId, &pbobjs.BlockUsersReq{
@@ -396,6 +459,9 @@ func UnBlockUser(ctx *gin.Context) {
 	}
 	if len(blockReq.BlockUserIds) <= 0 {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_PARAM_REQUIRED)
+		return
+	}
+	if !nativeHTTPAllowed(ctx, append([]string{blockReq.UserId}, blockReq.BlockUserIds...), nil, nil) {
 		return
 	}
 	for _, blockUserId := range blockReq.BlockUserIds {

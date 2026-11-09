@@ -28,6 +28,9 @@ func init() {
 	}
 }
 func PublishServerPubMessage(appkey, userid, session string, msgId string, msgTime int64, serverPubMsg *codec.PublishMsgBody, publishType commonservices.PublishType, callback func(*pbobjs.OnlineStatus)) {
+	if bases.CheckNativeIdentities(context.Background(), appkey, []string{userid}, nil) != nil {
+		return
+	}
 	userCtxMap := GetConnectCtxByUser(appkey, userid)
 	onlineStatus := &pbobjs.OnlineStatus{
 		Type:      pbobjs.OnlineType_Offline,

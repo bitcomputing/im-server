@@ -14,6 +14,9 @@ import (
 
 func SendSystemMsg(ctx context.Context, senderId, receiverId string, upMsg *pbobjs.UpMsg) (errs.IMErrorCode, string, int64, int64) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, upMsg, []string{senderId, receiverId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code, "", 0, 0
+	}
 	converId := commonservices.GetConversationId(senderId, receiverId, pbobjs.ChannelType_Private)
 	//statistic
 	commonservices.ReportUpMsg(appkey, pbobjs.ChannelType_System, 1)

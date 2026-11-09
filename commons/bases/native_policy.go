@@ -159,7 +159,7 @@ func normalizedNativeField(field protoreflect.FieldDescriptor) string {
 
 func rejectNativeRequest(ctx context.Context, msg proto.Message, service string, sender actorsystem.ActorRef) bool {
 	kind := GetRpcTypeFromCtx(ctx)
-	if kind != pbobjs.RpcMsgType_UserPub && kind != pbobjs.RpcMsgType_QueryMsg && GetMethodFromCtx(ctx) != "msg_ack" {
+	if kind != pbobjs.RpcMsgType_UserPub && kind != pbobjs.RpcMsgType_QueryMsg && kind != pbobjs.RpcMsgType_ServerPub && GetMethodFromCtx(ctx) != "msg_ack" {
 		return false
 	}
 	users, groups := nativeRequestIdentities(ctx, msg, service)

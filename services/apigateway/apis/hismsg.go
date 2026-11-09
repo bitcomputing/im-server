@@ -222,6 +222,10 @@ func MarkRead(ctx *gin.Context) {
 		})
 	}
 	converId := commonservices.GetConversationId(req.UserId, req.TargetId, pbobjs.ChannelType(req.ChannelType))
+	users, groups := nativeHTTPIdentities(req.UserId, []string{req.TargetId}, pbobjs.ChannelType(req.ChannelType))
+	if !nativeHTTPAllowed(ctx, users, groups, nil) {
+		return
+	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "mark_read", converId, &pbobjs.MarkReadReq{
 		TargetId:    req.TargetId,
 		ChannelType: pbobjs.ChannelType(req.ChannelType),
@@ -248,6 +252,10 @@ func ImportHisMsg(ctx *gin.Context) {
 	}
 	if msg.ReceiverId == "" {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+		return
+	}
+	users, groups := nativeHTTPIdentities(msg.SenderId, []string{msg.ReceiverId}, pbobjs.ChannelType(msg.ChannelType))
+	if !nativeHTTPAllowed(ctx, users, groups, nil) {
 		return
 	}
 	if msg.ChannelType == int32(pbobjs.ChannelType_Private) {

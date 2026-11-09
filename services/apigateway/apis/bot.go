@@ -105,6 +105,9 @@ func UpdateBot(ctx *gin.Context) {
 			Value: tools.ToJson(botInfo.BotSettings),
 		})
 	}
+	if !nativeHTTPAllowed(ctx, []string{botInfo.BotId}, nil, nil) {
+		return
+	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "upd_user_info", botInfo.BotId, &pbobjs.UserInfo{
 		UserId:       botInfo.BotId,
 		Nickname:     botInfo.Nickname,

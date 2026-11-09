@@ -18,6 +18,9 @@ func SendGroupMsg(ctx context.Context, upMsg *pbobjs.UpMsg) (errs.IMErrorCode, s
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	groupId := bases.GetTargetIdFromCtx(ctx)
 	senderId := bases.GetRequesterIdFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, upMsg, []string{senderId}, []string{groupId})); code != errs.IMErrorCode_SUCCESS {
+		return code, "", 0, 0, "", 0, nil
+	}
 
 	//statistic
 	commonservices.ReportUpMsg(appkey, pbobjs.ChannelType_Group, 1)
@@ -360,6 +363,9 @@ func getMembersExceptMe(ctx context.Context, groupId string) []string {
 func ImportGroupHisMsg(ctx context.Context, msg *pbobjs.UpMsg) {
 	groupId := bases.GetTargetIdFromCtx(ctx)
 	senderId := bases.GetRequesterIdFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, bases.GetAppKeyFromCtx(ctx), msg, []string{senderId}, []string{groupId}) != nil {
+		return
+	}
 	groupInfo := GetGroupInfo4Msg(ctx, groupId)
 	memberIds := getMembersExceptMe(ctx, groupId)
 	memberCount := len(memberIds)

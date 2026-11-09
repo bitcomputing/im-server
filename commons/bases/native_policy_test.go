@@ -114,12 +114,21 @@ func TestDecodedNativeActorFailsClosedBeforeBusinessAndKeepsErrorDirection(t *te
 			}
 		})
 	}
-	for _, kind := range []pbobjs.RpcMsgType{pbobjs.RpcMsgType_QueryAck, pbobjs.RpcMsgType_UserPubAck, pbobjs.RpcMsgType_ServerPub} {
+	for _, kind := range []pbobjs.RpcMsgType{pbobjs.RpcMsgType_QueryAck, pbobjs.RpcMsgType_UserPubAck} {
 		business := &nativeProbeActor{}
 		wrapped := BaseProcessActor(business, "message").(*baseProcessActor)
 		wrapped.OnReceive(context.Background(), &pbobjs.RpcMessageWraper{RpcMsgType: kind, AppKey: "fixture-app", Method: "connect"})
 		if business.calls != 1 {
 			t.Fatalf("fence swallowed a reply/delivery direction: %v", kind)
 		}
+	}
+}
+
+func TestNativeActorChecksAsyncServerPubBusinessRequests(t *testing.T) {
+	business := &nativeProbeActor{}
+	wrapped := BaseProcessActor(business, "usermanager").(*baseProcessActor)
+	wrapped.OnReceive(context.Background(), &pbobjs.RpcMessageWraper{RpcMsgType: pbobjs.RpcMsgType_ServerPub, AppKey: "fixture-app", Method: "upd_user_info"})
+	if business.calls != 0 {
+		t.Fatal("async business request bypassed native fence")
 	}
 }

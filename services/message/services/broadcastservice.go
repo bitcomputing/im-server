@@ -67,6 +67,9 @@ func SyncBrdMsgs(ctx context.Context, appkey string, startTime int64, count int)
 }
 
 func BrdAppendMsg(ctx context.Context, msg *pbobjs.DownMsg) errs.IMErrorCode {
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, bases.GetAppKeyFromCtx(ctx), msg, nil, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code
+	}
 	if msg != nil {
 		appkey := bases.GetAppKeyFromCtx(ctx)
 		lock := brdLocks.GetLocks(appkey)
@@ -81,6 +84,9 @@ func BrdAppendMsg(ctx context.Context, msg *pbobjs.DownMsg) errs.IMErrorCode {
 }
 
 func SaveBroadcastMsg(ctx context.Context, msg *pbobjs.DownMsg) errs.IMErrorCode {
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, bases.GetAppKeyFromCtx(ctx), msg, nil, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code
+	}
 	data, _ := tools.PbMarshal(msg)
 	brdStorage := storages.NewBrdInboxMsgStorage()
 	brdStorage.SaveMsg(models.BrdInboxMsgMsg{
