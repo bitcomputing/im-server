@@ -7,15 +7,15 @@ import (
 	"im-server/commons/bases"
 	"im-server/commons/errs"
 	"im-server/commons/pbdefines/pbobjs"
-	"im-server/commons/tools"
 	"im-server/services/commonservices"
 	"im-server/services/commonservices/msgdefines"
 	"im-server/services/conversation/storages"
 	"im-server/services/conversation/storages/models"
-	hisStorages "im-server/services/historymsg/storages"
-	hisModels "im-server/services/historymsg/storages/models"
+	"math"
 	"sort"
 	"time"
+
+	"google.golang.org/protobuf/proto"
 )
 
 func SaveConversationV2(ctx context.Context, appkey string, userId string, msg *pbobjs.DownMsg, isOffline bool) {
@@ -173,24 +173,37 @@ func SaveNilConversationV2(ctx context.Context, appkey string, userId string, ta
 	return errs.IMErrorCode_SUCCESS, resp
 }
 
-func SyncConversationsV2(ctx context.Context, appkey, userId string, startTime int64, count int32) *pbobjs.QryConversationsResp {
+func SyncConversationsV2(ctx context.Context, appkey, userId string, startTime int64, count int32) (errs.IMErrorCode, *pbobjs.QryConversationsResp) {
+	if count < 0 || count == math.MaxInt32 || appkey != bases.GetAppKeyFromCtx(ctx) {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
 	resp := &pbobjs.QryConversationsResp{
 		Conversations: []*pbobjs.Conversation{},
 	}
 	userConvers := getUserConvers(appkey, userId)
-	convers := userConvers.SyncConvers(startTime, count+1)
+	code, userConvers, visible := nativeConverVisibility(ctx, userConvers)
+	if code != 0 {
+		return code, nil
+	}
+	convers := userConvers.SyncConvers(startTime, count+1, visible)
 	if len(convers) > int(count) {
 		convers = convers[:count]
 	} else {
 		resp.IsFinished = true
 	}
-	conversations := fillConvers(ctx, userId, convers, userConvers)
+	code, conversations := fillConvers(ctx, userId, convers, userConvers)
+	if code != 0 {
+		return code, nil
+	}
 	resp.Conversations = append(resp.Conversations, conversations...)
-	return resp
+	return errs.IMErrorCode_SUCCESS, resp
 }
 
 func QryConverV2(ctx context.Context, userId string, req *pbobjs.QryConverReq) (errs.IMErrorCode, *pbobjs.Conversation) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, req, []string{userId}, nil)); code != 0 {
+		return code, nil
+	}
 	userConvers := getUserConvers(appkey, userId)
 	conver := userConvers.QryConver(req.TargetId, req.SubChannel, req.ChannelType)
 	if conver == nil {
@@ -227,7 +240,10 @@ func QryConverV2(ctx context.Context, userId string, req *pbobjs.QryConverReq) (
 			ConverTags:        converTags,
 		}
 	} else {
-		conversations := fillConvers(ctx, userId, []*models.Conversation{conver}, userConvers)
+		code, conversations := fillConvers(ctx, userId, []*models.Conversation{conver}, userConvers)
+		if code != 0 {
+			return code, nil
+		}
 		if len(conversations) <= 0 {
 			return errs.IMErrorCode_SUCCESS, &pbobjs.Conversation{
 				TargetId:    req.TargetId,
@@ -240,6 +256,9 @@ func QryConverV2(ctx context.Context, userId string, req *pbobjs.QryConverReq) (
 
 func BatchQryConversV2(ctx context.Context, req *pbobjs.QryConverReq) (errs.IMErrorCode, *pbobjs.QryConversationsResp) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, req, nil, nil)); code != 0 {
+		return code, nil
+	}
 	ret := &pbobjs.QryConversationsResp{
 		Conversations: []*pbobjs.Conversation{},
 	}
@@ -260,7 +279,10 @@ func BatchQryConversV2(ctx context.Context, req *pbobjs.QryConverReq) (errs.IMEr
 	return errs.IMErrorCode_SUCCESS, ret
 }
 
-func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) *pbobjs.QryConversationsResp {
+func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) (errs.IMErrorCode, *pbobjs.QryConversationsResp) {
+	if req == nil || req.Count < 0 || req.Count == math.MaxInt32 {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	userId := bases.GetRequesterIdFromCtx(ctx)
 	startTime := req.StartTime
@@ -277,20 +299,27 @@ func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) *p
 		Conversations: []*pbobjs.Conversation{},
 	}
 	userConvers := getUserConvers(appkey, userId)
-	convers := userConvers.QryConvers(startTime, count+1, isPositiveOrder, req.TargetId, req.ChannelType, req.Tag, req.ExceptTag)
+	code, userConvers, visible := nativeConverVisibility(ctx, userConvers)
+	if code != 0 {
+		return code, nil
+	}
+	convers := userConvers.QryConvers(startTime, count+1, isPositiveOrder, req.TargetId, req.ChannelType, req.Tag, req.ExceptTag, visible)
 	if len(convers) > int(count) {
 		convers = convers[:count]
 	} else {
 		resp.IsFinished = true
 	}
-	conversations := fillConvers(ctx, userId, convers, userConvers)
+	code, conversations := fillConvers(ctx, userId, convers, userConvers)
+	if code != 0 {
+		return code, nil
+	}
 	resp.Conversations = append(resp.Conversations, conversations...)
 	if isPositiveOrder {
 		sort.Slice(resp.Conversations, func(i, j int) bool {
 			return resp.Conversations[i].SortTime > resp.Conversations[j].SortTime
 		})
 	}
-	return resp
+	return errs.IMErrorCode_SUCCESS, resp
 }
 
 func ClearTotalUnreadV2(ctx context.Context, userId string) errs.IMErrorCode {
@@ -501,8 +530,15 @@ func QryTopConversV2(ctx context.Context, userId string, req *pbobjs.QryTopConve
 		IsFinished:    true,
 	}
 	userConvers := getUserConvers(appkey, userId)
-	convers := userConvers.QryTopConvers(req.StartTime, 101, req.SortType, req.Order > 0)
-	conversations := fillConvers(ctx, userId, convers, userConvers)
+	code, userConvers, visible := nativeConverVisibility(ctx, userConvers)
+	if code != 0 {
+		return code, nil
+	}
+	convers := userConvers.QryTopConvers(req.StartTime, 101, req.SortType, req.Order > 0, visible)
+	code, conversations := fillConvers(ctx, userId, convers, userConvers)
+	if code != 0 {
+		return code, nil
+	}
 	resp.Conversations = append(resp.Conversations, conversations...)
 	if len(resp.Conversations) > 100 {
 		resp.Conversations = resp.Conversations[:100]
@@ -511,11 +547,18 @@ func QryTopConversV2(ctx context.Context, userId string, req *pbobjs.QryTopConve
 	return errs.IMErrorCode_SUCCESS, resp
 }
 
-func QryTotalUnreadCountV2(ctx context.Context, userId string, req *pbobjs.QryTotalUnreadCountReq) *pbobjs.QryTotalUnreadCountResp {
+func QryTotalUnreadCountV2(ctx context.Context, userId string, req *pbobjs.QryTotalUnreadCountReq) (errs.IMErrorCode, *pbobjs.QryTotalUnreadCountResp) {
+	if req == nil {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	userConvers := getUserConvers(appkey, userId)
-	return &pbobjs.QryTotalUnreadCountResp{
-		TotalCount: userConvers.TotalUnreadCount(req.Filter),
+	code, userConvers, visible := nativeConverVisibility(ctx, userConvers)
+	if code != 0 {
+		return code, nil
+	}
+	return errs.IMErrorCode_SUCCESS, &pbobjs.QryTotalUnreadCountResp{
+		TotalCount: userConvers.totalUnreadCount(req.Filter, visible),
 	}
 }
 
@@ -562,32 +605,18 @@ func UndisturbConversV2(ctx context.Context, req *pbobjs.UndisturbConversReq) er
 	return errs.IMErrorCode_SUCCESS
 }
 
-func fillConvers(ctx context.Context, userId string, convers []*models.Conversation, userConvers *UserConversations) []*pbobjs.Conversation {
+func fillConvers(ctx context.Context, userId string, convers []*models.Conversation, userConvers *UserConversations) (errs.IMErrorCode, []*pbobjs.Conversation) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
 	retConvers := []*pbobjs.Conversation{}
 
-	priConvers := []hisModels.ConverItem{}
-	grpConvers := []hisModels.ConverItem{}
 	for _, conver := range convers {
-		if conver.IsDeleted > 0 {
-			continue
-		}
-		if conver.ChannelType == pbobjs.ChannelType_Private {
-			priConvers = append(priConvers, hisModels.ConverItem{
-				ConverId:   commonservices.GetConversationId(userId, conver.TargetId, conver.ChannelType),
-				SubChannel: conver.SubChannel,
-				MsgId:      conver.LatestMsgId,
-			})
-		} else if conver.ChannelType == pbobjs.ChannelType_Group {
-			grpConvers = append(grpConvers, hisModels.ConverItem{
-				ConverId:   commonservices.GetConversationId(userId, conver.TargetId, conver.ChannelType),
-				SubChannel: conver.SubChannel,
-				MsgId:      conver.LatestMsgId,
-			})
+		if conver.IsDeleted == 0 && conver.MentionInfo == nil {
+			conver.MentionInfo = userConvers.GetMentionInfo(conver.TargetId, conver.SubChannel, conver.ChannelType)
 		}
 	}
-	priMsgs := qryPriMsgs(appkey, userId, priConvers)
-	grpMsgs := qryGrpMsgs(appkey, userId, grpConvers)
+	if err := prepareNativeReadRows(ctx, appkey, userId, convers); err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+	}
 	for _, conver := range convers {
 		unreadCount := conver.LatestUnreadMsgIndex - conver.LatestReadMsgIndex
 		conversation := &pbobjs.Conversation{
@@ -608,11 +637,16 @@ func fillConvers(ctx context.Context, userId string, convers []*models.Conversat
 		}
 		//add latest msg
 		var downMsg *pbobjs.DownMsg
+		if len(conver.LatestMsg) > 0 {
+			downMsg = &pbobjs.DownMsg{}
+			if err := proto.Unmarshal(conver.LatestMsg, downMsg); err != nil {
+				return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+			}
+		}
 		if conver.ChannelType == pbobjs.ChannelType_Private {
-			if msg, exist := priMsgs[conver.LatestMsgId]; exist {
-				downMsg = msg
-				conversation.TargetUserInfo = msg.TargetUserInfo
-				conversation.FriendInfo = msg.FriendInfo
+			if downMsg != nil {
+				conversation.TargetUserInfo = downMsg.TargetUserInfo
+				conversation.FriendInfo = downMsg.FriendInfo
 				if userId == downMsg.SenderId {
 					downMsg.IsSend = true
 					downMsg.TargetId = conver.TargetId
@@ -627,10 +661,9 @@ func fillConvers(ctx context.Context, userId string, convers []*models.Conversat
 				conversation.TargetUserInfo = commonservices.GetTargetDisplayUserInfo(ctx, conver.TargetId)
 			}
 		} else if conver.ChannelType == pbobjs.ChannelType_Group {
-			if msg, exist := grpMsgs[conver.LatestMsgId]; exist {
-				downMsg = msg
-				conversation.GroupInfo = msg.GroupInfo
-				conversation.TargetUserInfo = msg.TargetUserInfo
+			if downMsg != nil {
+				conversation.GroupInfo = downMsg.GroupInfo
+				conversation.TargetUserInfo = downMsg.TargetUserInfo
 			}
 			if conversation.GroupInfo == nil {
 				conversation.GroupInfo = commonservices.GetGroupInfoFromCache(ctx, conver.TargetId)
@@ -645,10 +678,9 @@ func fillConvers(ctx context.Context, userId string, convers []*models.Conversat
 			// 	conversation.GroupInfo = commonservices.GetGroupInfoFromCache(ctx, conversation.TargetId)
 			// }
 			//mentions
-			mentionInfo := userConvers.GetMentionInfo(conver.TargetId, conver.SubChannel, conver.ChannelType)
+			mentionInfo := conver.MentionInfo
 			if mentionInfo == nil {
-				userConvers.AppendMention(conver.TargetId, conver.SubChannel, conver.ChannelType, nil)
-				mentionInfo = userConvers.GetMentionInfo(conver.TargetId, conver.SubChannel, conver.ChannelType)
+				return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
 			}
 			if mentionInfo != nil {
 				conversation.Mentions = &pbobjs.Mentions{
@@ -687,47 +719,10 @@ func fillConvers(ctx context.Context, userId string, convers []*models.Conversat
 				}
 			}
 		}
+		if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, conversation, []string{userId}, nil)); code != 0 {
+			return code, nil
+		}
 		retConvers = append(retConvers, conversation)
 	}
-	return retConvers
-}
-
-func qryGrpMsgs(appkey, userId string, convers []hisModels.ConverItem) map[string]*pbobjs.DownMsg {
-	storage := hisStorages.NewGroupHisMsgStorage()
-	msgs, err := storage.FindByConvers(appkey, convers)
-	ret := map[string]*pbobjs.DownMsg{}
-	if err == nil {
-		for _, msg := range msgs {
-			var downMsg pbobjs.DownMsg
-			err = tools.PbUnMarshal(msg.MsgBody, &downMsg)
-			if err == nil {
-				if userId == downMsg.SenderId {
-					downMsg.IsSend = true
-				}
-				ret[downMsg.MsgId] = &downMsg
-			}
-		}
-	}
-	return ret
-}
-
-func qryPriMsgs(appkey, userId string, convers []hisModels.ConverItem) map[string]*pbobjs.DownMsg {
-	storage := hisStorages.NewPrivateHisMsgStorage()
-	msgs, err := storage.FindByConvers(appkey, convers)
-	ret := map[string]*pbobjs.DownMsg{}
-	if err == nil {
-		for _, msg := range msgs {
-			var downMsg pbobjs.DownMsg
-			err = tools.PbUnMarshal(msg.MsgBody, &downMsg)
-			if err == nil {
-				if userId == msg.SenderId {
-					downMsg.IsSend = true
-					downMsg.TargetId = msg.ReceiverId
-				}
-				downMsg.IsRead = msg.IsRead > 0
-				ret[downMsg.MsgId] = &downMsg
-			}
-		}
-	}
-	return ret
+	return errs.IMErrorCode_SUCCESS, retConvers
 }

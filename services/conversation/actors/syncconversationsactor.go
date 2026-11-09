@@ -23,11 +23,13 @@ func (actor *SyncConversationsActor) OnReceive(ctx context.Context, input proto.
 
 		logs.WithContext(ctx).Infof("user_id:%s\tstart_time:%d\tcount:%d", userId, startTime, syncConverReq.Count)
 
-		resp := services.SyncConversationsV2(ctx, appkey, userId, startTime, syncConverReq.Count)
-		qryAck := bases.CreateQueryAckWraper(ctx, 0, resp)
+		code, resp := services.SyncConversationsV2(ctx, appkey, userId, startTime, syncConverReq.Count)
+		qryAck := bases.CreateQueryAckWraper(ctx, code, resp)
 		actor.Sender.Tell(qryAck, actorsystem.NoSender)
 
-		logs.WithContext(ctx).Infof("result_len:%d", len(resp.Conversations))
+		if resp != nil {
+			logs.WithContext(ctx).Infof("result_len:%d", len(resp.Conversations))
+		}
 	} else {
 		logs.WithContext(ctx).Error("input is illigal.")
 	}

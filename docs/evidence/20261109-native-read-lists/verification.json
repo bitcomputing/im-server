@@ -1,0 +1,148 @@
+{
+  "task": "DG-20261104-003/F1-READ native blind lists and aggregate",
+  "batch": "2f8c434d",
+  "status": "candidate; not accepted; batch-classification regression remains open",
+  "base": "028bb2aa5359c96cc67337814b094239ba0b99a4",
+  "branch": "feat/mindlink-read-lists",
+  "preserved_old_READ_head": "dcdd3a30ba4b802dce11ae396dc8f3711755ed4f",
+  "source_archive_sha256": "fed7f9a52a0cc89c29485ea10174f97184c9c385893e35cdf0c472e43ae09972",
+  "overlay_sha256": {
+    "services/conversation/actors/qryconversationsactor.go": "7cb8795c9a0bcc81cdfee9838eff01998369f5d74f9897ab9191eb5552f8bf93",
+    "services/conversation/actors/qryglobalconversactor.go": "551f44e80f9043c6fb28bf8d15c54a9695f1bb9af80a757fc6f30ceae6c34849",
+    "services/conversation/actors/qrytotalunreadcountactor.go": "a111c3752e89d2691d479f1a9857c306cf4d9997bcd903b28ce1566383d8cf5f",
+    "services/conversation/actors/syncconversationsactor.go": "18d2ba25ae4bdb3882550a67f60503a047c5c4d0ac47ba2ad1181486350955a2",
+    "services/conversation/services/convercache.go": "8d070009889d43ba05e11c37e9fe025b4bddba539472e156ad879df16fe2c202",
+    "services/conversation/services/conversationservice.go": "43ea6dcd112cb4bff742d95da54414741584084c73d2273d6b12012357d6eef7",
+    "services/conversation/services/converservice.go": "6174c118c1c77f5f53afb8a9d36688042f2f1c75cd209395e41460672de5332b",
+    "services/conversation/services/native_read_cases_test.go": "c5b01a56937e21d7344b5e3260b340d8bbdf2899d532926a9d6a5af0e6013db8",
+    "services/conversation/services/native_read_integration_test.go": "f8795824864b4eabe8abb69d12ebe1c245dfb7c4b433fca85395d6913590613d",
+    "services/conversation/services/native_read_performance_test.go": "99cd99f3f87c1d0f589be1ff60109f2e7b89db9954ca3ebba04b57f0c78eeb4c",
+    "services/conversation/services/nativeconverservice.go": "282ce352d1ad6ca531bf22f8fcaea759ecf5486ed22ba9097c152e58db101db5",
+    "services/conversation/services/nativeconversources.go": "70de5d4b0bf62bef74a5ebb301233b3bd72b7a478d6d8b34cf65d9e41391ddf5",
+    "services/conversation/storages/dbs/globalconverdao.go": "7cd86a5eab6ff5d31da18051941c0cac7d67ce790639a33725669ee8bd06f033",
+    "services/conversation/storages/models/globalconver.go": "1d621a7081500078bec99c703f86ba7b46d72495414256543e2ff7b87c8b648c",
+    "simulator/probes/mindlinkreadlist/runtime_test.go": "eefc951b624b86c5d483a0b437bce1c8865aad232cdde2958b40d1eca0a5486c"
+  },
+  "artifact": {
+    "image": "bitcomputing/im-server:f1-read-list-cold-fed7f9a5",
+    "image_id": "sha256:01d61469ff514bdd639594d44b8df5d97739814d2382f2a5b925bd578af59881",
+    "source_archive_sha256": "fed7f9a52a0cc89c29485ea10174f97184c9c385893e35cdf0c472e43ae09972",
+    "binary_sha256": "8b1ef62515940a2f6eaf47cde1320c55bfdf49b961da9770343264ba92cc943b",
+    "probe_sha256": "1729237b652e968619b17ad004a6e552b224220ba9a2395e6d34b141b5b26cf1",
+    "image_build_exit": 0,
+    "known_large_population_regression_open": true
+  },
+  "routine_checks": {
+    "top_pass": 53,
+    "top_skip": 11,
+    "top_fail": 0,
+    "native_pass": 16,
+    "excluded_known_failure": "TestNativeReadLargeMixedPopulationUsesBoundedSQL"
+  },
+  "checks_exit_excluding_known_failure": 0,
+  "open_large_regression": {
+    "test": "TestNativeReadLargeMixedPopulationUsesBoundedSQL",
+    "candidate_count": 10000,
+    "requested_count": 1,
+    "actual_SQL_delta": 3848,
+    "elapsed_ms": 2005,
+    "actual_code": 19007,
+    "exit": 1,
+    "aggregate_segment_executed": false
+  },
+  "runtime": {
+    "actual_ordinary_ack_id": "pb2fjqpr2acgql8y",
+    "after_IM_only_restart": 1,
+    "after_live_projection_and_disable": 1,
+    "binary_sha256": "8b1ef62515940a2f6eaf47cde1320c55bfdf49b961da9770343264ba92cc943b",
+    "conversation_DB_snapshot_sha256": "da0664ffb6a1de7ed933a4f1237b865e66539a42b8efe3f025a8fddbe4b992bd",
+    "initial_native_list_count": 2,
+    "initial_native_unread": 2,
+    "live_binary_checked_before_after": true,
+    "ordinary_history_and_summary_match_ACK": true,
+    "owner_devices_received": 2,
+    "protected_DB_rows": 2,
+    "protected_DB_unread": 200,
+    "scope": "owned synthetic native HTTP/WS; no owner business API or real page",
+    "source_sha256": "fed7f9a52a0cc89c29485ea10174f97184c9c385893e35cdf0c472e43ae09972"
+  },
+  "runtime_exit": 0,
+  "mysql_started_before": "2026-11-09T15:39:58.572160611Z",
+  "mysql_started_after": "2026-11-09T15:39:58.572160611Z",
+  "review": {
+    "reviewer": "review_native_read_lists",
+    "reviewed_archive_sha256": "107f7dea1842a33a1e7dce37d8a105cd8cf1bbfa9d19391ba66baa82772328c7",
+    "critical": 0,
+    "important": 3,
+    "minor": 0,
+    "addressed_with_regressions": [
+      1,
+      3
+    ],
+    "open": [
+      2
+    ],
+    "reviewer_independently_ran_runtime": false,
+    "final_source_has_not_received_a_second_independent_review": true
+  },
+  "dependency": {
+    "owner": "01a1a0e1-b344-7501-bc44-fadc4a29d403",
+    "requested_signature": "bases.FilterNativeMessages(context.Context, string, []proto.Message) ([]bool, error)",
+    "request_receipts": [
+      "pb2etakfx9ehukeh",
+      "pb2e9tpz792hukeh"
+    ],
+    "provider_fixed_commit": "not supplied; unverified",
+    "shared_files_modified": false
+  },
+  "resources_final": {
+    "container": "im-f1-read-lists-20261109-mysql",
+    "stop_command_exit": 0,
+    "Status": "exited",
+    "ExitCode": 0,
+    "OOMKilled": false,
+    "StartedAt": "2026-11-09T15:39:58.572160611Z",
+    "FinishedAt": "2026-11-09T17:22:53.000092471Z",
+    "retained_volume": "im-f1-read-lists-20261109-mysql-data",
+    "retained_network": "im-f1-read-lists-20261109"
+  },
+  "raw_evidence_directory": ".local/f1-read/blind-lists-20261109/",
+  "raw_evidence_sha256": {
+    "native-read-red.log": "b5aa0c03312184362657bab3955d4c41eec424bdeee5f8a8b4eac84876cadba9",
+    "native-read-red-sync-global.log": "1ce096ba7b9ff061c01ecd2669ca5d011bd8d6c8f976ab9fdbcac2d032f9b318",
+    "global-requester-red.log": "2e5a1580677695788736c1a9c2408a037d2dc461cb71dc6a84cebe92fcd2786a",
+    "global-requester-green.log": "06872442d7d3d211f198080d9e2505f5c33268d15bc72336d464ba79e95d7e99",
+    "cold-source-red.log": "bcb86b07c066188e4f21424c173b54ec1da63e0aef50669afe0fc95320078db0",
+    "cold-source-green.log": "360d18252abc8b37cc43e565fa698b59e58a9402cfae08d49ad186a36c1c6746",
+    "large-population-red.log": "e566ef911421967d38d81c1cb50895da728cf640c652071b0b42b06a1d1e31d3",
+    "large-population-red-result.json": "ed8d735ffad7c572ce5ddde121b341c712b92c6d8faadad37510e732a5ff88a7",
+    "cold-checks-result.json": "732883d74fff105b6916110dd67928d04765fdfa4fce96791f3d3be410b4440f",
+    "cold-checks-invalid-memory.json": "c7560b802e8951f32d3819419cb09a4bb1e2687332c0b541572e5c7815b3b9dc",
+    "cold-checks-invalid-memory.log": "e2beda0994d7d7a1fd0383e77ce942bec34d5456a208bd247eaa96bf2ef463f8",
+    "runtime-cold.log": "02d43eb8cc19ff1d9f6617e6db5a9807bdeb28e8b6288625c0e8e667ec3ac98a",
+    "runtime-cold-result.json": "8b4ccafb84f044c0c84e82ff684154e880be87c97ec90228f4477ba4b0c0c086",
+    "runtime-verification.json": "0387321e01137edc7086b8b4cfe0f8f5d8127509f723433a1d97c267f4adf10e",
+    "post-cold-runtime-audit.json": "432b321792e2f233a5d23c0546ddf0c29b328a3bfe8c80b126da7e3caf15a89d",
+    "resources-final.json": "952b7684a038964ce332a171bc663a3b7af149e06cf88119b1234402df0aec5a",
+    "source-cold.json": "8bce052db80c38c456ac4d3d0b41978df70a35fc02cd4c53fa97865bf83b58b3",
+    "runtime-cold-artifact.json": "0cd4ea6e8426e9116b5de3ea16d70c47f25847586fb10ea6e68f264fc13adf7a",
+    "checks-result-invalid-crlf.json": "03794af4c7bff1e2cb47560c4e6f66abb47d795dd002e570857165c5a8b762dc",
+    "native-read-red-initial-logger.log": "4611fede535b6b5355b927f9c74275eebd1804808b1fc45d988e64bb1e68b725",
+    "native-read-red-invalid-cluster.log": "96e2422ba0fab72adde2dec3c08047827c0fd5b716d04034f2a85f329d47b07c",
+    "before-cold-107f-runtime.log": "eb54348615612ce44606f60c1c1b6d2406c96d1081eed139a9e37803365d27aa",
+    "artifact-cold/checks.sh": "7eb549bf79a9221c3a03388653479289b6df260b8f2a955b466e9cde4e5e81e7",
+    "artifact-cold/tests-excluding-known-large-failure.log": "ef224a05b75e51625f2ddae09d47547ec36a011fd8bb617e2b7ebbdd5b21c504",
+    "artifact-cold/vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifact-cold/build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "artifact-cold/probe-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "not_verified": [
+    "10000-candidate aggregate segment (prior list assertion failed)",
+    "production authority/owner business API and actual browser/App pages",
+    "App/push/badge/sound",
+    "live Mongo",
+    "fixed integration with dcdd native seen/proto/sequence and forward migrations",
+    "in-flight history backend cancellation"
+  ],
+  "no_push_merge_deploy": true
+}

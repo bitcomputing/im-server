@@ -12,6 +12,7 @@ import (
 	"im-server/services/commonservices/msgdefines"
 	"im-server/services/conversation/storages"
 	"im-server/services/conversation/storages/models"
+	"math"
 	"time"
 
 	"google.golang.org/protobuf/proto"
@@ -128,8 +129,15 @@ func HandleMentionedMsg(appkey string, userId string, msg *pbobjs.DownMsg, userC
 	}
 }
 
-func QryGlobalConvers(ctx context.Context, req *pbobjs.QryGlobalConversReq) *pbobjs.QryGlobalConversResp {
+func QryGlobalConvers(ctx context.Context, req *pbobjs.QryGlobalConversReq) (errs.IMErrorCode, *pbobjs.QryGlobalConversResp) {
+	if req == nil || req.Count < 0 || req.Count == math.MaxInt32 {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	requester := []string{bases.GetRequesterIdFromCtx(ctx)}
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, req, requester, nil)); code != 0 {
+		return code, nil
+	}
 	targetId := req.TargetId
 	channelType := req.ChannelType
 	startTime := req.Start
@@ -146,24 +154,29 @@ func QryGlobalConvers(ctx context.Context, req *pbobjs.QryGlobalConversReq) *pbo
 		Convers: []*pbobjs.GlobalConver{},
 	}
 	storage := storages.NewGlobalConversationStorage()
-	dbConvers, err := storage.QryConversations(appkey, targetId, req.SubChannel, channelType, startTime, count, isPositiveOrder, req.ExcludeUserIds)
-	if err == nil {
-		for _, dbConver := range dbConvers {
-			idStr, _ := tools.EncodeInt(dbConver.Id)
-			resp.Convers = append(resp.Convers, &pbobjs.GlobalConver{
-				Id:          idStr,
-				ConverId:    dbConver.ConverId,
-				SenderId:    dbConver.SenderId,
-				TargetId:    dbConver.TargetId,
-				ChannelType: dbConver.ChannelType,
-				UpdatedTime: dbConver.UpdatedTime,
-			})
-		}
-		if len(resp.Convers) < int(count) {
-			resp.IsFinished = true
-		}
+	dbConvers, err := storage.QryConversations(ctx, appkey, targetId, req.SubChannel, channelType, startTime, count+1, isPositiveOrder, req.ExcludeUserIds)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
 	}
-	return resp
+	resp.IsFinished = len(dbConvers) <= int(count)
+	if len(dbConvers) > int(count) {
+		dbConvers = dbConvers[:count]
+	}
+	for _, dbConver := range dbConvers {
+		idStr, _ := tools.EncodeInt(dbConver.Id)
+		resp.Convers = append(resp.Convers, &pbobjs.GlobalConver{
+			Id:          idStr,
+			ConverId:    dbConver.ConverId,
+			SenderId:    dbConver.SenderId,
+			TargetId:    dbConver.TargetId,
+			ChannelType: dbConver.ChannelType,
+			UpdatedTime: dbConver.UpdatedTime,
+		})
+	}
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, resp, requester, nil)); code != 0 {
+		return code, nil
+	}
+	return errs.IMErrorCode_SUCCESS, resp
 }
 
 func QryHisMsgByIds(ctx context.Context, userId, targetId string, channelType pbobjs.ChannelType, msgIds []string) []*pbobjs.DownMsg {

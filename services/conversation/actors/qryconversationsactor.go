@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"im-server/commons/bases"
-	"im-server/commons/errs"
 	"im-server/commons/gmicro/actorsystem"
 	"im-server/commons/pbdefines/pbobjs"
 	"im-server/services/commonservices/logs"
@@ -22,10 +21,12 @@ func (actor *QryConversationsActor) OnReceive(ctx context.Context, input proto.M
 		requesterId := bases.GetRequesterIdFromCtx(ctx)
 		logs.WithContext(ctx).Infof("user_id:%s\tstart:%d\tcount:%d\ttarget_id:%s\tchannel_type:%d\ttag:%s", requesterId, qryConverReq.StartTime, qryConverReq.Count, qryConverReq.TargetId, qryConverReq.ChannelType, qryConverReq.Tag)
 
-		resp := services.QryConversationsV2(ctx, qryConverReq)
-		qryAck := bases.CreateQueryAckWraper(ctx, errs.IMErrorCode_SUCCESS, resp)
+		code, resp := services.QryConversationsV2(ctx, qryConverReq)
+		qryAck := bases.CreateQueryAckWraper(ctx, code, resp)
 		actor.Sender.Tell(qryAck, actorsystem.NoSender)
-		logs.WithContext(ctx).Infof("code:%d\tlen:%d", errs.IMErrorCode_SUCCESS, len(resp.Conversations))
+		if resp != nil {
+			logs.WithContext(ctx).Infof("code:%d\tlen:%d", code, len(resp.Conversations))
+		}
 	} else {
 		fmt.Println("p_msg, upMsg is illigal.")
 	}

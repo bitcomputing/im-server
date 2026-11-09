@@ -20,11 +20,13 @@ func (actor *QryTotalUnreadCountActor) OnReceive(ctx context.Context, input prot
 		userId := bases.GetTargetIdFromCtx(ctx)
 		logs.WithContext(ctx).Infof("user_id:%s", userId)
 
-		resp := services.QryTotalUnreadCountV2(ctx, userId, req)
-		qryAck := bases.CreateQueryAckWraper(ctx, 0, resp)
+		code, resp := services.QryTotalUnreadCountV2(ctx, userId, req)
+		qryAck := bases.CreateQueryAckWraper(ctx, code, resp)
 		actor.Sender.Tell(qryAck, actorsystem.NoSender)
 
-		logs.WithContext(ctx).Infof("total_count:%d", resp.TotalCount)
+		if resp != nil {
+			logs.WithContext(ctx).Infof("total_count:%d", resp.TotalCount)
+		}
 	} else {
 		logs.WithContext(ctx).Error("input is illigal.")
 	}
