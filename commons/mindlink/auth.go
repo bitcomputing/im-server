@@ -190,8 +190,10 @@ func (v *Verifier) Verify(r *http.Request, operation string, now time.Time) (*Au
 	} else if claims.ActorKind != "avatar" {
 		return nil, ErrForbidden
 	}
-	seconds := now.Unix()
-	if claims.IssuedAt < 0 || claims.ExpiresAt <= claims.IssuedAt || claims.ExpiresAt-claims.IssuedAt > 60 || claims.IssuedAt > seconds+5 || claims.ExpiresAt < seconds-5 {
+	if claims.IssuedAt < 0 || claims.ExpiresAt <= claims.IssuedAt || claims.ExpiresAt-claims.IssuedAt > 60 || claims.IssuedAt > now.Add(5*time.Second).Unix() {
+		return nil, ErrForbidden
+	}
+	if now.After(time.Unix(claims.ExpiresAt, 0).Add(5 * time.Second)) {
 		return nil, ErrForbidden
 	}
 	if r.URL.RawQuery != "" || r.URL.ForceQuery || r.URL.Fragment != "" || r.URL.Opaque != "" {

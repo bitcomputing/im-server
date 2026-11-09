@@ -329,6 +329,49 @@ func TestVerifyClockSkewBoundaries(t *testing.T) {
 	}
 }
 
+func TestVerifyExpirySkewNeverExceedsFiveSeconds(t *testing.T) {
+	trust, key := fixtureTrust()
+	v, err := NewVerifier([]Trust{trust})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := fixtureClaims(`{}`)
+	p["iat"], p["exp"] = fixtureNow.Unix()-60, fixtureNow.Unix()
+	token := fixtureToken(t, key, []byte(`{"alg":"EdDSA","typ":"mindlink-actor+jwt","kid":"fixture-key"}`), fixtureJSON(t, p))
+	for _, delta := range []time.Duration{5 * time.Second, 5*time.Second + time.Nanosecond, 6*time.Second - time.Nanosecond} {
+		auth, err := v.Verify(fixtureRequest(t, token, "POST", fixturePath, `{}`), "fixture.mutate", fixtureNow.Add(delta))
+		if delta == 5*time.Second {
+			if err != nil || auth == nil {
+				t.Fatalf("exact allowed skew rejected: %v", err)
+			}
+		} else if auth != nil || !errors.Is(err, ErrForbidden) {
+			t.Fatalf("expiry skew %s accepted; maximum is five seconds", delta)
+		}
+	}
+}
+
+func TestVerifyChecksAllowlistAfterOperationMatches(t *testing.T) {
+	trust, key := fixtureTrust()
+	v, err := NewVerifier([]Trust{trust})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ name, op, method, body string }{
+		{"query cannot mutate", "fixture.query", "POST", `{}`},
+		{"mutation cannot query", "fixture.mutate", "GET", ""},
+		{"unlisted operation", "fixture.unlisted", "POST", `{}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := fixtureClaims(tc.body)
+			p["operation_type"], p["method"] = tc.op, tc.method
+			token := fixtureToken(t, key, []byte(`{"alg":"EdDSA","typ":"mindlink-actor+jwt","kid":"fixture-key"}`), fixtureJSON(t, p))
+			if auth, err := v.Verify(fixtureRequest(t, token, tc.method, fixturePath, tc.body), tc.op, fixtureNow); auth != nil || !errors.Is(err, ErrForbidden) {
+				t.Fatalf("wrong operation class was authorized: identity=%t err=%v", auth != nil, err)
+			}
+		})
+	}
+}
+
 func TestVerifyRejectsNoncompactAndNoncanonicalTokens(t *testing.T) {
 	trust, key := fixtureTrust()
 	v, err := NewVerifier([]Trust{trust})
