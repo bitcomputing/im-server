@@ -101,6 +101,9 @@ func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization
 	if !bytes.Equal(ticketHash, auth.ticketHash[:]) || operationID != c.OperationID {
 		return nil, ErrRequestConflict
 	}
+	if !validAt(c, time.Now()) {
+		return nil, ErrForbidden
+	}
 	if !replayed {
 		original, err = effect(tx)
 		if err != nil {
@@ -117,6 +120,9 @@ func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization
 		if err != nil || rows != 1 {
 			return nil, ErrUnknownResult
 		}
+	}
+	if !validAt(c, time.Now()) {
+		return nil, ErrForbidden
 	}
 	if err := tx.Commit(); err != nil {
 		return nil, ErrUnknownResult

@@ -17,6 +17,16 @@ DG-20261104-003 的独立基础增量，位于 `commons/mindlink`。它要求已
 
 原始 Windows race 日志 SHA256：`3f84bc88dd3b5134f6c72eb4b86c8be18850ac1c4c9de07a4b4a6f5536e482ee`；Linux SQL 日志：`0cbe82c973084c1834c8fc487b634a4e2aeb57d39b117a49aef82ffb24e2627e`。
 
+## 独立审查及修正
+
+独立 reviewer 对固定 `efcc96c..d3fa119` 只读审查，实际运行 Windows unit/race；没有运行 SQL 或读取私有配置。无 Critical，Important 为 ticket 唯一键锁等待后的 TTL 漏检，Minor 为升级测试在核结构前重放 DDL，可能掩盖 Upgrade 漏执行。两项均已修正，没有留作已知限制。
+
+真实 MySQL 先复现 ticket 锁等待过期后仍执行 effect=1 / err=nil；另一个效果执行期间过期的红例也确实错误提交。现在在 ticket 绑定后及 commit 前复检，两个场景均拒绝，事务三类行均为零。升级测试先核实际 Upgrade 产物，再验证 DDL 重放。
+
+修正后的 Windows race＋MySQL：26 个顶层测试通过，含 14 个真实 SQL，0 failed / 0 skipped，exit0。离线 Linux Go1.25.12 同源同库也为 26 / 14；另加 errs/tools 测试，三个包共 29 个顶层通过，0 failed / 0 skipped，exit0。Linux mindlink 包运行 16.121 秒，结束于 04:06:57 UTC；Windows 已于 04:03:49 UTC 结束，实际数据库用例没有重叠。
+
+修正后日志 SHA256：Windows `35db68a5c9d85a7a9ea72163ba9a621cc5922286fa68b861e2ac315ec8f03eb0`；Linux `5949905a9b9725ed625ec4b8faa90a436138a23ebac0fcb4ad4fb185c299e4a6`。04:09:38.488315 UTC 独立 SQL 回查仍为 operation=1、ticket=1、测试效果=1、generation=4 / policy=7 / disabled=false，限定为当时测试快照。
+
 独立 SQL 回查于 2026-11-09 03:41:43 UTC 得到 operation=1、ticket=1、测试效果=1、测试权威 generation=4 / policy=7 / disabled=false。这是测试结束时的快照，不是实际业务消息验收或持续保证。
 
 ## 集成边界

@@ -344,6 +344,79 @@ func TestMySQLTransactRejectsExpiredTicketAfterAuthorityWait(t *testing.T) {
 	assertRows(t, db, 0, 0, 0)
 }
 
+func TestMySQLTransactRejectsExpiredTicketAfterTicketLockWait(t *testing.T) {
+	db := prepareBindingDB(t)
+	v, key := dbVerifier(t)
+	auth := proofForDB(t, v, key, func(p map[string]any) {
+		expired := time.Now().Unix() - 3
+		p["iat"], p["exp"] = expired-60, expired
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	locker, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer locker.Rollback()
+	c := auth.Claims()
+	if _, err := locker.ExecContext(ctx, "INSERT INTO mindlink_tickets(issuer,jti,ticket_hash,operation_id) VALUES(?,?,?,?)", c.Issuer, c.JTI, make([]byte, 32), strings.Repeat("f", 64)); err != nil {
+		t.Fatal(err)
+	}
+	var calls atomic.Int32
+	done := make(chan error, 1)
+	go func() {
+		_, err := v.Transact(ctx, db, auth, currentAuthority, effectFor(auth, &calls))
+		done <- err
+	}()
+	for {
+		var waiting int
+		err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM performance_schema.data_lock_waits w JOIN performance_schema.data_locks l ON l.ENGINE_LOCK_ID=w.REQUESTING_ENGINE_LOCK_ID AND l.ENGINE=w.ENGINE WHERE l.OBJECT_SCHEMA=DATABASE() AND l.OBJECT_NAME='mindlink_tickets'`).Scan(&waiting)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if waiting > 0 {
+			break
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("request did not wait for ticket lock: %v", err)
+		case <-ctx.Done():
+			t.Fatal("no actual ticket lock wait observed")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+	select {
+	case <-time.After(time.Until(time.Unix(c.ExpiresAt, 0).Add(5*time.Second + 20*time.Millisecond))):
+	case <-ctx.Done():
+		t.Fatal("ticket wait did not finish before test deadline")
+	}
+	if err := locker.Rollback(); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; !errors.Is(err, ErrForbidden) || calls.Load() != 0 {
+		t.Fatalf("expired ticket lock waiter committed: calls=%d err=%v", calls.Load(), err)
+	}
+	assertRows(t, db, 0, 0, 0)
+}
+
+func TestMySQLTransactRollsBackTicketExpiredDuringEffect(t *testing.T) {
+	db := prepareBindingDB(t)
+	v, key := dbVerifier(t)
+	auth := proofForDB(t, v, key, func(p map[string]any) {
+		expired := time.Now().Unix() - 4
+		p["iat"], p["exp"] = expired-60, expired
+	})
+	result, err := v.Transact(context.Background(), db, auth, currentAuthority, func(tx *sql.Tx) (json.RawMessage, error) {
+		body, err := effectFor(auth, nil)(tx)
+		time.Sleep(2 * time.Second)
+		return body, err
+	})
+	if result != nil || !errors.Is(err, ErrForbidden) {
+		t.Fatalf("expired effect transaction committed: %v", err)
+	}
+	assertRows(t, db, 0, 0, 0)
+}
+
 func TestMySQLTransactDoesNotReexecuteAnIncompleteOriginalRecord(t *testing.T) {
 	db := prepareBindingDB(t)
 	v, key := dbVerifier(t)
@@ -527,9 +600,6 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261108" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
-		if _, err := other.Exec(string(migration)); err != nil {
-			t.Fatal(err)
-		}
 		var nickname string
 		if err := other.QueryRow("SELECT nickname FROM users WHERE app_key='guard-app' AND user_id='upgrade-sentinel'").Scan(&nickname); err != nil || nickname != "original" {
 			t.Fatal("upgrade changed existing data")
@@ -543,6 +613,10 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 			pair = append(pair, ddl)
 		}
 		definitions = append(definitions, pair)
+		// Inspect Upgrade's result before a replay could repair missing tables.
+		if _, err := other.Exec(string(migration)); err != nil {
+			t.Fatal(err)
+		}
 	}
 	if fmt.Sprint(definitions[0]) != fmt.Sprint(definitions[1]) {
 		t.Fatal("new and upgraded metadata schemas differ")

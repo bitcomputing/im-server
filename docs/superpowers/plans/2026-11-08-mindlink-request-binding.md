@@ -40,8 +40,8 @@
 - `MutationResult` 只含原 `json.RawMessage` 结果和本次 `Replayed bool`；完整 HTTP OperationResult 不由此类型冒称已定。
 - 核权函数必须读取并锁定当前权威事实；第三参数由日志判定原操作是否已提交：复放核当前读取权限，新操作核提交权限及期望版本，不能因自身已更新版本而遗失原回执。禁止在事务外只验一次再写；effect 仅使用该 SQL 事务，不作外部投递。
 
-- [ ] **Step 1:** 在专用 MySQL8 建测试库，先写真实权限失败/成功效果、同键冲突/重试、并发、写失败回滚、撤权锁顺序和假证明拒绝用例；新库/升级结构及旧数据保持测试。
-- [ ] **Step 2:** 先记录缺实现，再用仅 API stub 实际观察允许的原请求没有写入效果的红例。
-- [ ] **Step 3:** 实现两表迁移、原请求/jti 绑定、同事务核权及效果/原结果持久化；语义 DTO 的摘要复算仍由具体 handler 完成，不能省略。
-- [ ] **Step 4:** `go test -tags=integration ./commons/mindlink -count=1` 在本次专用 DB 实际 PASS 且无 skip，核对 schema/行数与并发唯一效果；默认 auth/race 及 Linux 检查保持通过。
-- [ ] **Step 5:** 独立审查、必要红绿修复及本地提交；报告 DB 基础的真实边界，继续首条 POLICY HTTP/原生拒绝链，不结原任务。
+- [x] **Step 1:** 在专用 MySQL8 建测试库，先写真实权限失败/成功效果、同键冲突/重试、并发、写失败回滚、撤权锁顺序和假证明拒绝用例；新库/升级结构及旧数据保持测试。
+- [x] **Step 2:** 先记录缺实现，再用仅 API stub 实际观察允许的原请求没有写入效果的红例。
+- [x] **Step 3:** 实现两表迁移、原请求/jti 绑定、同事务核权及效果/原结果持久化；语义 DTO 的摘要复算仍由具体 handler 完成，不能省略。
+- [x] **Step 4:** `go test -tags=integration ./commons/mindlink -count=1` 在本次专用 DB 实际 PASS 且无 skip，核对 schema/行数与并发唯一效果；默认 auth/race 及 Linux 检查保持通过。
+- [x] **Step 5:** 独立审查、必要红绿修复及本地提交；报告 DB 基础的真实边界，继续首条 POLICY HTTP/原生拒绝链，不结原任务。
