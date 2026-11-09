@@ -476,3 +476,53 @@ operation_id/request_id、issuer/kid/audience、jti/iat/exp 不放进该语义�
 首轮 `nav-connect-attempt1.json` 是探针错误要求 API 存在 Verbose 字段而在 HTTP/夹具写入前失败，不能算通过或业务产品失败；纠正到客户端显式设置后才有上述成功记录，不称产品修复。本轮一次只读复核命令因本机长度预检停止，拆分后的原件哈希和进程复核实际 exit0；未把失败的预检算成已运行远端检查。
 
 §17 的旧 nav 夹具、IM 用户行和 interceptor 零计数仍各保留其原时间；新记录仅取代“该真实用户业务 Token 的 nav/原生 CONNECT 未跑”这一历史缺口。回调仍缺受控注册、有效事件、签名和业务处理审计；发布 SDK/真实页面、消息/历史/离线/摘要/read 重启、服务端离线状态及旧列表/资料问题未因本批通过。IM 运行版本按 BIZ receipt 仍是 `09186cb7…` 诊断镜像，不是后续 READ/序列制品。本批不重启、构建、改配置、发消息、调用回调或部署；独立产品场景、原 bec85、三包和 DG2 整体验收仍未完成。
+
+## 21. Rocky 回调联调前提与当前计数（2026-11-09，只读准备）
+
+来源二当家 `pbz3kp3av9chukeh`，有效批次 `8b7d7417b527dbf62a0e016d1465b66f385a90ab8250586fd49328b4e2388b99`。本批只准备可审查材料，未新增配置、发消息、POST 回调或启停服务；不把旧 CONNECT 当作回调或新方案验收。
+
+### 本轮实际读回
+
+| 观察点 | 结果及边界 |
+| --- | --- |
+| SQL，UTC 05:09:37.125425 | MySQL8.0.46 / jim_db；指定 app `dg2c3350172f150` 存在1行，interceptors总数0、`intercept_type=0` 的custom数0、ic_conditions数0 |
+| 访问方式 | 在原 MySQL 容器内用既有环境凭据运行 mysql，`START TRANSACTION READ ONLY` 后仅 SELECT 并结束事务；exit0。不输出/复制 Secret，不使用二当家此前失败的无密码查询推断零 |
+| 网络，UTC 05:08:23 | Windows API16006监听127.0.0.1/PID26644；IM容器执行 `timeout 5 bash -c ':<>/dev/tcp/host.docker.internal/16006'` exit0，仅开闭TCP、不发送HTTP字节。证明该时点TCP可达，不证明路径、签名、PASS或处理审计通过 |
+| 版本，UTC 05:13:12.6931418 | IM仍为b87，container d16f0401…e3172a、image09186cb7…ef45a7、活体binary `bfdcaa5d73721472cce9af5b3debcd525f24ab0cfabe2ca1f3cb373540510c9a`；StartedAt仍11-06 07:36:43UTC |
+| BIZ对应 | Rocky HEAD `d8269a7cac5dec6b380a94638ba48e79dcf5606b`；PID26644、im-safe.exe SHA `f2d9fc0c20cdfe1885e14a5b695de731cc871bd9c3d73fe30de0467f66877fe4`、启动11-06 11:08:43UTC；源码/制品对应沿既有交接，不称本轮可复现构建 |
+
+SQL只取计数，未读出request_url/conf/template或应用Secret。当前内存 interceptor cache 未直接查询，DB零不能单独证明活体缓存为空。BIZ当前回调表/审计计数未在本批查询，不沿用§17的旧零值。
+
+### 固定请求、签名和结果契约
+
+IM以b87的 `services/commonservices/interceptors/custominterceptor.go`、`interceptorservice.go`、`condition.go` 为准；三文件Git blob依次 `d43f228009a426c9e0ea46a3fdc5555e5e67bda0`、`0ce891e2550c0dfd16748457b8aa84d4026f53b2`、`460ae4f1e45b11b3beb43abc511724c78a32f3ca`。BIZ实际handler/logic blob为 `680dacc2a3a06b44858bd77e27e98b4c1b965238` / `0a00fb04af3b25b257bccdb69e7092a63d5cc245`，Rocky tokenManager blob为 `59468aeefdc50487eca194315bb7443fd1919836`，已直接读取其签名函数，未把本机较新版本替代。
+
+- 正式路径：POST `/api/im/callback/message`；容器内候选URL为 `http://host.docker.internal:16006/api/im/callback/message`。TCP已核，未POST该路径。
+- 头：Content-Type=application/json、appkey、nonce（IM生成8字符）、timestamp（Unix毫秒字符串）、signature。签名为小写hex `SHA1(app_secret + nonce + timestamp)`，拼接顺序固定；IM从该租户已有AppInfo取AppSecret，BIZ实际logic走VerifyCallbackSignature。不要因另有ValidateJuggleCallbackHeaders函数就声称本路由已具备它的全部检查，也不把此签名当新原actor票据。
+- body固定为 MsgEvent：platform/sender/receiver/msg_type/msg_content为string，channel_type为整数，mention_info/refer_msg为对应对象或null。msg_content是原UpMsg字节转string，不是43Chat响应信封；没有message_id/client_uid/seq。BIZhandler回写X-Request-Id及received/responded审计，但writer是否启用和合法业务前置由BIZ核定。
+- `request_template`/`succ_template`/`is_async`/`conf`虽有DB列，当前custom构造器没有用它们转换请求/响应或切换异步；不能靠填“模板”改变上述固定wire。
+
+| 返回/分支 | b87的实际消费规则 |
+| --- | --- |
+| HTTP200 + `{ "result":"PASS", "custom_code":0 }` | 继续原发送流程；不等于消息已持久化 |
+| HTTP200 + REJECT | 非零custom_code透传发送错误；0则12007。私聊/群在历史写入前返回；未来仍须查实收/历史/DB，不能仅按源码报拒绝用例通过 |
+| HTTP200 + REPLACE / SILENT | REPLACE按类型/内容/mention字段修改；SILENT直接ACK0且不继续正常投递，不能把ACK0当实收/落库 |
+| 网络错误、非200、JSON失败、未知result | 当前实现可PASS；401/超时/空或错误信封都不是成功回调证据 |
+
+### 触发、配置与恢复操作稿（未执行）
+
+1. 先由BIZ给同租户的普通非Admin发送者、有效接收者/会话、合法认领及风险/关系状态、预期PASS与REJECT场景，并确认既有AppSecret匹配，仅回配置一致性结论，不传Secret。系统/白名单发送者不能代替正常用户业务门槛。
+2. 登记前重新只读核当前行并保存私有恢复材料；本轮基线虽为0，后续若已变化先停止协调，不能覆盖新行。二当家须另行明确允许受控配置、事件和缓存处理；旧过期窗口、0ae的未确认PERSIST候选时段都不自动授予这些操作。
+3. 获批后仅新增一条本任务custom行（app_key固定、intercept_type=0、精确URL、本任务唯一name/sort，模板列空）及一条ic_conditions；同事务提交并记录两行真实ID。条件固定具体sender/receiver、channel_type=1及约定文本msg_type，不用全租户通配；无条件列表时ConditionMatchs为false，不会回调。
+4. 普通合法Token建立原生WS，用固定b87 `WsImClient.SendPrivateMsg`（p_msg）发一条已批准有效内容，flags不含cmd/state，并确保条件命中。Admin/IsFromApi及普通签名HTTP代发会绕过custom，不能代替此事件。此原生模拟器场景仍不是已发布SDK/页面验收。
+5. BIZ用同一request_id核received/responded、HTTP200/result及实际业务记录；IM独立核ACK、接收者实际消息及history/DB。由于回调发生在消息ID分配/持久化之前且无原消息ID字段，须事先约定单事件串行、唯一合成标记的私有对账方案；不能仅凭X-Request-Id或回调表一行证明消息已持久化，更不能冒充请求级可靠回调。
+6. 恢复时在事务内仅删除本次记录的condition ID和interceptor ID，同时限定app_key/interceptor_id并核预期行数；不按app_key清空、不回滚消息历史、不恢复整库。若启用前有原行则须按私有逐行快照恢复，不能凭本轮旧基线直接删。
+7. 最后重新核DB行、IM版本/健康、缓存处理及BIZ审计终态；保留新消息、映射、旧镜像和数据卷，异常就停止并按原键查结果，不盲目再发。
+
+缓存由GetMsgInterceptors懒加载，创建后最长10分钟寿命并有读超时回收；本次源码检索未见显式失效接口。为使新增与恢复都确定生效，建议申请包含两次IM-only重启的明确窗口，或先证明现有受支持的缓存失效方式。只删DB行不能立即宣称缓存已恢复。此窗口和配置/事件权限尚未取得，不在本批执行；BIZ/MySQL/Redis及其私有配置不变。
+
+### 新方案制品与未覆盖
+
+POLICY/RELIABLE/公共READ尚无同一已实现、已验的commit/image/binary及完整有序迁移包，不能交付新方案可执行切换单。本机已有认证/journal/READ局部候选及其证据不替代统一制品；006/007与后续新迁移仍须在同一候选核顺序、新库/升级及旧写者兼容。原PERSIST-only 4ecec887是另一条旧修复复验候选，无SQL/proto/依赖改动，沿0ae单独确认，不冒充全新方案。
+
+本批交付可达性/计数时点及正式源码契约和操作稿，未实现或验证真实签名POST、PASS/REJECT事件、业务审计/DB关联、缓存新增恢复或新方案部署。需要BIZ身份/审计材料及二当家明确的新执行范围与窗口；当前无需变更监听、配置或服务。
