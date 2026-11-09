@@ -63,7 +63,7 @@ READ 的 d336dec 中 seen 状态查询/推进加入传入事务，当前 `seenLa
 
 ROOT 后续仍负责：核定唯一 HTTP/typed 结果源，生产原 actor/目标/固定成员/代际/policy 权威及最终屏障；PUT 原操作回执与 seen 同事务；GET 独立 query 意图/state/观察时间原件；必要的可靠历史/latest 生产者。只有这些接入后才运行原请求冲突/重试/撤权、seen 与结果同提交回滚、响应丢失及真实页面验证。
 
-实际推进位置须来自已授权 scope 的最终展示 DownMsg.MsgSeqNo（proto tag6），保持规范 int64 十进制字符串。MsgTime、消息 ACK、摘要 floor 都不是替代输入。当前 99f7ce5 旧字段提案与 BIZ N1 的时间/结果差异按 `mindlink-trusted-rpc-candidate_zh.md` 待同源核定；不要求 READ 并写公共 DTO、JWS、路由或生成另一份 seen 权威。
+实际推进位置须来自已授权 scope 的最终展示 DownMsg.MsgSeqNo（proto tag6），保持规范 int64 十进制字符串。MsgTime、消息 ACK、摘要 floor 都不是替代输入。本段交接时 99f7ce5 与 BIZ N1 的时间/结果差异仍待核定；后续 `1d4a6f92` 已确认固定 N1 并替代旧值类型，当前源见 `mindlink-http-schema_zh.md`，公共 READ/事务生产者仍未实现。不要求 READ 并写公共 DTO、JWS、路由或生成另一份 seen 权威。
 
 ## READ 固定交付的原件复核（批次 24a14dc5）
 

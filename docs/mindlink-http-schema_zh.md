@@ -1,40 +1,44 @@
 # Mindlink 公共 HTTP 字段收口
 
-DG-20261104-003，IM 公共接口负责人提出的具体源定义，供 BIZ 在唯一契约登记确认。Go 字段位于 `commons/mindlink/operation.go`；当前没有注册这些路由，不能调用或据此启用 ready。本提案最初依据 M 版；唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本文件不替换它。字段确认后才实现严格 DTO 语义核验与生产权限事务。
+DG-20261104-003，IM 公共接口源定义。唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本页不替换它。回应 BIZ `pbz32ne2eduhukeh` / 批次 `1d4a6f925381dde9a316bbf3530d7c2f71081ba330c6a805810fd354b7c1d5e5`，本方确认固定 `6d0b3e7f81fe9f6f5ccba0f3fa6c797940bce538` 的 §11.5 N1 字段与技术语义，文件 raw SHA256 `c2b5cce47269976487fd0ddc26a0ac3e1c5bac8fce3a2027b2d06b384505d0dc`。BIZ 候选状态由其收到回执后登记，发信不作已登记证据。
 
-后续核到 BIZ N1 工作草案；它尚未联合冻结。与本页提案的差异、建议取舍以及精确可信 RPC/最终事务候选见 [可信调用候选](mindlink-trusted-rpc-candidate_zh.md)。本页和 Go 值类型仍是 99f7ce5 的旧提案，不能与 N1 混作同一个 schema。
+当前 `commons/mindlink/operation.go` 替代 99f7ce5 的旧单数操作名、带 scope 的 body、23字段结果和微秒提案；`principal_disable.go` 实现已验证请求的严格 body/摘要解析。没有注册路由、原结果 GET、生产权限事务或结果生产者，不能调用或据此启用 ready。[可信调用候选](mindlink-trusted-rpc-candidate_zh.md) 中 RPC/最终屏障仍待实现。
 
 ## 首个主体操作
 
 | 路径与方法 | operation_type | body 类型 |
 | --- | --- | --- |
-| POST `/apigateway/mindlink/principals/ensure` | `principal.ensure` | `PrincipalEnsureRequest` |
-| POST `/apigateway/mindlink/principals/disable` | `principal.disable` | `PrincipalDisableRequest` |
+| POST `/apigateway/mindlink/principals/disable` | `principals.disable` | `PrincipalDisableRequest`，首条；解析器已实现，路由/效果关闭 |
+| POST `/apigateway/mindlink/principals/ensure` | `principals.ensure` | 完整 body/权威及存储能力未齐，关闭；已删除旧未冻结 DTO |
 
-所有定义字段均显式必填；禁止额外字段、重复字段、null、浮点整数、大小写别名。disable 没有 display_name。body 原字节独立核 `body_sha256`；其中 scope、原操作/请求/摘要、principal target 和版本必须逐项等于已验证票据。
+disable body 恰八字段：operation_id、request_id、request_digest、principal_id、avatar_id、target_avatar_generation、expected_policy_version、desired_policy_version，全部显式必填；禁止额外/重复（含转义同名）字段、null、错误类型、指数/浮点整数、大小写别名、无效 UTF-8/孤立代理项和尾随第二个 JSON。scope、actor、display_name 不得混入 body。原字节先由 Verifier 独立核 body_sha256；解析器只收同一 Verifier 的已验证 Authorization，固定 POST/path/type，仅 owner 或受信 system。
 
-首个入口 actor 仅为 owner 或受信 system，票据 `avatar_generation=0`。目标分身代际另用 body `principal_generation`，不能与签票原 actor 的代际混用。body 的 expected/desired_projection_version 对应票据的 expected/desired_policy_version；首次创建为 0→1，后续为当前版本→当前版本+1，不按代际代替版本。头像代际、稳定分身及内部号均由同一持久绑定核验，不能从显示名派生或覆盖其他主体。
+票据 actor avatar_generation=0；body target_avatar_generation 为正 int64 的目标代际。expected_policy_version>=1，desired=expected+1，拒绝溢出；这些值及原 operation/request/digest/principal target 逐项绑定票据。15项摘要按唯一源 N1 顺序使用 Go json.Marshal 后 SHA256，不经 float、trim 或 Unicode 归一化。解析器不证明持久生命周期快照、目标代际不倒退或最终撤权屏障；这些仍须同事务核权，缺 gate 返回 NOT_READY，不写投影。
 
-principal_id 为 `ma`+30 位小写 hex；avatar_id 为有效 UTF-8、1..100 字节；principal_generation 为正 int64；display_name 为有效 UTF-8、最多 50 个 Unicode 字符，适配原生 users.nickname，不截断。owner_id 为规范非零十进制字符串。不能向终端返回内部号 Token。
+principal_id 为 ma+30位小写 hex；avatar_id 为有效 UTF-8、1..100字节；operation/digest 为64位小写 hex，request_id 为1..64 ASCII原键。owner_id 为无前导零的正 uint64 十进制字符串。未来 ensure 名称沿 BIZ Go NFC/TrimSpace 后1..80标量/最多320字节的规范快照，当前 nickname varchar(50) 不满足；完整读写/新旧库能力未验前保持关闭，不截断或降低业务上限。不能向终端返回内部号 Token。
 
-语义摘要的规范数组还须双方确认；现存 F2 九项存储意图没有 appkey、原 actor 和 HTTP 绑定，不可直接冒充 wire 摘要。建议业务适配器持久化 wire 子意图并绑定原 F2 意图，独立固定 wire 的 operation/request/digest/body；不能悄悄重写已存在的 F2 原件。此建议尚未得到 BIZ 确认，当前不新增该业务表。
+F2-A 九项旧摘要不等于 N1 wire 摘要；BIZ须先持久化与本地意图关联的固定 wire body/digest，沿原件重试，不能覆盖旧意图。本批不改 BIZ 表/适配器。
 
 ## 不可变回执
 
-`OperationResult` 所有 JSON 字段均保留，所有版本/代际为 int64 JSON 整数，字符串不做 trim 或 Unicode 归一化。它保存原验证 claims 的静态绑定，不含 jti/iat/exp，并额外包含：
+`OperationResult` 输出值类型恰 N1 的22字段，不使用 omitempty。issuer/audience/method/path/body hash 继续完整留在内部原操作绑定，不因移出公共结果而省略。它不是任意外部结果解析器；当前没有生产者，不能把零值结构或任意 RawMessage 交给通用 Transact 当成合法 ready。后续生产者须校验严格 desired_state、状态组合及真实效果，并将回执/token/效果同事务保存。
 
 | 字段 | 语义 |
 | --- | --- |
-| committed_policy_version | 本次事务实际锁定/提交使用的权威 policy 版本；投影更新为 desired，读取或发消息为原 expected=desired |
-| desired_state | 该 operation 的严格对象；READ query 为 `{}`，advance 为 `{ "seen_seq": "规范十进制位置" }`，不把 query 伪装为写 0 |
-| state | READ query 为 `observed`，advance/真正消息落库为 `persisted`，投影只有全部实际权限约束安装成功才为 `ready` |
-| recorded_at | 事务内记录时点，固定 UTC 微秒字符串 `YYYY-MM-DDTHH:mm:ss.ffffffZ`，并非精确 commit 时刻 |
+| desired_state | disable 恰 state=disabled、avatar_id、principal_id、target_avatar_generation；READ query 为 `{}`，advance 恰规范 int64 字符串 seen_seq，未定义操作继续关闭 |
+| state | 沿 N1 accepted/ready/persisted/failed/unknown；首条 disable 只在同事务禁用及全部适用 gate 落地后 ready。READ query 的 ready 仅证明原查询快照/回执保存，不证明 seen 写入 |
+| effective_policy_version/effective_avatar_generation | nullable int64；disable ready 分别是原 desired 和目标代际；READ 后者为 null；accepted/failed/unknown 的未证明效果字段为 null |
+| commit_version | nullable 64小写hex，不透明同事务原回执 token；不排序，不是 policy/MsgSeqNo/全局revision，不在重查时重新分配 |
+| accepted_at/committed_at | 固定 UTC 毫秒 `YYYY-MM-DDTHH:mm:ss.SSSZ`；后者 nullable，是事务内提交记录时间，commit成功后返回，不是存储引擎完成提交的精确物理时刻 |
+| failure | nullable；N1未知结果仅沿原 operation 查，不换键重做；超时/查询失败不代造确定失败回执 |
 
 回执只有整个事务提交成功后才能返回；commit 应答异常为 UNKNOWN_RESULT，不能推断没有写。相同原操作重试返回原回执，不能用新的 policy/time 覆盖它。`ready` 不可用一次映射 INSERT 或 accepted 代替；如果后续安装尚未完成，BIZ 仍保持 provisioning。
 
-READ GET envelope 沿 M：`{operation, state, state_observed_at, replayed}`，其中 state_observed_at 使用上述 UTC 微秒格式，首次读取的 state/time 随原 query 固定，重试不更新。PUT envelope 为 `{operation,state}`，后者重新核权读取当前快照，与原回执区分。下一次明确刷新应先恢复原 query，再产生新的逻辑读取。
+首条 POST/operations.query 成功 data 为 `{operation,replayed}`。GET `/apigateway/mindlink/operations/:operation_id` 只查已有 disable，按已验证 issuer+路径原ID定位并核原 audience、原 scope/目标/request/digest及当前读权，两 policy 字段相等于当前读授权版本；不能全局扫描或改写原 actor/版本，不新建 mutation、不再 effect。此入口尚未实现。
 
-操作结果 GET 的精确查询证明、完整 principal desired_state、语义摘要和可信 RPC/原生适配尚未冻结，不能由这些 Go 值类型推导为已有能力。初始主体 SQL 投影可以在 gateway 内直接使用同一事务；跨 Actor 的消息/READ 接入必须明确传递不可伪造证明及最终共享事务屏障，不能给终端 UpMsg 增加自报可信字段。
+READ GET 沿 `{operation,state,state_observed_at,replayed}`，state_observed_at 统一UTC毫秒，与原快照回执复放；PUT `{operation,state}` 的当前 state 与原回执分开。N1 的后续阶段转换尚未实现：当前 Transact 只保存不可变终结结果，首条不会提交 accepted 再期待重试覆盖 ready。控制面仅owner/system；system不得发送消息或扩pair成员/解除主人禁言；READ首个入口仅owner。测试信任只接受 N1 默认关闭结构，使用临时 fixture 公钥替代不可用占位，不新增真实密钥/签发入口。
+
+新路由、生产权限投影、结果/query生产者、可信RPC及原生入口gate均未具备；HTTP/WS/Token/登录/消息持久化最终检查须共用同一权威屏障，不能由解析成功或一次disabled UPDATE宣布ready。
 
 ## 已生效的错误字典
 
@@ -42,7 +46,22 @@ READ GET envelope 沿 M：`{operation, state, state_observed_at, replayed}`，�
 
 八个错误码从旧实现 HTTP200 的可运行红例修复；实际 `tools.ErrorHttpResp` 经 Gin/httptest 验证响应状态、Content-Type 和 JSON 字节。该验证不代表上面候选路径已注册或部署。
 
+## N1 本批实现与验证
+
+本批固定契约 Git blob SHA256 为 `3a36bc181526cb3e1ac02e67ddbbf9176af4b9abfb8b7fcf75eb657cc279a260`；本机当前文件规范 LF 内容与该固定 blob 一致，raw SHA 与前文区分。生产调用搜索确认旧 DTO 没有调用方；没有改动 auth/Transact、路由、proto、SQL、配置或其他负责人的文件。
+
+| 实际执行 | 结果及原件 |
+| --- | --- |
+| API-only stub 下 `go test -json ./commons/mindlink -run 'TestPrincipalDisable\|TestN1OperationResultWireShape' -count=1` | exit1；4顶层/61子例 FAIL。有效三向量被stub拒绝，旧结果为23字段，未把失败当通过；`.local/mindlink-disable-wire/red.jsonl` SHA256 `b94695748402b06767e511ce1f4a7e881439f4fefd3a13978ae2b762541b6bfd` |
+| 实现后同命令 | exit0；5顶层/64子例 PASS，0 FAIL/0 SKIP；包含追加的 system、uint64/长度边界及原字节保留；`green.jsonl` SHA256 `011f75c13c24cd1194c5419509bf1aa29dbc8eec632d679f5d9c7d8365fe9981` |
+| `go test -json ./commons/mindlink ./commons/errs ./commons/tools -count=1` | 三包exit0，20顶层/180子例 PASS，0 FAIL/0 SKIP；`packages.jsonl` SHA256 `a262b159572fe39db16362a742e54dc736f98d16c479185dbbc274c1d35524d4` |
+| 独立审查 `review_n1_disable_wire` | Critical0/Important0/Minor0；审查方另实际运行 `go test -count=1 ./commons/mindlink` exit0，不冒称本方重跑其命令 |
+
+Go1.26.1/Windows；gofmt 检查及 Git whitespace 检查无差异。以上为无 integration tag 的 wire/默认包测试，不含 DB 用例；本批未运行 SQL、HTTP 页面、WS/SDK、Token/登录或撤权后原生提交拒绝。结果测试覆盖22字段/nullable零值及毫秒格式常量，没有验证实际生产者的非空结果/状态组合；没有可运行的生产者，不以结构类型通过报告停用生效或 ready。
+
 ## Web 实施输入核对（2026-11-09）
+
+以下保留上一批 `742b2924` 查询时点的版本与缺口；本轮 N1 同版确认及 Go 源替代以本页开头为准，不追改历史回传为当时已确认。
 
 回应 F5-WEB 消息 `pbz3u6a9wcqhukeh`，批次 `742b2924733db9e8083d076ebd296adff8ba7fdb9308fa142fd6a2d96f086728`。本节只记录固定源码、已存在制品与能力边界；不产生第二份业务契约。核对时 IM 公共实现为 `cd51070f14814395ac3b55196c38131ed2fc9577`，Web 候选为 `aa8aa3f15b1507984790b6d242a1bf74c8dfd68e`，BIZ 为 `dfd2533942799790cde047ed82aaaff0a43434f6`。
 

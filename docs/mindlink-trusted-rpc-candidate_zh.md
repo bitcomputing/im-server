@@ -1,14 +1,16 @@
 # Mindlink 可信调用与最终事务候选
 
+后续 `1d4a6f92` 批次已对固定 BIZ N1 作 IM 技术确认，并替代旧 Go 值类型、实现 disable body/摘要解析，见 [当前字段源](mindlink-http-schema_zh.md)。下文保留 `7f424c2f` 当次候选及差异记录；其中旧23字段/微秒和“尚未接受”不再描述当前字段状态。RPC/生产最终屏障仍是未实现候选。
+
 DG-20261104-003；回应 BIZ 消息 `pbz2k6sm5y8hukeh`，本批 `7f424c2fd98833786aa20f71bf0dca213bbdd8066d97292a65364ccd44685b47`。本文件补充可核定设计，不是已注册的 RPC、生成 proto、生产权限实现或放行依据。
 
-## 当前固定源
+## 当次固定源（7f424c2f）
 
 工作分支 `feat/mindlink-policy`，基线 `99f7ce5383ea5a229e9ed970e7ae45a7512e5f91`。`commons/mindlink/operation.go` 是先前未联合冻结的值类型提案：OperationResult 共 23 字段；avatar_generation、expected_policy_version、desired_policy_version、committed_policy_version 为 int64，desired_state 为 JSON 对象，其余 18 项为字符串。字段不使用 omitempty。READ query 的 desired_state 为 `{}`、state 为 observed，时间为固定 UTC 微秒。它没有实现各 operation 的语义校验。
 
 `commons/mindlink/auth.go` 已实现独立 Ed25519 请求验证；返回对象的私有验证器身份不能由 HTTP DTO 自造。`transaction.go` 已实现原 operation/request/jti、强制核权 callback、效果和原结果同事务；当前生产核权 callback 尚未接入。`commons/errs/errorcode.go` 的 19001–19008 已注册实际 HTTP 状态映射。
 
-## 与业务 N1 工作草案的对应
+## 当次与业务 N1 草案的对应（字段已由后续替代）
 
 本轮只读核到 BIZ HEAD `d0639755e086e2d63d5a4754281ed4dafe492591`，唯一契约为未提交 N1 草案，raw SHA256 `2daf06112b28c4324a1be2fb599af80b06b43cc03c279804d61dfff8a5a2a933`。这与本批正文引用的 M 不同，不把工作区草案写成固定提交或已经联合冻结。
 
