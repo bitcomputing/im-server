@@ -1,0 +1,15 @@
+{
+  "source_commit": "4ecec887fb38d2d81af4bf2773b05d304e8ced97",
+  "ws_address": "ws://127.0.0.1:19003",
+  "app_key": "dg2c3350172f150",
+  "sender_id": "",
+  "receiver_id": "",
+  "group_1": "",
+  "group_2": "",
+  "run_id": "",
+  "approved_phase_ref": "",
+  "protected_durability_ref": "",
+  "zero_mention_sql_ref": "",
+  "new_action_cutoff_utc": "",
+  "baseline_history_ids": {}
+}

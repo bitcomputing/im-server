@@ -103,7 +103,7 @@
   },
   "verification_boundary": "Preparation batch 01c5: fixed-source build/vet, transfer hashes, image/layer/config shape and runtime snapshots only. Current execution-plan batch 4724: source/material review and read-only runtime budget/Compose-help checks only. No native messages, SDK/page/DB, restart/rollback or new-binary runtime retest.",
   "required_execution_gates": [
-    "BIZ supplies verifiable stop-test/release confirmations covering all actual participants including the owner and Web, with effective interval/scope and authorized existing actors/real Token flow; zero inflight or own browser closure alone is not release",
+    "Coordinator handles owner occupancy and approval; BIZ reports only participants it can actually verify. Complete actual participant/writer release still requires effective interval/scope; zero inflight or own browser closure is not release.",
     "Coordinator confirms future phase intervals, exact candidate/image/binary, executor, per-phase end state, restart/write/read effects and full recovery reserve; no fixed five-minute constraint",
     "Before any stop or switch, all protected state must be proven durable over the complete affected scope; targeted SQL equality does not prove process-wide drain, and no supported process-wide drain evidence is currently available",
     "Coordinator accepts estimated phase budgets, unmeasured stop/start/full-recovery uncertainty and non-durable safe-exit responsibility; measured P1 durations recalibrate later phases before new actions",
@@ -173,7 +173,13 @@
     "measured_full_rollback_seconds": null,
     "process_wide_drain_evidence": null,
     "approved_existing_actor_conversation_matrix": null,
-    "reviewed_Rocky_driver_artifact": null,
+    "reviewed_Rocky_driver_artifact": {
+      "source_path": "simulator/probes/dg2persist",
+      "windows_binary_sha256": "80dac99025702b70b84f6f14494db84baeb85a7e837d941ca9842e10cd9bcee8",
+      "offline_material_review_passed": true,
+      "actual_business_parameters_ready": false,
+      "connected_to_Rocky": false
+    },
     "phase_intervals_and_end_states": null,
     "global_clear_scope": "all conversations of authenticated test receiver: read-index/read-time/unread_tag changes, in-memory MentionInfo clearing and deletion of all receiver mentionmsgs rows; payload cannot limit scope to one group",
     "no_mutating_execution_in_this_batch": true,
@@ -226,7 +232,116 @@
       }
     },
     "required_mention_baseline": "successful scoped SQL count=0 and all native conversation MentionInfo empty before test and again before global-clear; no mention in M1-M4; query failure is not zero",
-    "plan_git_blob_sha256": "61b425c38a4c4d1c055209f3c5076df4b894f2cea9764e501050a481a4731efa",
-    "plan_hash_encoding": "UTF-8 with LF line endings, matching Git blob; working-copy CRLF may differ"
+    "plan_git_blob_sha256": "4a42fea7c1b70272872cde8790823c15398881a7d732bbf58d828d8b4daeba8b",
+    "plan_hash_encoding": "UTF-8 with LF line endings, matching Git blob; working-copy CRLF may differ",
+    "accepted_prior_plan_snapshot": {
+      "commit": "1bceb03f3cb5899d99679d1e25ffc1dbbe5e022b",
+      "plan_git_blob_sha256": "61b425c38a4c4d1c055209f3c5076df4b894f2cea9764e501050a481a4731efa"
+    }
+  },
+  "driver_preparation": {
+    "batch_id": "9e0474dff8b8c9dffecd7f4c708805c2f0a041cc82c1539ecf7bf9610413ce24",
+    "source_message_id": "pbz66b4dey4hukeh",
+    "status": "fixed_offline_driver_prepared_not_authorized_for_execution",
+    "source_commit": "4ecec887fb38d2d81af4bf2773b05d304e8ced97",
+    "base_source_archive_sha256": "2ebcb383e173bafd58c4165ecce557852f13e3ad2e5da0da7ad5e17eb63a5cbf",
+    "base_regular_files": 742,
+    "runtime_config_excluded": true,
+    "driver_files_git_blob_sha256": {
+      "simulator/probes/dg2persist/main.go": "6b665b83a8be64b428ed28d0b08bbb3765baec2aafa8f9423f3b4b61646504b8",
+      "simulator/probes/dg2persist/main_test.go": "20c68004ed929dd5d991e934f9f04504b14c2605683f26196d51a38c785533bb",
+      "simulator/probes/dg2persist/params.example.json": "af5757dbb0f46aaa2ea18596022c8a66c911a28b6b7562d640a7cb9dec4ca25f",
+      "simulator/probes/dg2persist/README.md": "92310b308f05a62ba5495cfbfaca5380cd97525b1e4a2c5e1dda53c24547eaf8"
+    },
+    "fixed_native_source_files_sha256": {
+      "simulator/wsclients/wsimclient.go": "c58e47927b60dd2cadb1f01f9b2821144505789fdb21af217c72ce56edf2b301",
+      "simulator/wsclients/conversation.go": "447d41876f6bad51b1d0e9e9fb349226c4ea88a154436b10946dda4e37b82790",
+      "simulator/wsclients/message.go": "23f72ccf339822f5e23c18ddedb62e87c4d1ef322559f9cd4acc9b35a099a9d2",
+      "simulator/wsclients/historymsg.go": "5c5b09728f95db570a51a0f30144e21d9b3b7642fd7ed5c43b8e8be90954e2f4",
+      "commons/pbdefines/pbobjs/appmessages.pb.go": "71ce3705ea24bd623d36754f25f066a370fc172a7d5ce36e8fbd692227efd7cc"
+    },
+    "builder": {
+      "image_id": "sha256:49be686fa97bc62ee3d408d1f2208c8e6ce613941b16763ece970ff6c4366349",
+      "go": "go version go1.25.12 linux/amd64",
+      "network": "none",
+      "source_mount": "read_only",
+      "module_cache_mount": "read_only",
+      "flags": "GOPROXY=off GOSUMDB=off GOTOOLCHAIN=local GOFLAGS=-mod=readonly CGO_ENABLED=0; go test -json -count=1; go vet; go build -buildvcs=false -trimpath -ldflags=\"-s -w\"; linux/amd64 and windows/amd64",
+      "exit": 0
+    },
+    "build_observed_utc": "2026-11-09T07:52:46.8318349+00:00",
+    "artifacts": {
+      "dg2persist.exe": {
+        "sha256": "80dac99025702b70b84f6f14494db84baeb85a7e837d941ca9842e10cd9bcee8",
+        "bytes": 16357888
+      },
+      "dg2persist-linux": {
+        "sha256": "93b1d62905672f1e33966fdb4db7be6331f3819a02a7ef5d86d6d9352b3e082b",
+        "bytes": 15966392
+      }
+    },
+    "verification": {
+      "top_level_tests": 8,
+      "pass_events_including_subtests": 30,
+      "skips": 0,
+      "failures": 0,
+      "vet_exit": 0,
+      "linux_network_none_validation_only_exit": 0,
+      "windows_native_validation_only_exit": 0,
+      "missing_objects_expected_rejection_exit": 1,
+      "missing_authority_references_expected_rejection_exit": 1,
+      "windows_local_Go1_26_1_test_and_vet_exit": 0,
+      "live_protocol_DB_restart_tests": "NOT_RUN"
+    },
+    "evidence_hashes": {
+      "tests.jsonl": "04d99469c26ba2771622e0e5f8d2839377d331d721618348d3ee4f7238c71f13",
+      "vet.txt": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "check-no-connect.json": "4aa04fc480c07f22876d441b13e44b063b951dacb092143265c5d83048b4a9cf",
+      "windows-check-no-connect.json": "c702e36ba900ae91a73ae553118e7d818bb9031d803873b6d79549e6000dbaab",
+      "windows-negative-checks.json": "8ebef298c3ff9c0022fcd531c7589cd385353d71a1b4db80f7e4f6db40ba75c6"
+    },
+    "initial_review": {
+      "critical": 0,
+      "important": 1,
+      "minor": 0,
+      "finding": "empty or missing approved conversation set could reach initial publish; baseline did not require history for both groups"
+    },
+    "rereview": {
+      "critical": 0,
+      "important": 0,
+      "minor": 0,
+      "initial_finding_closed": true,
+      "reviewer": "review_dg2_persist_material",
+      "scope": "local source/material review only; reviewer did not run tests or operations"
+    },
+    "drain_gaps_document": "docs/dg2-persist-drain-gaps_zh.md",
+    "production_persist_symbol_reference_files": [
+      "services/conversation/services/convercache.go"
+    ],
+    "actual_dependency_report": {
+      "source": "coordinator pbz66b4dey4hukeh relaying BIZ 07:05 material 0d8628067; not independently DB-queried",
+      "reported_existing_users": [
+        "159",
+        "160"
+      ],
+      "both_without_permanent_claim": true,
+      "user_160_is_owner": true,
+      "independent_legal_S_R_or_groups_confirmed": false,
+      "prerequisite": "resolve503_and_normal_claim_then_use_actual_returned_bindings"
+    },
+    "owner_occupancy_coordinator": "二当家; BIZ reports only participants it can verify, not owner approval",
+    "local_private_artifact_root": ".local/dg2-driver-9e0474",
+    "retained_build_containers": [],
+    "no_Rocky_connection_or_business_mutation": true,
+    "new_executable_window_proposed": false,
+    "remaining_limits": [
+      "actual legal identities/groups/history/Token flow absent",
+      "SQL references and approval references are not automatically verified by driver",
+      "no supported process-wide durable drain evidence",
+      "native simulator background synchronization/concurrency and no WriteMessage timeout remain inherited",
+      "local exclusive journal does not provide cross-path/server-side idempotency",
+      "no nonempty mention deletion, race interleaving, page/SDK, DB or restart/rollback acceptance"
+    ],
+    "base_source_files_individually_verified_against_fixed_archive": 742
   }
 }
