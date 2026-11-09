@@ -1,6 +1,8 @@
 # Mindlink 公共 HTTP 字段收口
 
-DG-20261104-003，IM 公共接口负责人提出的具体源定义，供 BIZ 在唯一契约登记确认。Go 字段位于 `commons/mindlink/operation.go`；当前没有注册这些路由，不能调用或据此启用 ready。唯一业务契约仍为 chatbot43 的 `docs/mindlink-conversations-contract.md` M 版；本文件不替换该事实源。字段确认后才实现严格 DTO 语义核验与生产权限事务。
+DG-20261104-003，IM 公共接口负责人提出的具体源定义，供 BIZ 在唯一契约登记确认。Go 字段位于 `commons/mindlink/operation.go`；当前没有注册这些路由，不能调用或据此启用 ready。本提案最初依据 M 版；唯一业务事实源为 chatbot43 的 `docs/mindlink-conversations-contract.md`，本文件不替换它。字段确认后才实现严格 DTO 语义核验与生产权限事务。
+
+后续核到 BIZ N1 工作草案；它尚未联合冻结。与本页提案的差异、建议取舍以及精确可信 RPC/最终事务候选见 [可信调用候选](mindlink-trusted-rpc-candidate_zh.md)。本页和 Go 值类型仍是 99f7ce5 的旧提案，不能与 N1 混作同一个 schema。
 
 ## 首个主体操作
 
