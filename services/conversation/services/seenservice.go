@@ -22,17 +22,55 @@ func QryConverSeen(ctx context.Context, req *pbobjs.QryConverSeenReq) (errs.IMEr
 	if req == nil {
 		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
 	}
-	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, 0, false)
+	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, 0, false, nil)
 }
 
 func SetConverSeen(ctx context.Context, req *pbobjs.SetConverSeenReq) (errs.IMErrorCode, *pbobjs.ConverSeenState) {
 	if req == nil {
 		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
 	}
-	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, req.SeenSeq, true)
+	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, req.SeenSeq, true, nil)
 }
 
-func converSeen(ctx context.Context, target, sub string, channel pbobjs.ChannelType, seq int64, update bool) (errs.IMErrorCode, *pbobjs.ConverSeenState) {
+// QryConverSeenWithTx joins seen reads to tx; visibility lookups retain their existing storage calls.
+// The caller must discard tx after any SQL failure; a storage failure here aborts tx.
+func QryConverSeenWithTx(ctx context.Context, tx *gorm.DB, req *pbobjs.QryConverSeenReq) (errs.IMErrorCode, *pbobjs.ConverSeenState) {
+	if !hasSeenTransaction(tx) {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+	}
+	if req == nil {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
+	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, 0, false, tx.WithContext(ctx))
+}
+
+// SetConverSeenWithTx only stages seen in tx; the caller must commit its authority/result transaction before reporting success.
+// The caller must discard tx after any SQL failure; a storage failure here aborts tx.
+func SetConverSeenWithTx(ctx context.Context, tx *gorm.DB, req *pbobjs.SetConverSeenReq) (errs.IMErrorCode, *pbobjs.ConverSeenState) {
+	if !hasSeenTransaction(tx) {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+	}
+	if req == nil {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
+	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, req.SeenSeq, true, tx.WithContext(ctx))
+}
+
+func hasSeenTransaction(tx *gorm.DB) bool {
+	if tx == nil || tx.Error != nil || tx.Statement == nil {
+		return false
+	}
+	_, ok := tx.Statement.ConnPool.(gorm.TxCommitter)
+	return ok
+}
+
+func converSeen(ctx context.Context, target, sub string, channel pbobjs.ChannelType, seq int64, update bool, conn *gorm.DB) (code errs.IMErrorCode, state *pbobjs.ConverSeenState) {
+	defer func() {
+		if conn != nil && code == errs.IMErrorCode_API_INTERNAL_RESP_FAIL {
+			// MySQL can roll back a deadlock victim without invalidating database/sql's transaction handle.
+			conn.Rollback()
+		}
+	}()
 	app, user := bases.GetAppKeyFromCtx(ctx), bases.GetRequesterIdFromCtx(ctx)
 	if app == "" || user == "" || target == "" || !utf8.ValidString(app+user+target+sub) || utf8.RuneCountInString(app) > 20 || utf8.RuneCountInString(user) > 32 || utf8.RuneCountInString(target) > 32 || utf8.RuneCountInString(sub) > 32 || seq < 0 || (channel != pbobjs.ChannelType_Private && channel != pbobjs.ChannelType_Group) {
 		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
@@ -41,7 +79,7 @@ func converSeen(ctx context.Context, target, sub string, channel pbobjs.ChannelT
 	if code != errs.IMErrorCode_SUCCESS {
 		return code, nil
 	}
-	dao := dbs.SeenDao{}
+	dao := dbs.SeenDao{DB: conn}
 	current, err := dao.Find(app, user, target, sub, channel)
 	if err != nil {
 		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
