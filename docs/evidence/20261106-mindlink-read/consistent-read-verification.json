@@ -1,0 +1,127 @@
+{
+  "source": {
+    "base": "d336dec4cae9eff4067938b18e05215a5a0c60fe",
+    "overlay_sha256": {
+      "services/conversation/services/seenservice.go": "63ab6d41662f38799bee24b3a61981ee88164e925333422ce16e0c4625132351",
+      "services/conversation/services/seenobservation.go": "23db780a8437ac7aa2a10da9e821a8a159246a63d68e3bfd9ec7c98f4e4ecb37",
+      "services/conversation/services/seenconsistent_test.go": "49f22cc79ebef5788deddbc1a57ae4d9e7109ab0513a6eca881a2e622824a0ab",
+      "services/conversation/services/seenobservation_test.go": "445dd0c0bb7bed824f77e24a4b752eac7e41c4ece45a269d63bb635f43b606bc",
+      "services/conversation/storages/dbs/seenlatest.go": "d20b6adde6e7ea9312d256ecc08d793d3ad9ed6ba38fb4e57381208ae8c46adc",
+      "simulator/probes/mindlinkread/consistent_test.go": "c0810792a375e902fba8c7cf4628b15c3b6ca99f51b068041a6cc3f1a1b1de52"
+    },
+    "archive_sha256": "ba4039f107e6ed695e45d4ae0fee51f8f3c9cce01dac03b0b1a1ac6232abfec6"
+  },
+  "binary_sha256": "7b5cfbf90f013b90b9741d69e00d0723969d7057e05ef16d8a75492b6f3942a6",
+  "image_id": "sha256:605cf86596d214ee028ccb153386e43c4cc95ae491f61f2324010eaa4e60db84",
+  "checks_exit": 0,
+  "conversation_tests": {
+    "pass": 19,
+    "skip": 11,
+    "failure_lines": 0
+  },
+  "runtime_before_exit": 0,
+  "runtime_after_exit": 0,
+  "scoped_DB_metadata_identical_across_restart": true,
+  "mysql_started_at_unchanged": "2026-11-09T11:05:03.205405539Z",
+  "IM_started_before": "2026-11-09T11:25:38.074621635Z",
+  "IM_started_after": "2026-11-09T11:28:35.446167704Z",
+  "disk_live_executable_hashes_match_before_after": true,
+  "mutations": {
+    "global_exit": 1,
+    "global_visibility_expected_failures": true,
+    "float_exit": 1,
+    "float_precision_expected_failure": true
+  },
+  "task": "DG-20261104-003/F1-READ consistent transaction observation",
+  "evidence_directory": ".local/f1-read/consistent-20261109/",
+  "scope": "local transaction visibility/native typed observation only; public query/result journal and business page unverified",
+  "resources_final_snapshot": [
+    {
+      "Name": "/im-f1-read-20261106-im-server-1",
+      "Image": "sha256:605cf86596d214ee028ccb153386e43c4cc95ae491f61f2324010eaa4e60db84",
+      "Status": "exited",
+      "ExitCode": 137,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-09T11:28:35.446167704Z",
+      "FinishedAt": "2026-11-09T11:31:42.898011287Z"
+    },
+    {
+      "Name": "/im-f1-read-20261106-mysql-1",
+      "Image": "sha256:6cd09145362dfe6831b14545de3d5fd6cc75c37cfd6ef8561429c1fc73518b39",
+      "Status": "exited",
+      "ExitCode": 0,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-09T11:05:03.205405539Z",
+      "FinishedAt": "2026-11-09T11:31:46.971209033Z"
+    },
+    {
+      "Name": "/im-f1-read-20261106-im-server-fresh-1",
+      "Image": "sha256:90ce1013e041bb65e4121a849e4938dd3401f3f73724ff90a815f6316784adb9",
+      "Status": "exited",
+      "ExitCode": 137,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-06T12:04:54.132274659Z",
+      "FinishedAt": "2026-11-06T12:11:51.015528464Z"
+    }
+  ],
+  "temporary_runners_remaining_at_inventory": 0,
+  "review": {
+    "agent": "review_read_consistency",
+    "critical": 0,
+    "important": 0,
+    "minor": 0,
+    "source_archive_verified": true,
+    "independent_Windows_pure_tests": "not executed; pre-existing commons/metrics memory.Stats Swap fields compilation failure",
+    "integration_tests": "not independently rerun by reviewer"
+  },
+  "schema_limit": {
+    "fixture": "owned F1-READ jim_db",
+    "p_hismsgs.msg_seq_no": "signed INT",
+    "g_hismsgs.msg_seq_no": "signed INT",
+    "conversation_seen.seen_seq": "BIGINT",
+    "message_sequence.seq": "BIGINT",
+    "full_range_history_storage_verified": false
+  },
+  "raw_evidence_sha256": {
+    "visibility-red-initial.log": "5794261fa3bea20b28259480808cd4b6c714eae9e5e331bc963fb9bb0ef508fc",
+    "visibility-red.log": "08c722a769fc399dd3504ba4002ea0eb6dd0f7b5d092fe285bb1f422d00d8b66",
+    "red-result.json": "d9a64d75055e7d53764157c5e4063f958ceda9f6b6c2bc4b41cb0eb5f3df0b03",
+    "visibility-green.log": "d25e91c6b2a22c491544f74c3db9714edf77faedc0e12a0b8123a9cedb304dc4",
+    "observation-red.log": "8408e71aea19e3aef37763e443d4603da2b6e4a955314141a3cb4b3f82ffaf22",
+    "observation-fixture-invalid-1406.log": "926d8d479f283ef06571dede8179cf8b67b6660740c28fc0abaa5e5d732c0be3",
+    "observation-fixture-invalid-1264.log": "6f84fa7b69bc9c98cac92db424d8b1e7f6dddc5e9b5fc01947b45e1b467f6eb7",
+    "sequence-column-types.log": "748af22217491a5524e82f8687b2fa82531fcbf83f41148d1ceaad2e4f847c5c",
+    "observation-green.log": "ce5352c0defd4828039db14652898c252582ee06b6e04290891c094c1b2aa41e",
+    "final-conversation-tests.log": "3e3fcb0efdeaa299b44f5a25478cd65db56fe0f5ee3b5bab22fd02605d582892",
+    "vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "checks.sh": "26ff857589f84c0167365d8ff350893b1ad3b9b72bcc4588b5d9eed740f3815b",
+    "checks-result.json": "3678488bb321169f67f237d48272912f68ea655430e6b82e1fc210c3d230c6f4",
+    "global-visibility-red.log": "544e6857e10cef323e4d0c6455ee979d2ec85db41b93a0b629777e3fb1bfe613",
+    "float-state-red.log": "bf02fd61cacbfb71f8547c3d8026f2baf25ecbcc0df0a1cf91cd8c9d9a5c2eb8",
+    "mutation-results.json": "534355969ce69ae99b452663955aefdf452ba3e469550c60b878702b85103656",
+    "runtime-before.log": "fbb3eaf8a4e9d723a804adcb5792bcd06f367543a5be7743e67ec0c0a5985d33",
+    "runtime-before-result.json": "3bed2591497b89b762fbdeca5fc4da005cc8cb3bdede1fcb6de0d5e2c45f98d3",
+    "runtime-after.log": "2e042fb7fbf3daeec4321bbba8e25cc1edcf4b48344bfcd45b37dce4a93ae370",
+    "runtime-after-result.json": "3bed2591497b89b762fbdeca5fc4da005cc8cb3bdede1fcb6de0d5e2c45f98d3",
+    "runtime-db-before.log": "6c9344f0c780c5d80616670b1eb90431ee6b81675d6600ee1355b27f0ed0acaa",
+    "runtime-db-after.log": "6c9344f0c780c5d80616670b1eb90431ee6b81675d6600ee1355b27f0ed0acaa",
+    "runtime-live-before.sha256": "bf78a3e3397222ff1ed621d6eebd2bccd8866bc4cfdd2d81c58229e69b618b6b",
+    "runtime-live-after.sha256": "bf78a3e3397222ff1ed621d6eebd2bccd8866bc4cfdd2d81c58229e69b618b6b",
+    "runtime-states-before.json": "e282010931e269fba0dd844301c0c1b6af235c6d70abb1bdf6760e159ea120ff",
+    "runtime-states-after.json": "383b9fdeaf920d65bd762d73324e276e3dd49340721b6e85592ccf1f5b947beb",
+    "runtime-restart.log": "6f21ecbcd7fa7041f7dae41cb163c121574a2095c432856d3a9de401730103b3",
+    "runtime-stop.log": "1818500876d07ddbeff2b5583bdd80c4bb949cc87de95282573beda569f5d3b1",
+    "resources-final.json": "cd899285983401a7723562652651f45b5a047181f5cd28397a9d354b0df08c5f",
+    "test-cleanup-verify.log": "ee377c9f85a4b4f5f655c43f184ec1ec29508e61ec03d79334fd1a0234736c1b"
+  },
+  "mutation_archives_sha256": {
+    "source-global-visibility.tar": "8aea32d34eebe292dfbe0661755f14398f492de176993e93d2168f2602222486",
+    "source-float-state.tar": "dd47b014775eefdda64cd8841e537a1ddffe9c9c98d0e5319089882bad1b5204"
+  },
+  "excluded_attempts": {
+    "visibility-red-initial.log": "settings fixture 1292; corrected RED used separately",
+    "observation-fixture-invalid-1406.log": "oversized synthetic message ID; not a passed test",
+    "observation-fixture-invalid-1264.log": "MaxInt64 history exceeds actual INT column; storage boundary reported, not a passed test"
+  }
+}

@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"im-server/commons/bases"
+	"im-server/commons/configures"
 	"im-server/commons/errs"
 	"im-server/commons/pbdefines/pbobjs"
 	"im-server/services/commonservices"
@@ -32,7 +33,7 @@ func SetConverSeen(ctx context.Context, req *pbobjs.SetConverSeenReq) (errs.IMEr
 	return converSeen(ctx, req.TargetId, req.SubChannel, req.ChannelType, req.SeenSeq, true, nil)
 }
 
-// QryConverSeenWithTx joins seen reads to tx; visibility lookups retain their existing storage calls.
+// QryConverSeenWithTx reads seen and MySQL visibility through the caller's transaction.
 // The caller must discard tx after any SQL failure; a storage failure here aborts tx.
 func QryConverSeenWithTx(ctx context.Context, tx *gorm.DB, req *pbobjs.QryConverSeenReq) (errs.IMErrorCode, *pbobjs.ConverSeenState) {
 	if !hasSeenTransaction(tx) {
@@ -75,7 +76,22 @@ func converSeen(ctx context.Context, target, sub string, channel pbobjs.ChannelT
 	if app == "" || user == "" || target == "" || !utf8.ValidString(app+user+target+sub) || utf8.RuneCountInString(app) > 20 || utf8.RuneCountInString(user) > 32 || utf8.RuneCountInString(target) > 32 || utf8.RuneCountInString(sub) > 32 || seq < 0 || (channel != pbobjs.ChannelType_Private && channel != pbobjs.ChannelType_Group) {
 		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
 	}
-	code, latest := seenLatest(app, user, target, sub, channel)
+	var latest int64
+	if conn == nil {
+		code, latest = seenLatest(app, user, target, sub, channel)
+	} else {
+		if engine := configures.Config.MsgStoreEngine; engine != "" && engine != configures.MsgStoreEngine_MySQL {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+		}
+		var err error
+		latest, err = (dbs.SeenDao{DB: conn}).Latest(app, user, target, sub, channel)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errs.IMErrorCode_GROUP_NOTGROUPMEMBER, nil
+		}
+		if err != nil {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+		}
+	}
 	if code != errs.IMErrorCode_SUCCESS {
 		return code, nil
 	}
