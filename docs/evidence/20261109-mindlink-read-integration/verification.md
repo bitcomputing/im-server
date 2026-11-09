@@ -53,3 +53,70 @@ Owned MySQL `fa592cac645e829119a48282348da85529c3d15565ba0184e7dd450bd531a023` r
 Independent read-only final review: Critical0 / Important0 / Minor0. Reviewer checked source, fixed READ blobs, migration assertions, test cleanup ordering and evidence boundaries; did not independently run the service, browser or SQL integration suite. No push, merge, shared service deployment, production migration, external message or public API enablement is part of this increment.
 
 Open: production authority feed, public READ original snapshot/typed receipt/final authority integration, public disable enablement, blind conversation-list/aggregate filtering, ensure/SendWithKey, real provider push/stream-timeout callback, business Web/App acceptance and released JS/App int64 behavior. The current batch remains open.
+
+## Full delivery package audit (batch1cb039)
+
+This later handoff is source/package verification, not a rerun of the runtime evidence above. The package is306988 bytes, SHA256 `352d084fdbd3e36079f371cb4c2a97d8369f101a30729f41978ae7c03ce9e364`, with14 bounded relative-path entries. The bundle verifies against the existing Git repository, advertises only READ HEAD `dcdd3a30ba4b802dce11ae396dc8f3711755ed4f`, and requires full baseline `4ecec887fb38d2d81af4bf2773b05d304e8ced97`. This is12 commits/52 changed files; d336 is only the last increment's base.
+
+All three patch sizes, SHA256 values and path inventories match the supplied metadata. Applying the full patch to a separate Git index at4ece rebuilt tree `d3baf9f4437d7131cf855969935e36a2db5c7528`, exactly the delivered HEAD tree. The active worktree/index and branch were unchanged. No archive command, service, database or browser was executed from the package.
+
+The52 paths below were compared with Root implementation commit `1eb2e169904b3baad509be7dede94bc64c62ac98`:23 exact blobs,6 adapted shared files,6 original-fixture test files and17 historical evidence documents. Every production Go/protobuf/SQL change in this delivery is present or adapted. This is source coverage, not public READ readiness. The six adapted paths exactly match the package's co-modified-file list. For the three message callers, the diff from8035 preserves the native guards and adds only fourth-return error handling; the other three preserve native migration guards, policy initialization and authority schema alongside Root's forward20261111 migration/BIGINT work. The launcher returns before listeners on error; its exit code alone is not startup evidence.
+
+The provider's original fixtures and historical documents remain available in fixed Git source and this ignored extracted package. They are not copied over Root's owned native probes or treated as Root runtime results. In particular, the provider's old signed-INT/1264 limitation is retained with its original version; Root's later BIGINT checks are separately identified above. Public trusted mapping/final authority, original READ query snapshot/typed receipt and actual owner page/ledger/seen acceptance remain open.
+
+The first audit script incorrectly expected9 adapted/20 exact paths: three more callers were already byte-identical, so that count assertion failed. It is excluded from complete-audit success. Correcting the assertion against the actual six co-modified paths produced exit0 with the counts above; no production code changed to satisfy the audit. Full52-path/blob metadata is ignored at `.local/mindlink-policy/read-full-1cb039/root-integration-audit.json`, SHA256 `01b72e67aec29832fba6698f4c0b2dd7bf8d70e33fb0a64d0643d6a70c47e1ae`.
+
+| Delivered path | Root handling |
+| --- | --- |
+| `commons/dbcommons/dbmigration.go` | Adapted shared source |
+| `commons/dbcommons/dbmigration_integration_test.go` | Original fixture test; fixed source only |
+| `commons/dbcommons/sqls/20261106.sql` | Exact delivered blob |
+| `commons/dbcommons/sqls/20261107.sql` | Exact delivered blob |
+| `commons/pbdefines/mindlinkread.proto` | Exact delivered blob |
+| `commons/pbdefines/pbobjs/mindlinkread.pb.go` | Exact delivered blob |
+| `docs/evidence/20261106-message-sequence/README.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-message-sequence/manifest.json` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/README.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/consistent-read-handoff.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/consistent-read-plan.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/consistent-read-verification.json` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/integrated-manifest.json` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/integrated-review.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/integrated-verification.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/manifest.json` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/native-contract-handoff.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/plan.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/retention-handoff.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/transaction-adapter-handoff.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/transaction-adapter-plan.md` | Historical provider material; fixed source only |
+| `docs/evidence/20261106-mindlink-read/transaction-adapter-verification.json` | Historical provider material; fixed source only |
+| `docs/superpowers/plans/2026-11-06-message-sequence-watermark.md` | Historical provider material; fixed source only |
+| `launcher/main.go` | Adapted shared source |
+| `services/broadcast/services/broadcastservice.go` | Exact delivered blob |
+| `services/broadcast/services/groupcastmsgservice.go` | Exact delivered blob |
+| `services/commonservices/convercache/msgconvercache.go` | Exact delivered blob |
+| `services/commonservices/convercache/msgsequence.go` | Exact delivered blob |
+| `services/commonservices/convercache/msgsequence_test.go` | Exact delivered blob |
+| `services/conversation/actors/seenactor.go` | Exact delivered blob |
+| `services/conversation/services/seenconsistent_test.go` | Exact delivered blob |
+| `services/conversation/services/seenobservation.go` | Exact delivered blob |
+| `services/conversation/services/seenobservation_test.go` | Exact delivered blob |
+| `services/conversation/services/seenservice.go` | Exact delivered blob |
+| `services/conversation/services/seenservice_test.go` | Exact delivered blob |
+| `services/conversation/services/seenservice_tx_test.go` | Exact delivered blob |
+| `services/conversation/starter.go` | Exact delivered blob |
+| `services/conversation/storages/dbs/seen.go` | Exact delivered blob |
+| `services/conversation/storages/dbs/seen_test.go` | Exact delivered blob |
+| `services/conversation/storages/dbs/seenlatest.go` | Exact delivered blob |
+| `services/group/services/groupmsgservice.go` | Adapted shared source |
+| `services/historymsg/storages/dbs/convercleantimedao.go` | Exact delivered blob |
+| `services/historymsg/storages/dbs/convercleantimedao_test.go` | Exact delivered blob |
+| `services/message/services/msgservice.go` | Adapted shared source |
+| `services/message/services/systemmsgservice.go` | Adapted shared source |
+| `services/statussubscriptions/services/pubuserstatusservice.go` | Exact delivered blob |
+| `simulator/probes/mindlinkread/consistent_test.go` | Original fixture test; fixed source only |
+| `simulator/probes/mindlinkread/retention_test.go` | Original fixture test; fixed source only |
+| `simulator/probes/mindlinkread/runtime_test.go` | Original fixture test; fixed source only |
+| `simulator/probes/mindlinkread/transaction_test.go` | Original fixture test; fixed source only |
+| `simulator/probes/mindlinkseq/runtime_test.go` | Original fixture test; fixed source only |
+| `sql/imserver.sql` | Adapted shared source |
