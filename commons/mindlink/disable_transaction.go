@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// transactPrincipalDisable is not exposed until production authority and all
-// applicable native gates are available; PolicyHTTP remains closed.
+// The HTTP caller checks the business retirement source before this restrictive
+// transaction; the current IM owner/principal authority is locked again below.
 func (v *Verifier) transactPrincipalDisable(ctx context.Context, db *sql.DB, auth *Authorization) (*MutationResult, error) {
 	body, err := v.ParsePrincipalDisable(auth)
 	if err != nil {

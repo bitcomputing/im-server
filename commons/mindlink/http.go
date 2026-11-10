@@ -1,6 +1,7 @@
 package mindlink
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,11 +13,23 @@ import (
 )
 
 type PolicyHTTP struct {
-	verifier *Verifier
-	db       *sql.DB
+	verifier      *Verifier
+	db            *sql.DB
+	disableSource *DisableAuthoritySource
 }
 
 func NewPolicyHTTP(v *Verifier, db *sql.DB) *PolicyHTTP { return &PolicyHTTP{verifier: v, db: db} }
+
+// Enabling the restrictive lifecycle operation requires a server-owned source and native fences.
+func NewPolicyHTTPWithDisable(ctx context.Context, v *Verifier, db *sql.DB, source *DisableAuthoritySource) (*PolicyHTTP, error) {
+	if v == nil || source == nil || !source.enabled {
+		return nil, ErrNotReady
+	}
+	if _, err := NewNativeFence(ctx, db); err != nil {
+		return nil, err
+	}
+	return &PolicyHTTP{verifier: v, db: db, disableSource: source}, nil
+}
 
 type policyEnvelope struct {
 	Code errs.IMErrorCode `json:"code"`
@@ -45,18 +58,26 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writePolicyError(w, err)
 		return
 	}
+	var result *MutationResult
 	if operation == OperationPrincipalDisable {
 		if _, err := h.verifier.ParsePrincipalDisable(auth); err != nil {
 			writePolicyError(w, err)
 			return
 		}
-		// No producer can promise ready until every native final gate is wired.
-		writePolicyError(w, ErrNotReady)
-		return
+		if h.disableSource == nil {
+			writePolicyError(w, ErrNotReady)
+			return
+		}
+		if err = h.disableSource.Check(r.Context(), h.verifier, auth); err != nil {
+			writePolicyError(w, err)
+			return
+		}
+		result, err = h.verifier.transactPrincipalDisable(r.Context(), h.db, auth)
+	} else {
+		result, err = h.verifier.QueryOperation(r.Context(), h.db, auth, func(tx *sql.Tx, query, original Claims) error {
+			return authorizeOperationRead(r.Context(), tx, query, original)
+		})
 	}
-	result, err := h.verifier.QueryOperation(r.Context(), h.db, auth, func(tx *sql.Tx, query, original Claims) error {
-		return authorizeOperationRead(r.Context(), tx, query, original)
-	})
 	if err != nil {
 		writePolicyError(w, err)
 		return

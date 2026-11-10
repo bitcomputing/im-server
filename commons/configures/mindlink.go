@@ -1,8 +1,15 @@
 package configures
 
 type MindlinkConfig struct {
-	Enabled bool                  `yaml:"enabled"`
-	Trusts  []MindlinkTrustConfig `yaml:"trusts"`
+	Enabled                bool                          `yaml:"enabled"`
+	Trusts                 []MindlinkTrustConfig         `yaml:"trusts"`
+	DisableAuthoritySource MindlinkAuthoritySourceConfig `yaml:"disable_authority_source"`
+}
+
+type MindlinkAuthoritySourceConfig struct {
+	Enabled    bool   `yaml:"enabled"`
+	Program    string `yaml:"program"`
+	ConfigPath string `yaml:"config_path"`
 }
 
 type MindlinkTrustConfig struct {

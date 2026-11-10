@@ -1,12 +1,14 @@
 package services
 
 import (
+	"context"
 	"crypto/ed25519"
 	"database/sql"
 	"encoding/base64"
 	"im-server/commons/configures"
 	"im-server/commons/mindlink"
 	"net/http"
+	"time"
 )
 
 func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, error) {
@@ -41,6 +43,19 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 	}
 	if db == nil {
 		return closed, mindlink.ErrNotReady
+	}
+	if cfg.DisableAuthoritySource.Enabled {
+		source, err := mindlink.NewDisableAuthoritySource(mindlink.DisableAuthoritySourceConfig{Enabled: true, Program: cfg.DisableAuthoritySource.Program, ConfigPath: cfg.DisableAuthoritySource.ConfigPath})
+		if err != nil {
+			return closed, err
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		h, err := mindlink.NewPolicyHTTPWithDisable(ctx, v, db, source)
+		if err != nil {
+			return closed, err
+		}
+		return h, nil
 	}
 	return mindlink.NewPolicyHTTP(v, db), nil
 }

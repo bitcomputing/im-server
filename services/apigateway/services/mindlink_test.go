@@ -39,6 +39,9 @@ func TestMindlinkHTTPConfigFailsClosed(t *testing.T) {
 			c.Trusts[0].MutationOperations = append(c.Trusts[0].MutationOperations, "operations.query")
 		}},
 		{"empty trust", func(c *configures.MindlinkConfig) { c.Trusts = nil }},
+		{"invalid authority source", func(c *configures.MindlinkConfig) {
+			c.DisableAuthoritySource = configures.MindlinkAuthoritySourceConfig{Enabled: true, Program: "relative", ConfigPath: "relative"}
+		}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cfg := mindlinkConfigFixture()
