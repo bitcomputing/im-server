@@ -1,9 +1,11 @@
 package apigateway
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
+	"time"
 
 	"im-server/commons/configures"
 	"im-server/commons/dbcommons"
@@ -15,7 +17,8 @@ import (
 )
 
 type ApiGateway struct {
-	httpServer *gin.Engine
+	httpServer  *gin.Engine
+	inboxCancel context.CancelFunc
 }
 
 func (ser *ApiGateway) RegisterActors(register gmicro.IActorRegister) {
@@ -43,6 +46,33 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 		if err != nil {
 			fmt.Println("Mindlink API remains closed:", err)
 		}
+		if configures.Config.Mindlink.Enabled && err == nil {
+			if worker, ok := policy.(interface {
+				DrainOwnerInbox(context.Context, string) (string, int, error)
+			}); ok {
+				workerCtx, cancel := context.WithCancel(context.Background())
+				ser.inboxCancel = cancel
+				go func() {
+					ticker := time.NewTicker(time.Second)
+					defer ticker.Stop()
+					after := ""
+					for {
+						select {
+						case <-workerCtx.Done():
+							return
+						case <-ticker.C:
+							ctx, done := context.WithTimeout(workerCtx, 10*time.Second)
+							next, _, err := worker.DrainOwnerInbox(ctx, after)
+							done()
+							after = next
+							if err != nil && workerCtx.Err() == nil {
+								fmt.Println("Mindlink owner inbox pass incomplete; pending entries retained")
+							}
+						}
+					}
+				}()
+			}
+		}
 		routers.Route(ser.httpServer, "apigateway", policy)
 
 		httpPort := configures.Config.GetApiPort()
@@ -52,5 +82,7 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 }
 
 func (ser *ApiGateway) Shutdown(force bool) {
-
+	if ser.inboxCancel != nil {
+		ser.inboxCancel()
+	}
 }

@@ -64,6 +64,38 @@ func FilterNativeMessages(ctx context.Context, appkey string, messages []proto.M
 	return nativePolicy.Load().Filter(ctx, appkey, identities)
 }
 
+// FilterOwnerInboxMessages only relaxes the read fence for exact persisted owner
+// inbox entries. Login, publishing, membership and history fences remain strict.
+func FilterOwnerInboxMessages(ctx context.Context, appkey, owner string, messages []*pbobjs.DownMsg) ([]*pbobjs.DownMsg, error) {
+	if ctx == nil || owner == "" {
+		return nil, mindlink.ErrInvalidRequest
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	inputs := make([]proto.Message, len(messages))
+	for i, m := range messages {
+		inputs[i] = m
+	}
+	mask, err := FilterNativeMessages(ctx, appkey, inputs)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*pbobjs.DownMsg, 0, len(messages))
+	for i, m := range messages {
+		allowed := mask[i]
+		if !allowed {
+			allowed, err = nativePolicy.Load().OwnerInboxReadable(ctx, appkey, owner, m)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if allowed {
+			result = append(result, m)
+		}
+	}
+	return result, nil
+}
+
 func NativePolicyCode(err error) errs.IMErrorCode {
 	if err == nil {
 		return errs.IMErrorCode_SUCCESS
