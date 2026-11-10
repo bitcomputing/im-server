@@ -59,33 +59,11 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 	if !isLowerHex(c.RequestID, 64) {
 		return ErrInvalidRequest
 	}
-	if ctx.Err() != nil {
-		return ErrUnknownResult
-	}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, s.program, "--config", s.configPath, "--operation-id", c.RequestID)
-	configureAuthorityProcess(cmd)
-	cmd.WaitDelay = time.Second
-	var output authorityOutput
-	cmd.Stdout, cmd.Stderr = &output, io.Discard
-	err = cmd.Run()
-	if ctx.Err() != nil || output.overflow {
-		return ErrUnknownResult
-	}
+	raw, err := s.invoke(ctx, c.RequestID, false)
 	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			switch exit.ExitCode() {
-			case 2, 3:
-				return ErrNotReady
-			case 4:
-				return ErrForbidden
-			}
-		}
-		return ErrUnknownResult
+		return err
 	}
-	if err := checkDisableAuthoritySnapshot(output.data, c, body); err != nil {
+	if err := checkDisableAuthoritySnapshot(raw, c, body); err != nil {
 		return err
 	}
 	if ctx.Err() != nil {
@@ -95,6 +73,40 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 		return ErrForbidden
 	}
 	return nil
+}
+
+func (s *DisableAuthoritySource) invoke(ctx context.Context, requestID string, principal bool) ([]byte, error) {
+	if ctx.Err() != nil {
+		return nil, ErrUnknownResult
+	}
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	args := []string{"--config", s.configPath, "--operation-id", requestID}
+	if principal {
+		args = append([]string{"--principal"}, args...)
+	}
+	cmd := exec.CommandContext(ctx, s.program, args...)
+	configureAuthorityProcess(cmd)
+	cmd.WaitDelay = time.Second
+	var output authorityOutput
+	cmd.Stdout, cmd.Stderr = &output, io.Discard
+	err := cmd.Run()
+	if ctx.Err() != nil || output.overflow {
+		return nil, ErrUnknownResult
+	}
+	if err != nil {
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			switch exit.ExitCode() {
+			case 2, 3:
+				return nil, ErrNotReady
+			case 4:
+				return nil, ErrForbidden
+			}
+		}
+		return nil, ErrUnknownResult
+	}
+	return output.data, nil
 }
 
 type authorityOutput struct {
@@ -147,6 +159,10 @@ func checkDisableAuthoritySnapshot(raw []byte, c Claims, body *PrincipalDisableR
 	if snapshot.Version != "mindlink-disable-authority-v1" || snapshot.OperationType != OperationPrincipalDisable || snapshot.LifecycleState != "retired" || snapshot.RetiredAtUnixSeconds <= 0 || !isLowerHex(snapshot.ParentDigest, 64) {
 		return ErrUnknownResult
 	}
+	return checkAuthorityBinding(snapshot, c, body)
+}
+
+func checkAuthorityBinding(snapshot disableAuthoritySnapshot, c Claims, body *PrincipalDisableRequest) error {
 	if c.ActorKind != "system" || snapshot.SystemActorID != c.ActorID {
 		return ErrForbidden
 	}

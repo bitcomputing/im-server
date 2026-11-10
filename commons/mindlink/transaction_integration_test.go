@@ -608,7 +608,7 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		dbcommons.CloseDB()
 		configures.Config = saved
 		var version string
-		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261111" {
+		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261112" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
 		var nickname string

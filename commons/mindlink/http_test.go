@@ -25,7 +25,7 @@ func assertPolicyError(t *testing.T, rec *httptest.ResponseRecorder, status, cod
 func jsonNumber(n int) string { b, _ := json.Marshal(n); return string(b) }
 
 func TestPolicyHTTPDefaultClosed(t *testing.T) {
-	for _, tc := range []struct{ method, path string }{{"GET", "/apigateway/mindlink/operations/" + strings.Repeat("a", 64)}, {"POST", PrincipalDisablePath}} {
+	for _, tc := range []struct{ method, path string }{{"GET", "/apigateway/mindlink/operations/" + strings.Repeat("a", 64)}, {"POST", PrincipalDisablePath}, {"POST", PrincipalEnsurePath}} {
 		r := httptest.NewRequest(tc.method, tc.path, strings.NewReader(`{}`))
 		r.Header.Set("appkey", "legacy-app")
 		r.Header.Set("signature", "legacy-signature")
@@ -38,7 +38,7 @@ func TestPolicyHTTPDefaultClosed(t *testing.T) {
 func TestPolicyHTTPRejectsUnverifiedRequestBeforeDatabase(t *testing.T) {
 	v, _, _, _ := queryFixture(t)
 	h := NewPolicyHTTP(v, &sql.DB{}) // no DB operation is allowed before verification.
-	for _, tc := range []struct{ method, path string }{{"GET", "/apigateway/mindlink/operations/" + strings.Repeat("a", 64)}, {"POST", PrincipalDisablePath}} {
+	for _, tc := range []struct{ method, path string }{{"GET", "/apigateway/mindlink/operations/" + strings.Repeat("a", 64)}, {"POST", PrincipalDisablePath}, {"POST", PrincipalEnsurePath}} {
 		r := httptest.NewRequest(tc.method, tc.path, strings.NewReader(`{}`))
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, r)

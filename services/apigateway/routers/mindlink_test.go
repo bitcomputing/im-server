@@ -18,6 +18,7 @@ func TestMindlinkRoutesAreRegisteredAndDoNotUseLegacySignature(t *testing.T) {
 		status, code int
 	}{
 		{"POST", "/apigateway/mindlink/principals/disable", 409, 19005},
+		{"POST", "/apigateway/mindlink/principals/ensure", 409, 19005},
 		{"GET", "/apigateway/mindlink/operations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 409, 19005},
 		{"POST", "/apigateway/users/register", 400, 10001},
 	} {

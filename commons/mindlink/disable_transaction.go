@@ -68,35 +68,39 @@ func (v *Verifier) transactPrincipalDisable(ctx context.Context, db *sql.DB, aut
 		if rows, err := updated.RowsAffected(); err != nil || rows != 1 {
 			return nil, ErrUnknownResult
 		}
-		var created string
-		if err := tx.QueryRowContext(ctx, "SELECT DATE_FORMAT(created_time,'%Y-%m-%d %H:%i:%s.%f') FROM mindlink_operations WHERE issuer=? AND operation_id=?", c.Issuer, c.OperationID).Scan(&created); err != nil {
-			return nil, ErrUnknownResult
-		}
-		accepted, err := time.Parse("2006-01-02 15:04:05.999999", created)
-		if err != nil {
-			return nil, ErrUnknownResult
-		}
-		var token [32]byte
-		if _, err := rand.Read(token[:]); err != nil {
-			return nil, ErrUnknownResult
-		}
-		commitVersion := hex.EncodeToString(token[:])
-		committed := time.Now().UTC().Format(ReceiptTimeFormat)
 		desired, err := json.Marshal(PrincipalDisabledState{"disabled", body.AvatarID, body.PrincipalID, body.TargetAvatarGeneration})
 		if err != nil {
 			return nil, ErrUnknownResult
 		}
-		raw, err := json.Marshal(OperationResult{
-			OperationID: c.OperationID, OperationType: c.OperationType, RequestID: c.RequestID, RequestDigest: c.RequestDigest,
-			Environment: c.Environment, TenantID: c.TenantID, AppKey: c.AppKey, OwnerID: c.OwnerID, TargetID: c.TargetID,
-			ActorKind: c.ActorKind, ActorID: c.ActorID, AvatarGeneration: c.AvatarGeneration,
-			ExpectedPolicyVersion: c.ExpectedPolicyVersion, DesiredPolicyVersion: c.DesiredPolicyVersion,
-			DesiredState: desired, State: "ready", EffectivePolicyVersion: &body.DesiredPolicyVersion, EffectiveAvatarGeneration: &body.TargetAvatarGeneration,
-			CommitVersion: &commitVersion, AcceptedAt: accepted.Format(ReceiptTimeFormat), CommittedAt: &committed,
-		})
-		if err != nil || v.validateDisableResult(raw, c) != nil {
-			return nil, ErrUnknownResult
-		}
-		return raw, nil
+		return v.principalReceipt(ctx, tx, c, body.TargetAvatarGeneration, desired)
 	})
+}
+
+func (v *Verifier) principalReceipt(ctx context.Context, tx *sql.Tx, c Claims, generation int64, desired json.RawMessage) (json.RawMessage, error) {
+	var created string
+	if err := tx.QueryRowContext(ctx, "SELECT DATE_FORMAT(created_time,'%Y-%m-%d %H:%i:%s.%f') FROM mindlink_operations WHERE issuer=? AND operation_id=?", c.Issuer, c.OperationID).Scan(&created); err != nil {
+		return nil, ErrUnknownResult
+	}
+	accepted, err := time.Parse("2006-01-02 15:04:05.999999", created)
+	if err != nil {
+		return nil, ErrUnknownResult
+	}
+	var token [32]byte
+	if _, err := rand.Read(token[:]); err != nil {
+		return nil, ErrUnknownResult
+	}
+	commitVersion := hex.EncodeToString(token[:])
+	committed := time.Now().UTC().Format(ReceiptTimeFormat)
+	raw, err := json.Marshal(OperationResult{
+		OperationID: c.OperationID, OperationType: c.OperationType, RequestID: c.RequestID, RequestDigest: c.RequestDigest,
+		Environment: c.Environment, TenantID: c.TenantID, AppKey: c.AppKey, OwnerID: c.OwnerID, TargetID: c.TargetID,
+		ActorKind: c.ActorKind, ActorID: c.ActorID, AvatarGeneration: c.AvatarGeneration,
+		ExpectedPolicyVersion: c.ExpectedPolicyVersion, DesiredPolicyVersion: c.DesiredPolicyVersion,
+		DesiredState: desired, State: "ready", EffectivePolicyVersion: &c.DesiredPolicyVersion, EffectiveAvatarGeneration: &generation,
+		CommitVersion: &commitVersion, AcceptedAt: accepted.Format(ReceiptTimeFormat), CommittedAt: &committed,
+	})
+	if err != nil || v.validatePrincipalResult(raw, c) != nil {
+		return nil, ErrUnknownResult
+	}
+	return raw, nil
 }

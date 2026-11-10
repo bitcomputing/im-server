@@ -45,6 +45,9 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == PrincipalDisablePath {
 		operation = OperationPrincipalDisable
 	}
+	if r.Method == http.MethodPost && r.URL.Path == PrincipalEnsurePath {
+		operation = OperationPrincipalEnsure
+	}
 	if operation == "" {
 		http.NotFound(w, r)
 		return
@@ -73,6 +76,8 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		result, err = h.verifier.transactPrincipalDisable(r.Context(), h.db, auth)
+	} else if operation == OperationPrincipalEnsure {
+		result, err = h.verifier.transactPrincipalEnsure(r.Context(), h.db, auth, h.disableSource)
 	} else {
 		result, err = h.verifier.QueryOperation(r.Context(), h.db, auth, func(tx *sql.Tx, query, original Claims) error {
 			return authorizeOperationRead(r.Context(), tx, query, original)

@@ -31,7 +31,7 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 			}
 		}
 		for _, op := range item.MutationOperations {
-			if op != mindlink.OperationPrincipalDisable {
+			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}

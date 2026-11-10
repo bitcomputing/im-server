@@ -62,3 +62,11 @@ type PrincipalDisabledState struct {
 	PrincipalID            string `json:"principal_id"`
 	TargetAvatarGeneration int64  `json:"target_avatar_generation"`
 }
+
+type PrincipalActiveState struct {
+	State                  string `json:"state"`
+	AvatarID               string `json:"avatar_id"`
+	PrincipalID            string `json:"principal_id"`
+	TargetAvatarGeneration int64  `json:"target_avatar_generation"`
+	DisplayName            string `json:"display_name"`
+}

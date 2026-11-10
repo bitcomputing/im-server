@@ -65,7 +65,7 @@ func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authori
 	if original.RequestID != c.RequestID || original.RequestDigest != c.RequestDigest || original.TargetID != c.TargetID {
 		return nil, ErrRequestConflict
 	}
-	if err := v.validateDisableResult(raw, original); err != nil {
+	if err := v.validatePrincipalResult(raw, original); err != nil {
 		return nil, err
 	}
 	if err := authorize(tx, c, original); err != nil {
@@ -98,6 +98,13 @@ func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authori
 var operationResultFields = strings.Fields("operation_id operation_type request_id request_digest environment tenant_id appkey owner_id target_id actor_kind actor_id avatar_generation expected_policy_version desired_policy_version desired_state state effective_policy_version effective_avatar_generation commit_version accepted_at committed_at failure")
 
 func (v *Verifier) validateDisableResult(raw []byte, original Claims) error {
+	if original.OperationType != OperationPrincipalDisable {
+		return ErrUnknownResult
+	}
+	return v.validatePrincipalResult(raw, original)
+}
+
+func (v *Verifier) validatePrincipalResult(raw []byte, original Claims) error {
 	var result OperationResult
 	if DecodeStrictObject(raw, &result, strings.Fields("operation_id operation_type request_id request_digest environment tenant_id appkey owner_id target_id actor_kind actor_id avatar_generation expected_policy_version desired_policy_version desired_state state accepted_at")) != nil {
 		return ErrUnknownResult
@@ -111,19 +118,36 @@ func (v *Verifier) validateDisableResult(raw []byte, original Claims) error {
 			return ErrUnknownResult
 		}
 	}
-	if original.OperationType != OperationPrincipalDisable || result.OperationID != original.OperationID || result.OperationType != original.OperationType || result.RequestID != original.RequestID || result.RequestDigest != original.RequestDigest || result.Environment != original.Environment || result.TenantID != original.TenantID || result.AppKey != original.AppKey || result.OwnerID != original.OwnerID || result.TargetID != original.TargetID || result.ActorKind != original.ActorKind || result.ActorID != original.ActorID || result.AvatarGeneration != original.AvatarGeneration || result.ExpectedPolicyVersion != original.ExpectedPolicyVersion || result.DesiredPolicyVersion != original.DesiredPolicyVersion {
+	if result.OperationID != original.OperationID || result.OperationType != original.OperationType || result.RequestID != original.RequestID || result.RequestDigest != original.RequestDigest || result.Environment != original.Environment || result.TenantID != original.TenantID || result.AppKey != original.AppKey || result.OwnerID != original.OwnerID || result.TargetID != original.TargetID || result.ActorKind != original.ActorKind || result.ActorID != original.ActorID || result.AvatarGeneration != original.AvatarGeneration || result.ExpectedPolicyVersion != original.ExpectedPolicyVersion || result.DesiredPolicyVersion != original.DesiredPolicyVersion {
 		return ErrUnknownResult
 	}
 	var desired PrincipalDisabledState
-	if DecodeStrictObject(result.DesiredState, &desired, []string{"state", "avatar_id", "principal_id", "target_avatar_generation"}) != nil || desired.State != "disabled" {
-		return ErrUnknownResult
-	}
-	// Recompute N1's semantic digest from the receipt, not just its field count.
-	body, err := json.Marshal(PrincipalDisableRequest{original.OperationID, original.RequestID, original.RequestDigest, desired.AvatarID, desired.PrincipalID, desired.TargetAvatarGeneration, original.ExpectedPolicyVersion, original.DesiredPolicyVersion})
-	if err != nil {
-		return ErrUnknownResult
-	}
-	if _, err := v.ParsePrincipalDisable(&Authorization{claims: original, body: body, verifier: v}); err != nil {
+	if original.OperationType == OperationPrincipalEnsure {
+		var active PrincipalActiveState
+		if DecodeStrictObject(result.DesiredState, &active, strings.Fields("state avatar_id principal_id target_avatar_generation display_name")) != nil || active.State != "active" {
+			return ErrUnknownResult
+		}
+		body, err := json.Marshal(PrincipalEnsureRequest{OperationID: original.OperationID, RequestID: original.RequestID, RequestDigest: original.RequestDigest, PrincipalID: active.PrincipalID, AvatarID: active.AvatarID, TargetAvatarGeneration: active.TargetAvatarGeneration, ExpectedPolicyVersion: original.ExpectedPolicyVersion, DesiredPolicyVersion: original.DesiredPolicyVersion, DisplayName: active.DisplayName})
+		if err != nil {
+			return ErrUnknownResult
+		}
+		if _, err = v.ParsePrincipalEnsure(&Authorization{claims: original, body: body, verifier: v}); err != nil {
+			return ErrUnknownResult
+		}
+		desired.TargetAvatarGeneration = active.TargetAvatarGeneration
+	} else if original.OperationType == OperationPrincipalDisable {
+		if DecodeStrictObject(result.DesiredState, &desired, []string{"state", "avatar_id", "principal_id", "target_avatar_generation"}) != nil || desired.State != "disabled" {
+			return ErrUnknownResult
+		}
+		// Recompute N1's semantic digest from the receipt, not just its field count.
+		body, err := json.Marshal(PrincipalDisableRequest{original.OperationID, original.RequestID, original.RequestDigest, desired.AvatarID, desired.PrincipalID, desired.TargetAvatarGeneration, original.ExpectedPolicyVersion, original.DesiredPolicyVersion})
+		if err != nil {
+			return ErrUnknownResult
+		}
+		if _, err := v.ParsePrincipalDisable(&Authorization{claims: original, body: body, verifier: v}); err != nil {
+			return ErrUnknownResult
+		}
+	} else {
 		return ErrUnknownResult
 	}
 	accepted, err := time.Parse(ReceiptTimeFormat, result.AcceptedAt)

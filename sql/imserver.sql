@@ -797,7 +797,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
   `user_type` tinyint DEFAULT '0' COMMENT '用户类型 0用户, 1机器人',
   `user_id` varchar(32) NOT NULL COMMENT '用户id',
-  `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
+  `nickname` varchar(80) DEFAULT NULL COMMENT '昵称',
   `user_portrait` varchar(200) DEFAULT NULL COMMENT '用户头像',
   `pinyin` varchar(50) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
@@ -1010,7 +1010,7 @@ CREATE TABLE IF NOT EXISTS `message_sequence` (
   PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261111');
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261112');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding

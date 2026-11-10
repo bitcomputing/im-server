@@ -21,12 +21,18 @@ func TestMain(m *testing.M) {
 		var cfg struct {
 			Output, Marker string
 			Exit, DelayMS  int
+			Principal      bool
 		}
-		if len(os.Args) != 5 || os.Args[1] != "--config" || os.Args[3] != "--operation-id" || os.Args[4] != strings.Repeat("e", 64) {
+		args := os.Args[1:]
+		principal := len(args) > 0 && args[0] == "--principal"
+		if principal {
+			args = args[1:]
+		}
+		if len(args) != 4 || args[0] != "--config" || args[2] != "--operation-id" || args[3] != strings.Repeat("e", 64) {
 			os.Exit(2)
 		}
-		raw, err := os.ReadFile(os.Args[2])
-		if err != nil || json.Unmarshal(raw, &cfg) != nil {
+		raw, err := os.ReadFile(args[1])
+		if err != nil || json.Unmarshal(raw, &cfg) != nil || cfg.Principal != principal {
 			os.Exit(2)
 		}
 		if cfg.Marker != "" {
