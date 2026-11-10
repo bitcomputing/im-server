@@ -26,7 +26,7 @@ func (s *DisableAuthoritySource) CheckPrincipal(ctx context.Context, v *Verifier
 	if !isLowerHex(c.RequestID, 64) {
 		return ErrInvalidRequest
 	}
-	raw, err := s.invoke(ctx, c.RequestID, true)
+	raw, err := s.invoke(ctx, c.RequestID, "--principal")
 	if err != nil {
 		return err
 	}

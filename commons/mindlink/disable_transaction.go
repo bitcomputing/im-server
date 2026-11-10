@@ -77,6 +77,10 @@ func (v *Verifier) transactPrincipalDisable(ctx context.Context, db *sql.DB, aut
 }
 
 func (v *Verifier) principalReceipt(ctx context.Context, tx *sql.Tx, c Claims, generation int64, desired json.RawMessage) (json.RawMessage, error) {
+	return v.operationReceipt(ctx, tx, c, generation, desired)
+}
+
+func (v *Verifier) operationReceipt(ctx context.Context, tx *sql.Tx, c Claims, generation int64, desired json.RawMessage) (json.RawMessage, error) {
 	var created string
 	if err := tx.QueryRowContext(ctx, "SELECT DATE_FORMAT(created_time,'%Y-%m-%d %H:%i:%s.%f') FROM mindlink_operations WHERE issuer=? AND operation_id=?", c.Issuer, c.OperationID).Scan(&created); err != nil {
 		return nil, ErrUnknownResult
@@ -99,7 +103,7 @@ func (v *Verifier) principalReceipt(ctx context.Context, tx *sql.Tx, c Claims, g
 		DesiredState: desired, State: "ready", EffectivePolicyVersion: &c.DesiredPolicyVersion, EffectiveAvatarGeneration: &generation,
 		CommitVersion: &commitVersion, AcceptedAt: accepted.Format(ReceiptTimeFormat), CommittedAt: &committed,
 	})
-	if err != nil || v.validatePrincipalResult(raw, c) != nil {
+	if err != nil || v.validateOperationResult(raw, c) != nil {
 		return nil, ErrUnknownResult
 	}
 	return raw, nil

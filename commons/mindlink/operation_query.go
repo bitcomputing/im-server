@@ -65,7 +65,7 @@ func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authori
 	if original.RequestID != c.RequestID || original.RequestDigest != c.RequestDigest || original.TargetID != c.TargetID {
 		return nil, ErrRequestConflict
 	}
-	if err := v.validatePrincipalResult(raw, original); err != nil {
+	if err := v.validateOperationResult(raw, original); err != nil {
 		return nil, err
 	}
 	if err := authorize(tx, c, original); err != nil {
@@ -105,6 +105,13 @@ func (v *Verifier) validateDisableResult(raw []byte, original Claims) error {
 }
 
 func (v *Verifier) validatePrincipalResult(raw []byte, original Claims) error {
+	if original.OperationType != OperationPrincipalEnsure && original.OperationType != OperationPrincipalDisable {
+		return ErrUnknownResult
+	}
+	return v.validateOperationResult(raw, original)
+}
+
+func (v *Verifier) validateOperationResult(raw []byte, original Claims) error {
 	var result OperationResult
 	if DecodeStrictObject(raw, &result, strings.Fields("operation_id operation_type request_id request_digest environment tenant_id appkey owner_id target_id actor_kind actor_id avatar_generation expected_policy_version desired_policy_version desired_state state accepted_at")) != nil {
 		return ErrUnknownResult
@@ -145,6 +152,18 @@ func (v *Verifier) validatePrincipalResult(raw []byte, original Claims) error {
 			return ErrUnknownResult
 		}
 		if _, err := v.ParsePrincipalDisable(&Authorization{claims: original, body: body, verifier: v}); err != nil {
+			return ErrUnknownResult
+		}
+	} else if original.OperationType == OperationConversationEnsure {
+		var active ConversationActiveState
+		if DecodeStrictObject(result.DesiredState, &active, strings.Fields("state conversation_id kind native_target_id owner_im_id members")) != nil || active.State != "active" {
+			return ErrUnknownResult
+		}
+		body, err := json.Marshal(ConversationEnsureRequest{OperationID: original.OperationID, RequestID: original.RequestID, RequestDigest: original.RequestDigest, ConversationID: active.ConversationID, Kind: active.Kind, NativeTargetID: active.NativeTargetID, OwnerIMID: active.OwnerIMID, ExpectedPolicyVersion: original.ExpectedPolicyVersion, DesiredPolicyVersion: original.DesiredPolicyVersion, Members: active.Members})
+		if err != nil {
+			return ErrUnknownResult
+		}
+		if _, err = v.ParseConversationEnsure(&Authorization{claims: original, body: body, verifier: v}); err != nil {
 			return ErrUnknownResult
 		}
 	} else {

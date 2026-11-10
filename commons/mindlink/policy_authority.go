@@ -20,6 +20,16 @@ func authorizeOperationRead(ctx context.Context, tx *sql.Tx, query, original Cla
 	if !readable {
 		return ErrForbidden
 	}
+	if original.OperationType == OperationConversationEnsure {
+		conversation, err := lockPolicyConversation(ctx, tx, original)
+		if err != nil {
+			return err
+		}
+		if query.ExpectedPolicyVersion != conversation.policy || query.DesiredPolicyVersion != conversation.policy {
+			return ErrStalePolicy
+		}
+		return nil
+	}
 	principal, err := lockPolicyPrincipal(ctx, tx, original)
 	if err != nil {
 		return err

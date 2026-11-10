@@ -59,7 +59,7 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 	if !isLowerHex(c.RequestID, 64) {
 		return ErrInvalidRequest
 	}
-	raw, err := s.invoke(ctx, c.RequestID, false)
+	raw, err := s.invoke(ctx, c.RequestID, "")
 	if err != nil {
 		return err
 	}
@@ -75,15 +75,18 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 	return nil
 }
 
-func (s *DisableAuthoritySource) invoke(ctx context.Context, requestID string, principal bool) ([]byte, error) {
+func (s *DisableAuthoritySource) invoke(ctx context.Context, requestID, mode string) ([]byte, error) {
+	if mode != "" && mode != "--principal" && mode != "--conversation" {
+		return nil, ErrInvalidRequest
+	}
 	if ctx.Err() != nil {
 		return nil, ErrUnknownResult
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	args := []string{"--config", s.configPath, "--operation-id", requestID}
-	if principal {
-		args = append([]string{"--principal"}, args...)
+	if mode != "" {
+		args = append([]string{mode}, args...)
 	}
 	cmd := exec.CommandContext(ctx, s.program, args...)
 	configureAuthorityProcess(cmd)

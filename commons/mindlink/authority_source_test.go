@@ -22,17 +22,19 @@ func TestMain(m *testing.M) {
 			Output, Marker string
 			Exit, DelayMS  int
 			Principal      bool
+			Conversation   bool
 		}
 		args := os.Args[1:]
 		principal := len(args) > 0 && args[0] == "--principal"
-		if principal {
+		conversation := len(args) > 0 && args[0] == "--conversation"
+		if principal || conversation {
 			args = args[1:]
 		}
 		if len(args) != 4 || args[0] != "--config" || args[2] != "--operation-id" || args[3] != strings.Repeat("e", 64) {
 			os.Exit(2)
 		}
 		raw, err := os.ReadFile(args[1])
-		if err != nil || json.Unmarshal(raw, &cfg) != nil || cfg.Principal != principal {
+		if err != nil || json.Unmarshal(raw, &cfg) != nil || cfg.Principal != principal || cfg.Conversation != conversation {
 			os.Exit(2)
 		}
 		if cfg.Marker != "" {
