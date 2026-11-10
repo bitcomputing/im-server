@@ -24,8 +24,10 @@ func NewNativeFence(ctx context.Context, db *sql.DB) (*NativeFence, error) {
 		"groupmembers.app_key": "", "groupmembers.group_id": "", "groupmembers.member_id": "",
 		"mindlink_principals.native_appkey":       "convert(appkeyusingutf8mb4)",
 		"mindlink_principals.native_principal_id": "convert(principal_idusingutf8mb4)",
+		"mindlink_conversations.native_appkey":    "convert(appkeyusingutf8mb4)",
+		"mindlink_conversations.native_target_id": "",
 	}
-	rows, err := db.QueryContext(ctx, `SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE,COALESCE(CHARACTER_SET_NAME,''),COALESCE(COLLATION_NAME,''),EXTRA,COALESCE(GENERATION_EXPRESSION,''),COALESCE(CHARACTER_MAXIMUM_LENGTH,0) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals') AND COLUMN_NAME IN ('app_key','user_id','group_id','member_id','native_appkey','native_principal_id')`)
+	rows, err := db.QueryContext(ctx, `SELECT TABLE_NAME,COLUMN_NAME,DATA_TYPE,COALESCE(CHARACTER_SET_NAME,''),COALESCE(COLLATION_NAME,''),EXTRA,COALESCE(GENERATION_EXPRESSION,''),COALESCE(CHARACTER_MAXIMUM_LENGTH,0) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals','mindlink_conversations') AND COLUMN_NAME IN ('app_key','user_id','group_id','member_id','native_appkey','native_principal_id','native_target_id')`)
 	if err != nil {
 		return nil, ErrUnknownResult
 	}
@@ -84,10 +86,10 @@ func NewNativeFence(ctx context.Context, db *sql.DB) (*NativeFence, error) {
 		return nil, ErrNotReady
 	}
 	var tables int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals','mindlink_owner_barriers','mindlink_operations','mindlink_tickets') AND ENGINE='InnoDB'`).Scan(&tables); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals','mindlink_owner_barriers','mindlink_operations','mindlink_tickets','mindlink_conversations') AND ENGINE='InnoDB'`).Scan(&tables); err != nil {
 		return nil, ErrUnknownResult
 	}
-	if tables != 8 {
+	if tables != 9 {
 		return nil, ErrNotReady
 	}
 	return &NativeFence{db: db, verified: true}, nil
@@ -124,7 +126,7 @@ func (f *NativeFence) Check(ctx context.Context, appkey string, users, groups []
 			placeholders := strings.TrimSuffix(strings.Repeat("?,", end-start), ",")
 			query := `SELECT EXISTS(SELECT 1 FROM mindlink_principals WHERE native_appkey=? AND native_principal_id IN (` + placeholders + `))`
 			if kind == 1 {
-				query = `SELECT EXISTS(SELECT 1 FROM groupmembers m JOIN mindlink_principals p ON p.native_appkey=m.app_key AND p.native_principal_id=m.member_id WHERE m.app_key=? AND m.group_id IN (` + placeholders + `))`
+				query = `SELECT EXISTS(SELECT 1 FROM (` + protectedNativeGroups + `) m WHERE m.app_key=? AND m.group_id IN (` + placeholders + `))`
 			}
 			var blocked bool
 			if err := f.db.QueryRowContext(ctx, query, args...).Scan(&blocked); err != nil {
@@ -137,3 +139,6 @@ func (f *NativeFence) Check(ctx context.Context, appkey string, users, groups []
 	}
 	return nil
 }
+
+// Keep empty groups and retired mappings protected after native members leave.
+const protectedNativeGroups = `SELECT m.app_key,m.group_id FROM groupmembers m JOIN mindlink_principals p ON p.native_appkey=m.app_key AND p.native_principal_id=m.member_id UNION ALL SELECT native_appkey,native_target_id FROM mindlink_conversations WHERE channel_type=2`

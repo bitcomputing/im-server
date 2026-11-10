@@ -63,7 +63,7 @@ func (f *NativeFence) Filter(ctx context.Context, appkey string, messages []Nati
 			if kind == 0 {
 				query += "JOIN mindlink_principals p ON p.native_principal_id=requested.native_id WHERE p.native_appkey=?"
 			} else {
-				query += "JOIN groupmembers m ON m.group_id=requested.native_id JOIN mindlink_principals p ON p.native_appkey=m.app_key AND p.native_principal_id=m.member_id WHERE m.app_key=?"
+				query += "JOIN (" + protectedNativeGroups + ") m ON m.group_id=requested.native_id WHERE m.app_key=?"
 			}
 			rows, err := f.db.QueryContext(ctx, query, args...)
 			if err != nil {

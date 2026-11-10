@@ -34,7 +34,7 @@ func TestMigrationMetadataReadFailureIsNotAnEmptyVersion(t *testing.T) {
 		t.Fatal("migration continued after its metadata read failed")
 	}
 	var version string
-	if err := db.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261112" {
+	if err := db.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261113" {
 		t.Fatal("failed metadata read changed the migration version", err)
 	}
 }
@@ -103,7 +103,7 @@ func TestReadIntegrationUpgradesAlreadyCurrentNativeSchema(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			upgradeNativeFixture(t, db, cfg, "20261112")
+			upgradeNativeFixture(t, db, cfg, "20261113")
 			var tables int
 			if err := db.QueryRow("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('conversation_seen','message_sequence') AND ENGINE='InnoDB' AND TABLE_COLLATION='utf8mb4_bin'").Scan(&tables); err != nil || tables != 2 {
 				t.Fatal("native READ/sequence tables were not created", err)
@@ -132,7 +132,7 @@ func TestReadIntegrationUpgradesAlreadyCurrentNativeSchema(t *testing.T) {
 			if _, err := db.Exec("UPDATE message_sequence SET seq=23 WHERE app_key='fixture-app' AND conver_id='protected-group' AND channel_type=2 AND sub_channel=''; UPDATE globalconfs SET conf_value='20261110' WHERE conf_key='jimdb_version'"); err != nil {
 				t.Fatal(err)
 			}
-			upgradeNativeFixture(t, db, cfg, "20261112")
+			upgradeNativeFixture(t, db, cfg, "20261113")
 			if err := db.QueryRow("SELECT seq FROM message_sequence WHERE app_key='fixture-app' AND conver_id='protected-group' AND channel_type=2 AND sub_channel=''").Scan(&floor); err != nil || floor != 23 {
 				t.Fatal("reapplied schema regressed allocator", err)
 			}
