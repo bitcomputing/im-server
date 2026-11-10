@@ -31,11 +31,15 @@ func (v *Verifier) parseOperationQuery(auth *Authorization) error {
 // authorize must lock/check current read authority and the query policy version
 // in this transaction. Its second Claims argument is the immutable mutation.
 func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, Claims) error) (*MutationResult, error) {
-	if v == nil || len(v.bindings) == 0 || db == nil || authorize == nil {
-		return nil, ErrNotReady
-	}
 	if err := v.parseOperationQuery(auth); err != nil {
 		return nil, err
+	}
+	return v.queryOriginal(ctx, db, auth, func(_ *sql.Tx, original Claims, raw []byte) error { return v.validateOperationResult(raw, original) }, authorize)
+}
+
+func (v *Verifier) queryOriginal(ctx context.Context, db *sql.DB, auth *Authorization, validate func(*sql.Tx, Claims, []byte) error, authorize func(*sql.Tx, Claims, Claims) error) (*MutationResult, error) {
+	if v == nil || len(v.bindings) == 0 || db == nil || auth == nil || auth.verifier != v || validate == nil || authorize == nil {
+		return nil, ErrNotReady
 	}
 	if ctx == nil || len(auth.claims.Issuer) > 1024 {
 		return nil, ErrInvalidRequest
@@ -65,7 +69,7 @@ func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authori
 	if original.RequestID != c.RequestID || original.RequestDigest != c.RequestDigest || original.TargetID != c.TargetID {
 		return nil, ErrRequestConflict
 	}
-	if err := v.validateOperationResult(raw, original); err != nil {
+	if err := validate(tx, original, raw); err != nil {
 		return nil, err
 	}
 	if err := authorize(tx, c, original); err != nil {

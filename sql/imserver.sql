@@ -1010,7 +1010,7 @@ CREATE TABLE IF NOT EXISTS `message_sequence` (
   PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261113');
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261114');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding
@@ -1093,3 +1093,19 @@ CREATE TABLE IF NOT EXISTS `mindlink_conversations` (
     (`kind`='owner_avatar_dm' AND `channel_type`=1) OR
     (`kind` IN ('mindlink_group','avatar_pair_group') AND `channel_type`=2))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+-- Mindlink reliable message outbox
+CREATE TABLE IF NOT EXISTS mindlink_message_outbox (
+  outbox_id BINARY(64) NOT NULL,
+  issuer VARBINARY(1024) NOT NULL,
+  operation_id BINARY(64) NOT NULL,
+  request_body MEDIUMBLOB NOT NULL,
+  native_binding MEDIUMBLOB NOT NULL,
+  payload MEDIUMBLOB NOT NULL,
+  recipients_json MEDIUMBLOB NOT NULL,
+  state VARBINARY(16) NOT NULL DEFAULT 'pending',
+  created_time DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (outbox_id),
+  UNIQUE KEY uniq_mindlink_message_operation (issuer,operation_id),
+  KEY idx_mindlink_message_pending (state,created_time,outbox_id)
+) ENGINE=InnoDB;

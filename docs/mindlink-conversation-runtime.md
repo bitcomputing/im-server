@@ -27,4 +27,4 @@ Rocky 隔离 MySQL 验证入口：
 go test -p 1 -tags integration ./commons/mindlink -run 'TestMySQLConversation|TestMySQLEmptyAndRetired|TestConversation' -count=1 -v
 ```
 
-已验证真实 HTTP 建立 pair 群三成员、原结果重放/查询、读写撤权、成员停用/代际过期和末尾 SQL 故障的全事务回滚。来源子进程使用测试夹具，尚未验证真实业务 C1 程序；无浏览器、消息收取、跨库生命周期或生产部署验收。
+已验证真实 HTTP 建立 pair 群三成员、原结果重放/查询、读写撤权、成员停用/代际过期和末尾 SQL 故障的全事务回滚。初次接收端测试的来源子进程使用夹具；后续 Rocky `dg003-conversation-worker-recovery.log` 已用真实 BIZ 来源 exe 和 worker 验证一次 POST 响应丢失后原 GET 恢复及业务结算。P1 成员明确预置；仍无浏览器、消息收取、完整跨库生命周期或生产部署验收。

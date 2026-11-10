@@ -26,12 +26,12 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 			return closed, mindlink.ErrInvalidRequest
 		}
 		for _, op := range item.QueryOperations {
-			if op != "operations.query" {
+			if op != "operations.query" && op != mindlink.OperationMessageQuery {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}
 		for _, op := range item.MutationOperations {
-			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure {
+			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure && op != mindlink.OperationMessageSend {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}

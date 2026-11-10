@@ -209,7 +209,7 @@ func TestMySQLPolicyHTTPGatewayProcessRecovery(t *testing.T) {
 		if _, err := db.Exec("UPDATE globalconfs SET conf_value='20261109' WHERE conf_key='jimdb_version'"); err != nil {
 			t.Fatal(err)
 		}
-		upgradeNativeFixture(t, db, cfg, "20261113")
+		upgradeNativeFixture(t, db, cfg, "20261114")
 		cfg.Addr = "127.0.0.1:3306"
 		trust, _ := fixtureTrust()
 		runtime := map[string]any{

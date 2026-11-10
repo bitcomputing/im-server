@@ -34,7 +34,7 @@ func TestMindlinkHTTPConfigFailsClosed(t *testing.T) {
 			c.Trusts[0].PublicKey = base64.StdEncoding.EncodeToString([]byte{1})
 		}},
 		{"duplicate binding", func(c *configures.MindlinkConfig) { c.Trusts = append(c.Trusts, c.Trusts[0]) }},
-		{"unknown operation", func(c *configures.MindlinkConfig) { c.Trusts[0].QueryOperations = []string{"messages.query"} }},
+		{"unknown operation", func(c *configures.MindlinkConfig) { c.Trusts[0].QueryOperations = []string{"messages.unsupported"} }},
 		{"cross operation", func(c *configures.MindlinkConfig) {
 			c.Trusts[0].MutationOperations = append(c.Trusts[0].MutationOperations, "operations.query")
 		}},

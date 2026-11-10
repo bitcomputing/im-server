@@ -2,7 +2,7 @@
 
 DG-20261104-003/c82，当前3f7ac87b续办。字段/编码来源是本仓库 `commons/mindlink/message_send.go`、`message_result.go` 及[独立Go编码向量](evidence/20261109-mindlink-reliable-wire/vectors.json)。BIZ负责人将固定差异登记到其唯一业务契约；不改旧N1 disable，旧067摘要/DTO不是这套wire。
 
-当前首个增量交付严格解析、摘要、query边界和原回执校验代码，供消费者实现独立持久wire子意图。尚无messages.send/query生产HTTP接线或可宣称持久效果的发送producer；后续原子history/outbox/回执与权限、故障验收完成前保持关闭。私有Go格式函数通过不等于真实persisted。
+独立开发分支已实现 messages.send/query HTTP、原生 MySQL history、持久 outbox 与原始回执的同事务提交；默认配置仍关闭。当前 persisted 只证明保存成功，尚未接通 BIZ F3 wire、客户端投递和页面，不能据此宣称完整消息流程可用。
 
 ## 操作与认证
 
@@ -77,3 +77,20 @@ target_id精确等于业务conversation_id。Native requester/peer/group/channel
 响应或COMMIT结果未知只沿原wire键查询，重核当前读权、不换ID、重发或刷新受众；原结果查询不是旧operations.query（后者仍限disable），也不由找不到/不可达拼persisted/failed。历史保留或之后撤权不改原committed结果，当前读取权限仍独立核验。
 
 现有native DispatchMsg/SendBoxActor会重写recipient时间并重复写inbox/sendbox，异步pool无持久完成保证，不能直接接收此已提交事件。实际客户端投递还需delivery-only接合、原event去重及每用户cursor/cache/restart验证。outbox durable/persisted不声称客户端已收、execute已领/完成或inform已消费；保持生产配置、信任、HTTP候选关闭到适用验收。
+
+## Rocky 原生发送实现与验收边界
+
+`20261114.sql` 和新库初始化增加 `mindlink_message_outbox`，保存原请求字节、原生坐标、原生 DownMsg protobuf、冻结收件人及 pending 状态。它与 message_sequence、p_hismsgs/g_hismsgs、原 operation 和 ticket 共享同一事务。现有原生序号入口也使用 `commons/messagesequence`，保留历史最大值、已读游标、缓存水位及 Mongo 历史读取；RELIABLE producer 仅支持 MySQL，同库参与表必须为 InnoDB。
+
+最终授权锁主人屏障、会话、成员 principal 和原生用户/群名单；验证 scope、当前策略、代际和 active 状态。配对群主人不能发送；原回执读取仍核当前读权。mentions 只能指向当前会话成员，转换成原生内部号。回复引用按同 app、原生会话及子通道读取非删除历史，去掉递归祖先。DM 历史保留原生接收方视角，receipt 独立保存真实 sender/receiver；配对群不带未读计数标志。
+
+发送原键和完整签名绑定重复时返回同一回执，正文或目标变化冲突；GET 使用原 request ID 路径和原 operation ID，不产生新序号。查询共用原操作 journal 的票据、绑定、TTL 与事务检查，并额外核原 send actor、原 body hash、30 字段 receipt 和冻结 native binding。后台配送尚未消费 pending outbox；不得把这张表存在当作已送达。
+
+Rocky 隔离 SQL 证据（忽略目录 `D:/projects/.evidence`）：
+
+- `dg003-message-sequence-atomic.log`：序号与历史共同回滚、12 路并发唯一、溢出拒绝。
+- `dg003-message-sequence-legacy.log`：原生旧入口历史清理、已读水位、scope、24 路并发与失败回归，6 顶层通过。
+- `dg003-message-producer-full.jsonl`：mindlink 96 顶层通过/3 跳过，gateway services 2、routers 1 通过；真实 HTTP send/query、群/DM protobuf、重复与撤权、outbox/receipt 故障回滚及新库/升级回归。跳过的独立 BIZ 来源/网关子进程测试不算覆盖。
+- `dg003-message-reply.log`：同键改正文拒绝、同会话回复引用、缺失引用拒绝且无多余历史。
+
+早期测试复用了 C1 的 JTI 导致冲突，随后一次新 JTI 格式不合约；这些失败不作为故障回滚证据。修正为独立合法票据并断言各路径具体错误后才得到上面的有效结果。未覆盖浏览器、客户端实际收取、BIZ 新 wire、独立审查及生产启用。
