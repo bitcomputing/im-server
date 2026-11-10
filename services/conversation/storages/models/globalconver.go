@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"im-server/commons/pbdefines/pbobjs"
 )
 
@@ -17,5 +18,5 @@ type GlobalConver struct {
 
 type IGlobalConverStorage interface {
 	UpsertConversation(item GlobalConver) error
-	QryConversations(appkey, targetId, subChannel string, channelType pbobjs.ChannelType, startTime int64, count int32, isPositiveOder bool, excludeUserIds []string) ([]*GlobalConver, error)
+	QryConversations(ctx context.Context, appkey, targetId, subChannel string, channelType pbobjs.ChannelType, startTime int64, count int32, isPositiveOder bool, excludeUserIds []string) ([]*GlobalConver, error)
 }

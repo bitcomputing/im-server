@@ -118,10 +118,10 @@ func GetMemoryMetrics() (MemoryMetrics, error) {
 		FreeBytes:        stats.Free,
 		AvailableBytes:   memoryAvailableBytes(stats, stats.Free),
 		UsagePercent:     usagePercent(stats.Used, stats.Total),
-		SwapTotalBytes:   stats.SwapTotal,
-		SwapUsedBytes:    stats.SwapUsed,
-		SwapFreeBytes:    stats.SwapFree,
-		SwapUsagePercent: usagePercent(stats.SwapUsed, stats.SwapTotal),
+		SwapTotalBytes:   memoryStatBytes(stats, "SwapTotal", 0),
+		SwapUsedBytes:    memoryStatBytes(stats, "SwapUsed", 0),
+		SwapFreeBytes:    memoryStatBytes(stats, "SwapFree", 0),
+		SwapUsagePercent: usagePercent(memoryStatBytes(stats, "SwapUsed", 0), memoryStatBytes(stats, "SwapTotal", 0)),
 	}, nil
 }
 
@@ -207,6 +207,11 @@ func usagePercent(used, total uint64) float64 {
 }
 
 func memoryAvailableBytes(stats any, fallback uint64) uint64 {
+	return memoryStatBytes(stats, "Available", fallback)
+}
+
+// go-osstat exposes different memory fields on each operating system.
+func memoryStatBytes(stats any, name string, fallback uint64) uint64 {
 	value := reflect.ValueOf(stats)
 	if value.Kind() == reflect.Pointer {
 		value = value.Elem()
@@ -215,7 +220,7 @@ func memoryAvailableBytes(stats any, fallback uint64) uint64 {
 		return fallback
 	}
 
-	field := value.FieldByName("Available")
+	field := value.FieldByName(name)
 	if !field.IsValid() || field.Kind() != reflect.Uint64 {
 		return fallback
 	}
