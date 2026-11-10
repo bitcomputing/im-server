@@ -39,6 +39,9 @@ type policyEnvelope struct {
 
 func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	operation := ""
+	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, HistoryPathPrefix) {
+		operation = OperationHistoryRead
+	}
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/apigateway/mindlink/operations/") {
 		operation = "operations.query"
 	}
@@ -91,6 +94,8 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = h.verifier.transactConversationEnsure(r.Context(), h.db, auth, h.disableSource)
 	} else if operation == OperationMessageSend {
 		result, err = h.verifier.SendMessage(r.Context(), h.db, auth)
+	} else if operation == OperationHistoryRead {
+		result, err = h.verifier.History(r.Context(), h.db, auth)
 	} else if operation == OperationMessageQuery {
 		result, err = h.verifier.QueryMessageResult(r.Context(), h.db, auth)
 	} else {
