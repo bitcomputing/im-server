@@ -26,12 +26,12 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 			return closed, mindlink.ErrInvalidRequest
 		}
 		for _, op := range item.QueryOperations {
-			if op != "operations.query" && op != mindlink.OperationMessageQuery && op != mindlink.OperationHistoryRead {
+			if op != "operations.query" && op != mindlink.OperationMessageQuery && op != mindlink.OperationHistoryRead && op != mindlink.OperationSeenQuery {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}
 		for _, op := range item.MutationOperations {
-			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure && op != mindlink.OperationMessageSend {
+			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure && op != mindlink.OperationMessageSend && op != mindlink.OperationSeenAdvance {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}
@@ -55,7 +55,7 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 		if err != nil {
 			return closed, err
 		}
-		return h, nil
+		return h.WithNativeRead(nativeMindlinkRead), nil
 	}
-	return mindlink.NewPolicyHTTP(v, db), nil
+	return mindlink.NewPolicyHTTP(v, db).WithNativeRead(nativeMindlinkRead), nil
 }

@@ -29,10 +29,18 @@ type MutationResult struct {
 // permission/version for a new effect. effect must only use
 // this transaction. External delivery belongs in a transactional outbox.
 func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error)) (*MutationResult, error) {
+	if auth != nil && auth.claims.Method == http.MethodGet {
+		return nil, ErrForbidden
+	}
+	return v.transactBound(ctx, db, auth, authorize, effect)
+}
+
+// The READ query producer uses the same journal without a seen mutation.
+func (v *Verifier) transactBound(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error)) (*MutationResult, error) {
 	if v == nil || len(v.bindings) == 0 || db == nil || authorize == nil || effect == nil {
 		return nil, ErrNotReady
 	}
-	if auth == nil || auth.verifier != v || auth.claims.Method == http.MethodGet {
+	if auth == nil || auth.verifier != v {
 		return nil, ErrForbidden
 	}
 	if ctx == nil || len(auth.claims.Issuer) > 1024 {

@@ -16,6 +16,14 @@ type PolicyHTTP struct {
 	verifier      *Verifier
 	db            *sql.DB
 	disableSource *DisableAuthoritySource
+	nativeRead    NativeRead
+}
+
+// WithNativeRead is configured once by the gateway before serving requests.
+func (h *PolicyHTTP) WithNativeRead(read NativeRead) *PolicyHTTP {
+	copy := *h
+	copy.nativeRead = read
+	return &copy
 }
 
 func NewPolicyHTTP(v *Verifier, db *sql.DB) *PolicyHTTP { return &PolicyHTTP{verifier: v, db: db} }
@@ -39,6 +47,14 @@ type policyEnvelope struct {
 
 func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	operation := ""
+	if strings.HasPrefix(r.URL.Path, "/apigateway/mindlink/conversations/") && strings.HasSuffix(r.URL.Path, "/seen") {
+		if r.Method == http.MethodGet {
+			operation = OperationSeenQuery
+		}
+		if r.Method == http.MethodPut {
+			operation = OperationSeenAdvance
+		}
+	}
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, HistoryPathPrefix) {
 		operation = OperationHistoryRead
 	}
@@ -74,7 +90,30 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var result *MutationResult
-	if operation == OperationPrincipalDisable {
+	if operation == OperationSeenQuery || operation == OperationSeenAdvance {
+		result, err = h.verifier.Read(r.Context(), h.db, auth, h.nativeRead)
+		if err != nil {
+			writePolicyError(w, err)
+			return
+		}
+		var read ReadResult
+		if json.Unmarshal(result.Result, &read) != nil {
+			writePolicyError(w, ErrUnknownResult)
+			return
+		}
+		if operation == OperationSeenAdvance {
+			writePolicyJSON(w, http.StatusOK, policyEnvelope{0, "success", struct {
+				Operation OperationResult `json:"operation"`
+				State     ReadState       `json:"state"`
+			}{read.Operation, read.State}})
+			return
+		}
+		writePolicyJSON(w, http.StatusOK, policyEnvelope{0, "success", struct {
+			ReadResult
+			Replayed bool `json:"replayed"`
+		}{read, result.Replayed}})
+		return
+	} else if operation == OperationPrincipalDisable {
 		if _, err := h.verifier.ParsePrincipalDisable(auth); err != nil {
 			writePolicyError(w, err)
 			return
