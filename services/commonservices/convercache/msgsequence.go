@@ -3,11 +3,11 @@ package convercache
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
 	"im-server/commons/configures"
 	"im-server/commons/dbcommons"
+	"im-server/commons/messagesequence"
 	"im-server/commons/mongocommons"
 	"im-server/commons/pbdefines/pbobjs"
 
@@ -16,10 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type sequenceWatermark struct {
-	Seq      int64 `bson:"seq"`
-	SendTime int64 `bson:"send_time"`
-}
+type sequenceWatermark = messagesequence.Watermark
 
 func reserveSequence(app, conver, sub string, channel pbobjs.ChannelType, cached sequenceWatermark, now int64) (sequenceWatermark, error) {
 	var next sequenceWatermark
@@ -29,41 +26,9 @@ func reserveSequence(app, conver, sub string, channel pbobjs.ChannelType, cached
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err := dbcommons.GetDb().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		key := []interface{}{app, conver, channel, sub}
-		if err := tx.Exec("INSERT INTO message_sequence (app_key,conver_id,channel_type,sub_channel,seq,send_time) VALUES (?,?,?,?,0,0) ON DUPLICATE KEY UPDATE seq=seq", key...).Error; err != nil {
-			return err
-		}
-		var current sequenceWatermark
-		row := tx.Raw("SELECT seq,send_time FROM message_sequence WHERE app_key=? AND conver_id=? AND channel_type=? AND sub_channel=? FOR UPDATE", key...).Scan(&current)
-		if row.Error != nil {
-			return row.Error
-		}
-		if row.RowsAffected != 1 || current.Seq < 0 || current.SendTime < 0 {
-			return errors.New("invalid message sequence watermark")
-		}
-		if current.Seq == 0 {
-			floor, err := sequenceFloor(ctx, tx, app, conver, sub, channel)
-			if err != nil {
-				return err
-			}
-			current.Seq = max(current.Seq, floor.Seq)
-			current.SendTime = max(current.SendTime, floor.SendTime)
-		}
-		current.Seq = max(current.Seq, cached.Seq)
-		current.SendTime = max(current.SendTime, cached.SendTime)
-		if current.Seq == math.MaxInt64 || current.SendTime == math.MaxInt64 || now < 0 {
-			return errors.New("message sequence or time exhausted")
-		}
-		next = sequenceWatermark{Seq: current.Seq + 1, SendTime: max(now, current.SendTime+1)}
-		args := append([]interface{}{next.Seq, next.SendTime}, key...)
-		result := tx.Exec("UPDATE message_sequence SET seq=?,send_time=? WHERE app_key=? AND conver_id=? AND channel_type=? AND sub_channel=?", args...)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return errors.New("message sequence reservation lost")
-		}
-		return nil
+		var err error
+		next, err = messagesequence.Reserve(ctx, tx.Statement.ConnPool, app, conver, sub, int32(channel), cached, now, func() (sequenceWatermark, error) { return sequenceFloor(ctx, tx, app, conver, sub, channel) })
+		return err
 	})
 	if err != nil {
 		return sequenceWatermark{}, err
@@ -102,22 +67,7 @@ func sequenceFloor(ctx context.Context, tx *gorm.DB, app, conver, sub string, ch
 			floor = rows[0]
 		}
 	} else {
-		if err := tx.Raw("SELECT COALESCE(MAX(msg_seq_no),0) AS seq, COALESCE(MAX(send_time),0) AS send_time FROM "+table+" WHERE app_key=? AND conver_id=? AND sub_channel=?", app, conver, sub).Scan(&floor).Error; err != nil {
-			return floor, err
-		}
+		return messagesequence.SQLFloor(ctx, tx.Statement.ConnPool, app, conver, sub, int32(channel))
 	}
-	// READ may already outlive all retained history when this capability is installed.
-	condition := "target_id=?"
-	if channel == pbobjs.ChannelType_Private {
-		condition = "CONCAT(LEAST(BINARY user_id,BINARY target_id),':',GREATEST(BINARY user_id,BINARY target_id))=?"
-	}
-	var seen int64
-	if err := tx.Raw("SELECT COALESCE(MAX(seen_seq),0) FROM conversation_seen WHERE app_key=? AND channel_type=? AND sub_channel=? AND "+condition, app, channel, sub, conver).Scan(&seen).Error; err != nil {
-		return floor, err
-	}
-	if floor.Seq < 0 || floor.SendTime < 0 || seen < 0 {
-		return floor, errors.New("invalid legacy message sequence floor")
-	}
-	floor.Seq = max(floor.Seq, seen)
-	return floor, nil
+	return messagesequence.WithReadFloor(ctx, tx.Statement.ConnPool, app, conver, sub, int32(channel), floor)
 }

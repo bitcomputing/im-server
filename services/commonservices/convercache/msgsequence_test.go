@@ -1,11 +1,13 @@
 package convercache
 
 import (
-	"errors"
+	"database/sql"
+	"encoding/json"
 	"fmt"
+	mysql "github.com/go-sql-driver/mysql"
 	"math"
+	"net"
 	"os"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -22,13 +24,71 @@ import (
 
 func sequenceTestDB(t *testing.T) (*gorm.DB, string) {
 	t.Helper()
-	if os.Getenv("JIM_SEQUENCE_ISOLATED") != "im-f1-sequence-20261106" {
-		t.Skip("requires the owned sequence MySQL fixture")
+	if path := os.Getenv("MINDLINK_TEST_DSN_FILE"); path != "" {
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var private struct {
+			DSN string `json:"dsn"`
+		}
+		if json.Unmarshal(raw, &private) != nil {
+			t.Fatal("invalid fixture configuration")
+		}
+		cfg, err := mysql.ParseDSN(private.DSN)
+		if err != nil {
+			t.Fatal("invalid fixture DSN")
+		}
+		host, _, err := net.SplitHostPort(cfg.Addr)
+		if err != nil || host != "127.0.0.1" || cfg.Net != "tcp" || cfg.DBName != "mindlink_policy_c82" {
+			t.Fatal("refusing non-owned fixture")
+		}
+		root, err := sql.Open("mysql", cfg.FormatDSN())
+		if err != nil {
+			t.Fatal(err)
+		}
+		name := fmt.Sprintf("dg003_sequence_%x", time.Now().UnixNano())
+		if _, err = root.Exec("CREATE DATABASE `" + name + "`"); err != nil {
+			root.Close()
+			t.Fatal(err)
+		}
+		t.Log("owned sequence scratch:", name)
+		t.Cleanup(func() {
+			dbcommons.CloseDB()
+			if _, err := root.Exec("DROP DATABASE `" + name + "`"); err != nil {
+				t.Error(err)
+			}
+			root.Close()
+		})
+		cfg.DBName = name
+		cfg.MultiStatements = true
+		fixture, err := sql.Open("mysql", cfg.FormatDSN())
+		if err != nil {
+			t.Fatal(err)
+		}
+		initial, err := os.ReadFile("../../../sql/imserver.sql")
+		if err != nil {
+			fixture.Close()
+			t.Fatal(err)
+		}
+		_, err = fixture.Exec(string(initial))
+		fixture.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		configures.Config.Mysql.User = cfg.User
+		configures.Config.Mysql.Password = cfg.Passwd
+		configures.Config.Mysql.Address = cfg.Addr
+		configures.Config.Mysql.DbName = name
+	} else {
+		if os.Getenv("JIM_SEQUENCE_ISOLATED") != "im-f1-sequence-20261106" {
+			t.Skip("requires the owned sequence MySQL fixture")
+		}
+		configures.Config.Mysql.User = "root"
+		configures.Config.Mysql.Password = os.Getenv("MYSQL_ROOT_PASSWORD")
+		configures.Config.Mysql.Address = "im-f1-sequence-mysql:3306"
+		configures.Config.Mysql.DbName = "jim_db"
 	}
-	configures.Config.Mysql.User = "root"
-	configures.Config.Mysql.Password = os.Getenv("MYSQL_ROOT_PASSWORD")
-	configures.Config.Mysql.Address = "im-f1-sequence-mysql:3306"
-	configures.Config.Mysql.DbName = "jim_db"
 	if err := dbcommons.InitMysql(); err != nil {
 		t.Fatal(err)
 	}
@@ -143,33 +203,28 @@ func TestSequenceFailuresAndOverflowMySQL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	injected := errors.New("injected sequence update failure")
-	if err := db.Callback().Raw().Before("gorm:raw").Register("sequence_update_error", func(tx *gorm.DB) {
-		if strings.HasPrefix(tx.Statement.SQL.String(), "UPDATE message_sequence SET") {
-			tx.AddError(injected)
-		}
-	}); err != nil {
+	if err := db.Exec("CREATE TRIGGER fail_sequence_update BEFORE UPDATE ON message_sequence FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='injected sequence update failure'").Error; err != nil {
 		t.Fatal(err)
 	}
 	failed, err := reserveSequence(app, "group", "", 2, first, 1000)
-	db.Callback().Raw().Remove("sequence_update_error")
-	if !errors.Is(err, injected) || failed != (sequenceWatermark{}) {
+	if dropErr := db.Exec("DROP TRIGGER fail_sequence_update").Error; dropErr != nil {
+		t.Fatal(dropErr)
+	}
+	if err == nil || failed != (sequenceWatermark{}) {
 		t.Fatalf("failed reservation returned success: %+v %v", failed, err)
 	}
 	next, err := reserveSequence(app, "group", "", 2, sequenceWatermark{}, 1000)
 	if err != nil || next.Seq != first.Seq+1 {
 		t.Fatalf("rollback lost watermark: %+v %v", next, err)
 	}
-	if err := db.Callback().Row().Before("gorm:row").Register("sequence_bootstrap_error", func(tx *gorm.DB) {
-		if strings.Contains(tx.Statement.SQL.String(), "MAX(msg_seq_no)") {
-			tx.AddError(injected)
-		}
-	}); err != nil {
+	if err := db.Exec("RENAME TABLE g_hismsgs TO sequence_missing_history").Error; err != nil {
 		t.Fatal(err)
 	}
 	failed, err = reserveSequence(app, "uninitialized", "", 2, sequenceWatermark{}, 1000)
-	db.Callback().Row().Remove("sequence_bootstrap_error")
-	if !errors.Is(err, injected) || failed != (sequenceWatermark{}) {
+	if restoreErr := db.Exec("RENAME TABLE sequence_missing_history TO g_hismsgs").Error; restoreErr != nil {
+		t.Fatal(restoreErr)
+	}
+	if err == nil || failed != (sequenceWatermark{}) {
 		t.Fatalf("failed bootstrap became empty success: %+v %v", failed, err)
 	}
 	var count int64
