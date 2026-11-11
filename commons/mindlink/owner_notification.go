@@ -28,10 +28,10 @@ func (h *PolicyHTTP) SignalOwnerInbox(ctx context.Context, id string, signal fun
 	if err != nil {
 		return err
 	}
-	if state == "signalled" || state == "quiet" {
+	if state == "signalled" {
 		return nil
 	}
-	if state != "inboxed" {
+	if state != "inboxed" && state != "quiet" {
 		return ErrNotReady
 	}
 	var c Claims
@@ -77,17 +77,17 @@ func (h *PolicyHTTP) SignalOwnerInbox(ctx context.Context, id string, signal fun
 	if !position.Valid || position.Int64 <= 0 {
 		return ErrNotReady
 	}
-	state = "quiet"
-	if p.kind != "avatar_pair_group" {
-		if p.kind != "mindlink_group" && p.kind != "owner_avatar_dm" {
-			return ErrNotReady
-		}
-		if err = signal(ctx, c.AppKey, p.ownerIM, position.Int64); err != nil {
-			return err
-		}
-		state = "signalled"
+	if p.kind != "avatar_pair_group" && p.kind != "mindlink_group" && p.kind != "owner_avatar_dm" {
+		return ErrNotReady
 	}
-	if _, err = tx.ExecContext(ctx, `UPDATE mindlink_message_outbox SET state=? WHERE outbox_id=? AND state='inboxed'`, state, id); err != nil {
+	if state == "quiet" && p.kind != "avatar_pair_group" {
+		return ErrUnknownResult
+	}
+	// Silent pairs still need SDK synchronization; this hint does not push or count.
+	if err = signal(ctx, c.AppKey, p.ownerIM, position.Int64); err != nil {
+		return err
+	}
+	if _, err = tx.ExecContext(ctx, `UPDATE mindlink_message_outbox SET state='signalled' WHERE outbox_id=? AND state IN ('inboxed','quiet')`, id); err != nil {
 		return err
 	}
 	return tx.Commit()
@@ -100,7 +100,7 @@ func (h *PolicyHTTP) DrainOwnerNotifications(ctx context.Context, after string, 
 	if after != "" && !isLowerHex(after, 64) {
 		return after, ErrInvalidRequest
 	}
-	rows, err := h.db.QueryContext(ctx, `SELECT outbox_id FROM mindlink_message_outbox WHERE state='inboxed' AND outbox_id>? ORDER BY outbox_id LIMIT 32`, after)
+	rows, err := h.db.QueryContext(ctx, `SELECT outbox_id FROM mindlink_message_outbox WHERE state IN ('inboxed','quiet') AND outbox_id>? ORDER BY outbox_id LIMIT 32`, after)
 	if err != nil {
 		return after, err
 	}

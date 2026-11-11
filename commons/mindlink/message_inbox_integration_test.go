@@ -71,14 +71,12 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 			h := NewPolicyHTTP(v, db)
 			calls := 0
 			failedSignal := func(context.Context, string, string, int64) error { calls++; return ErrNotReady }
-			if storedKind != "avatar_pair_group" {
-				if err := h.SignalOwnerInbox(ctx, receipt.OutboxID, failedSignal); err == nil || calls != 1 {
-					t.Fatal("failed route marked successful", err, calls)
-				}
-				var phase string
-				if err := db.QueryRow(`SELECT state FROM mindlink_message_outbox WHERE outbox_id=?`, receipt.OutboxID).Scan(&phase); err != nil || phase != "inboxed" {
-					t.Fatal("failed route lost pending hint", err, phase)
-				}
+			if err := h.SignalOwnerInbox(ctx, receipt.OutboxID, failedSignal); err == nil || calls != 1 {
+				t.Fatal("failed route marked successful", err, calls)
+			}
+			var phase string
+			if err := db.QueryRow(`SELECT state FROM mindlink_message_outbox WHERE outbox_id=?`, receipt.OutboxID).Scan(&phase); err != nil || phase != "inboxed" {
+				t.Fatal("failed route lost pending hint", err, phase)
 			}
 			if _, err := db.Exec(`UPDATE mindlink_owner_barriers SET read_enabled=FALSE`); err != nil {
 				t.Fatal(err)
@@ -105,12 +103,8 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			wantCalls := 1
-			if storedKind == "avatar_pair_group" {
-				wantCalls = 0
-			}
-			if calls != wantCalls {
-				t.Fatal("duplicate or audible pair hint", calls)
+			if calls != 1 {
+				t.Fatal("missing or duplicate synchronization hint", calls)
 			}
 			var inboxTarget, recipient string
 			if err = db.QueryRow(`SELECT msg_body,target_id,user_id FROM `+box).Scan(&raw, &inboxTarget, &recipient); err != nil {
@@ -145,7 +139,7 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 			if kind == "avatar_pair_group" || kind == "owner_send" {
 				wantUnread = 0
 			}
-			if down.MsgId != receipt.MessageID || down.TargetId != target || inboxTarget != target || recipient != b.OwnerIMID || down.UnreadIndex != wantUnread || down.IsSend != (kind == "owner_send") {
+			if down.MsgId != receipt.MessageID || down.TargetId != target || inboxTarget != target || recipient != b.OwnerIMID || down.UnreadIndex != wantUnread || down.IsSend != (kind == "owner_send") || kind == "avatar_pair_group" && down.Flags != 8 {
 				t.Fatalf("owner inbox binding: %+v", &down)
 			}
 			var unread int64
@@ -156,6 +150,58 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 				t.Fatalf("duplicate inbox: %d %v", count, err)
 			}
 		})
+	}
+}
+
+func TestMySQLQuietPairRecoversOnlySynchronization(t *testing.T) {
+	db, cv, ca, source, b := conversationFixture(t)
+	ctx := context.Background()
+	if _, err := cv.transactConversationEnsure(ctx, db, ca, source); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE mindlink_conversations SET kind='avatar_pair_group'`); err != nil {
+		t.Fatal(err)
+	}
+	v, a := currentMessageProof(t, "B")
+	result, err := v.SendMessage(ctx, db, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var receipt MessageSendResult
+	if err := json.Unmarshal(result.Result, &receipt); err != nil {
+		t.Fatal(err)
+	}
+	if stored, err := v.MaterializeOwnerInbox(ctx, db, receipt.OutboxID); err != nil || !stored {
+		t.Fatal("materialize fixture", stored, err)
+	}
+	if _, err := db.Exec(`UPDATE mindlink_message_outbox SET state='quiet' WHERE outbox_id=?`, receipt.OutboxID); err != nil {
+		t.Fatal(err)
+	}
+	h, calls := NewPolicyHTTP(v, db), 0
+	for range 2 {
+		if _, err := h.DrainOwnerNotifications(ctx, "", func(_ context.Context, app, owner string, syncTime int64) error {
+			calls++
+			if app != "fixture-app" || owner != b.OwnerIMID || syncTime <= 0 {
+				t.Fatal("wrong recovery target")
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var state string
+	var count, unread int
+	if err := db.QueryRow(`SELECT state FROM mindlink_message_outbox WHERE outbox_id=?`, receipt.OutboxID).Scan(&state); err != nil || state != "signalled" || calls != 1 {
+		t.Fatal("quiet synchronization not recovered exactly once", state, calls, err)
+	}
+	if stored, err := v.MaterializeOwnerInbox(ctx, db, receipt.OutboxID); err != nil || stored {
+		t.Fatal("recovery replayed inbox", stored, err)
+	}
+	if err := db.QueryRow(`SELECT COUNT(*) FROM inboxmsgs`).Scan(&count); err != nil || count != 1 {
+		t.Fatal("recovery duplicated message", count, err)
+	}
+	if err := db.QueryRow(`SELECT latest_unread_msg_index FROM conversations`).Scan(&unread); err != nil || unread != 0 {
+		t.Fatal("quiet recovery counted unread", unread, err)
 	}
 }
 
