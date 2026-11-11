@@ -49,6 +49,7 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 		if configures.Config.Mindlink.Enabled && err == nil {
 			if worker, ok := policy.(interface {
 				DrainOwnerInbox(context.Context, string) (string, int, error)
+				DrainOwnerNotifications(context.Context, string, func(context.Context, string, string, int64) error) (string, error)
 			}); ok {
 				workerCtx, cancel := context.WithCancel(context.Background())
 				ser.inboxCancel = cancel
@@ -56,6 +57,7 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 					ticker := time.NewTicker(time.Second)
 					defer ticker.Stop()
 					after := ""
+					notifyAfter := ""
 					for {
 						select {
 						case <-workerCtx.Done():
@@ -63,9 +65,11 @@ func (ser *ApiGateway) Startup(args map[string]interface{}) {
 						case <-ticker.C:
 							ctx, done := context.WithTimeout(workerCtx, 10*time.Second)
 							next, _, err := worker.DrainOwnerInbox(ctx, after)
+							notifyNext, notifyErr := worker.DrainOwnerNotifications(ctx, notifyAfter, apiservices.SignalMindlinkOwner)
+							notifyAfter = notifyNext
 							done()
 							after = next
-							if err != nil && workerCtx.Err() == nil {
+							if (err != nil || notifyErr != nil) && workerCtx.Err() == nil {
 								fmt.Println("Mindlink owner inbox pass incomplete; pending entries retained")
 							}
 						}

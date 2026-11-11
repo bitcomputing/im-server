@@ -68,6 +68,50 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 				}
 			}
 			var raw []byte
+			h := NewPolicyHTTP(v, db)
+			calls := 0
+			failedSignal := func(context.Context, string, string, int64) error { calls++; return ErrNotReady }
+			if storedKind != "avatar_pair_group" {
+				if err := h.SignalOwnerInbox(ctx, receipt.OutboxID, failedSignal); err == nil || calls != 1 {
+					t.Fatal("failed route marked successful", err, calls)
+				}
+				var phase string
+				if err := db.QueryRow(`SELECT state FROM mindlink_message_outbox WHERE outbox_id=?`, receipt.OutboxID).Scan(&phase); err != nil || phase != "inboxed" {
+					t.Fatal("failed route lost pending hint", err, phase)
+				}
+			}
+			if _, err := db.Exec(`UPDATE mindlink_owner_barriers SET read_enabled=FALSE`); err != nil {
+				t.Fatal(err)
+			}
+			calls = 0
+			if err := h.SignalOwnerInbox(ctx, receipt.OutboxID, failedSignal); err == nil || calls != 0 {
+				t.Fatal("revoked notification escaped", err, calls)
+			}
+			if _, err := db.Exec(`UPDATE mindlink_owner_barriers SET read_enabled=TRUE`); err != nil {
+				t.Fatal(err)
+			}
+			for range 2 {
+				if err := h.SignalOwnerInbox(ctx, receipt.OutboxID, func(_ context.Context, app, owner string, syncTime int64) error {
+					calls++
+					var storedTime int64
+					if err := db.QueryRow(`SELECT MAX(send_time) FROM ` + box).Scan(&storedTime); err != nil {
+						t.Fatal(err)
+					}
+					if app != "fixture-app" || owner != b.OwnerIMID || syncTime <= 0 || syncTime != storedTime {
+						t.Fatal("notification target mismatch")
+					}
+					return nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			wantCalls := 1
+			if storedKind == "avatar_pair_group" {
+				wantCalls = 0
+			}
+			if calls != wantCalls {
+				t.Fatal("duplicate or audible pair hint", calls)
+			}
 			var inboxTarget, recipient string
 			if err = db.QueryRow(`SELECT msg_body,target_id,user_id FROM `+box).Scan(&raw, &inboxTarget, &recipient); err != nil {
 				t.Fatal(err)

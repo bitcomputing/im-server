@@ -46,7 +46,7 @@ func (v *Verifier) MaterializeOwnerInbox(ctx context.Context, db *sql.DB, id str
 	if err != nil {
 		return false, ErrUnknownResult
 	}
-	if state == "inboxed" {
+	if state == "inboxed" || state == "signalled" || state == "quiet" {
 		return false, nil
 	}
 	if state != "pending" {
