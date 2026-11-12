@@ -19,10 +19,13 @@ const OperationHistoryRead = "history.read"
 const HistoryPathPrefix = "/apigateway/mindlink/history/"
 
 type HistoryMessage struct {
-	ID       string `json:"message_id"`
-	SenderID string `json:"sender_id"`
-	Sequence string `json:"sequence"`
-	Text     string `json:"text"`
+	ID          string         `json:"message_id"`
+	SenderID    string         `json:"sender_id"`
+	Sequence    string         `json:"sequence"`
+	Text        string         `json:"text"`
+	ContentType string         `json:"content_type,omitempty"`
+	Assets      []MessageAsset `json:"assets,omitempty"`
+	ReplyTo     string         `json:"reply_to,omitempty"`
 }
 
 type HistoryResult struct {
@@ -172,18 +175,16 @@ COALESCE((SELECT clean_time FROM usercleantimes WHERE app_key=? AND user_id=? AN
 			rows.Close()
 			return nil, ErrUnknownResult
 		}
-		if down.MsgType != "jg:text" {
+		message, contentErr := historyContent(&down)
+		if contentErr != nil {
 			rows.Close()
-			return nil, ErrNotReady
+			return nil, contentErr
 		}
-		var text struct {
-			Content string `json:"content"`
+		message.ID, message.SenderID, message.Sequence = id, sender, strconv.FormatInt(sequence, 10)
+		if message.ContentType != "" || message.ReplyTo != "" {
+			result.Version = "mindlink-history-v2"
 		}
-		if json.Unmarshal(down.MsgContent, &text) != nil {
-			rows.Close()
-			return nil, ErrUnknownResult
-		}
-		result.Messages = append(result.Messages, HistoryMessage{id, sender, strconv.FormatInt(sequence, 10), text.Content})
+		result.Messages = append(result.Messages, message)
 		budget += len(raw)
 		last = sequence
 	}

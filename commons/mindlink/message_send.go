@@ -20,19 +20,20 @@ const (
 // MessageSendRequest is a separate wire intent, never the local F3 fingerprint
 // or the disable DTO. Every field is explicit, with only reply_to nullable.
 type MessageSendRequest struct {
-	Version                string   `json:"version"`
-	OperationID            string   `json:"operation_id"`
-	RequestID              string   `json:"request_id"`
-	RequestDigest          string   `json:"request_digest"`
-	ParentDigest           string   `json:"parent_digest"`
-	DeliverySnapshotSHA256 string   `json:"delivery_snapshot_sha256"`
-	ConversationID         string   `json:"conversation_id"`
-	PolicyVersion          int64    `json:"policy_version"`
-	MessageType            string   `json:"message_type"`
-	Text                   string   `json:"text"`
-	Mentions               []string `json:"mentions"`
-	ReplyTo                *string  `json:"reply_to"`
-	AssetIDs               []string `json:"asset_ids"`
+	Version                string         `json:"version"`
+	OperationID            string         `json:"operation_id"`
+	RequestID              string         `json:"request_id"`
+	RequestDigest          string         `json:"request_digest"`
+	ParentDigest           string         `json:"parent_digest"`
+	DeliverySnapshotSHA256 string         `json:"delivery_snapshot_sha256"`
+	ConversationID         string         `json:"conversation_id"`
+	PolicyVersion          int64          `json:"policy_version"`
+	MessageType            string         `json:"message_type"`
+	Text                   string         `json:"text"`
+	Mentions               []string       `json:"mentions"`
+	ReplyTo                *string        `json:"reply_to"`
+	AssetIDs               []string       `json:"asset_ids"`
+	Assets                 []MessageAsset `json:"assets,omitempty"`
 }
 
 var messageSendFields = strings.Fields("version operation_id request_id request_digest parent_digest delivery_snapshot_sha256 conversation_id policy_version message_type text mentions reply_to asset_ids")
@@ -55,13 +56,22 @@ func (v *Verifier) ParseMessageSend(auth *Authorization) (*MessageSendRequest, e
 	}
 	// A nullable field is still mandatory; DecodeStrictObject checks all others.
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(auth.body, &fields) != nil || len(fields) != len(messageSendFields) {
+	if json.Unmarshal(auth.body, &fields) != nil {
 		return nil, ErrInvalidRequest
 	}
-	if body.Version != MessageWireVersion || body.MessageType != "jg:text" || len(body.AssetIDs) != 0 {
+	switch body.Version {
+	case MessageWireVersion:
+		if len(fields) != len(messageSendFields) || body.MessageType != "jg:text" || len(body.AssetIDs) != 0 {
+			return nil, ErrNotReady
+		}
+	case "mindlink-reliable-v2":
+		if len(fields) != len(messageSendFields)+1 || !validMessageAssets(&body) {
+			return nil, ErrInvalidRequest
+		}
+	default:
 		return nil, ErrNotReady
 	}
-	if !isLowerHex(body.OperationID, 64) || !isLowerHex(body.RequestID, 64) || !isLowerHex(body.RequestDigest, 64) || !isLowerHex(body.ParentDigest, 64) || !isLowerHex(body.DeliverySnapshotSHA256, 64) || !isLowerHex(body.ConversationID, 64) || body.PolicyVersion <= 0 || len(body.Text) == 0 || len(body.Text) > 65536 || len(body.Mentions) > 1000 {
+	if !isLowerHex(body.OperationID, 64) || !isLowerHex(body.RequestID, 64) || !isLowerHex(body.RequestDigest, 64) || !isLowerHex(body.ParentDigest, 64) || !isLowerHex(body.DeliverySnapshotSHA256, 64) || !isLowerHex(body.ConversationID, 64) || body.PolicyVersion <= 0 || body.Version == MessageWireVersion && len(body.Text) == 0 || len(body.Text) > 65536 || len(body.Mentions) > 1000 {
 		return nil, ErrInvalidRequest
 	}
 	for i, avatar := range body.Mentions {
@@ -93,8 +103,12 @@ func MessageSendDigest(c Claims, body *MessageSendRequest) (string, error) {
 	if body.ReplyTo != nil {
 		reply = *body.ReplyTo
 	}
-	raw, err := json.Marshal([]any{body.Version, OperationMessageSend, c.Environment, c.TenantID, c.AppKey, c.OwnerID, c.ActorKind, c.ActorID, c.AvatarGeneration,
-		body.ConversationID, body.PolicyVersion, body.ParentDigest, body.DeliverySnapshotSHA256, body.MessageType, body.Text, body.Mentions, reply, body.AssetIDs})
+	values := []any{body.Version, OperationMessageSend, c.Environment, c.TenantID, c.AppKey, c.OwnerID, c.ActorKind, c.ActorID, c.AvatarGeneration,
+		body.ConversationID, body.PolicyVersion, body.ParentDigest, body.DeliverySnapshotSHA256, body.MessageType, body.Text, body.Mentions, reply, body.AssetIDs}
+	if body.Version == "mindlink-reliable-v2" {
+		values = append(values, body.Assets)
+	}
+	raw, err := json.Marshal(values)
 	if err != nil {
 		return "", ErrInvalidRequest
 	}

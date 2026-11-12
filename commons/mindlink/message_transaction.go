@@ -68,8 +68,10 @@ func (v *Verifier) SendMessage(ctx context.Context, db *sql.DB, auth *Authorizat
 			return nil, err
 		}
 		content, err := json.Marshal(struct {
-			Content string `json:"content"`
-		}{b.Text})
+			Content string         `json:"content"`
+			Assets  []MessageAsset `json:"assets,omitempty"`
+			ReplyTo *string        `json:"reply_to,omitempty"`
+		}{b.Text, b.Assets, b.ReplyTo})
 		if err != nil {
 			return nil, err
 		}
