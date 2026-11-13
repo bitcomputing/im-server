@@ -136,6 +136,23 @@ func TestMySQLReliableMessageAtomicNativeHistory(t *testing.T) {
 	if recorder.Code != 200 || json.Unmarshal(recorder.Body.Bytes(), &response) != nil || response.Code != 0 || !response.Data.Replayed || !bytes.Equal(response.Data.Operation, first.Result) {
 		t.Fatal("HTTP query changed original receipt")
 	}
+	for _, change := range []string{
+		"UPDATE mindlink_principals SET policy_version=policy_version+1",
+		"UPDATE mindlink_principals SET avatar_generation=avatar_generation+1",
+		"UPDATE mindlink_principals SET state='disabled'; UPDATE mindlink_conversations SET state='disabled',policy_version=policy_version+1",
+	} {
+		if _, err = db.Exec(change); err != nil {
+			t.Fatal(err)
+		}
+		recovered, err = v.QueryMessageResult(context.Background(), db, query)
+		if err != nil || !recovered.Replayed || !bytes.Equal(recovered.Result, first.Result) {
+			t.Fatalf("committed result lost after lifecycle change: %v", err)
+		}
+		var count int
+		if err = db.QueryRow("SELECT COUNT(*) FROM g_hismsgs").Scan(&count); err != nil || count != 1 {
+			t.Fatal("query duplicated native history", err)
+		}
+	}
 	if _, err = db.Exec(`UPDATE mindlink_owner_barriers SET read_enabled=FALSE`); err != nil {
 		t.Fatal(err)
 	}
