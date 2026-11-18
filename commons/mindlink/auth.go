@@ -63,10 +63,11 @@ type binding struct {
 type Verifier struct{ bindings map[trustKey]binding }
 
 type Authorization struct {
-	claims     Claims
-	body       []byte
-	verifier   *Verifier
-	ticketHash [32]byte
+	claims             Claims
+	body               []byte
+	verifier           *Verifier
+	ticketHash         [32]byte
+	retirementVerified bool
 }
 
 func NewVerifier(trusts []Trust) (*Verifier, error) {

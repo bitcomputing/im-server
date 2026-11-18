@@ -16,6 +16,7 @@ func Route(eng *gin.Engine, prefix string, policy http.Handler) {
 	mindlinkRoutes.POST("/principals/disable", gin.WrapH(policy))
 	mindlinkRoutes.POST("/principals/ensure", gin.WrapH(policy))
 	mindlinkRoutes.POST("/conversations/ensure", gin.WrapH(policy))
+	mindlinkRoutes.POST("/conversations/cancel", gin.WrapH(policy))
 	mindlinkRoutes.GET("/operations/:operation_id", gin.WrapH(policy))
 	mindlinkRoutes.POST("/messages/send", gin.WrapH(policy))
 	mindlinkRoutes.GET("/messages/results/:request_id", gin.WrapH(policy))

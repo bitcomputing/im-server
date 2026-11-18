@@ -38,9 +38,12 @@ func NewDisableAuthoritySource(cfg DisableAuthoritySourceConfig) (*DisableAuthor
 	return &DisableAuthoritySource{true, cfg.Program, cfg.ConfigPath}, nil
 }
 
-// Check independently verifies N1, invokes the fixed source once, and checks its
-// exact original binding. A nil result grants no permission to commit an effect.
+// Check binds current retirement facts to this request's negative-only capability;
+// native users and owner grants still cannot be created by a retirement.
 func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *Authorization) error {
+	if auth != nil {
+		auth.retirementVerified = false
+	}
 	if s == nil || !s.enabled {
 		return ErrNotReady
 	}
@@ -72,11 +75,12 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 	if !validAt(c, time.Now()) {
 		return ErrForbidden
 	}
+	auth.retirementVerified = true
 	return nil
 }
 
 func (s *DisableAuthoritySource) invoke(ctx context.Context, requestID, mode string) ([]byte, error) {
-	if mode != "" && mode != "--principal" && mode != "--conversation" {
+	if mode != "" && mode != "--principal" && mode != "--conversation" && mode != "--conversation-cancel" {
 		return nil, ErrInvalidRequest
 	}
 	if ctx.Err() != nil {

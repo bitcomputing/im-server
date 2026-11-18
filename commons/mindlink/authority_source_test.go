@@ -184,6 +184,9 @@ func TestDisableAuthoritySourceProcess(t *testing.T) {
 			if !errors.Is(err, tc.want) || (tc.want == nil && err != nil) {
 				t.Fatalf("result=%v want=%v", err, tc.want)
 			}
+			if a.retirementVerified != (err == nil) {
+				t.Fatal("retirement capability survived an unverified source")
+			}
 			if strings.Contains(fmt.Sprint(err), "private-DSN") {
 				t.Fatal("source diagnostics leaked")
 			}
@@ -202,6 +205,9 @@ func TestDisableAuthoritySourceProcess(t *testing.T) {
 	}
 	if err := s.Check(context.Background(), v, a); !errors.Is(err, ErrForbidden) {
 		t.Fatalf("cached allow survived refusal: %v", err)
+	}
+	if a.retirementVerified {
+		t.Fatal("retirement capability survived a fresh refusal")
 	}
 }
 

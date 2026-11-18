@@ -86,11 +86,14 @@ func NewNativeFence(ctx context.Context, db *sql.DB) (*NativeFence, error) {
 		return nil, ErrNotReady
 	}
 	var tables int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals','mindlink_owner_barriers','mindlink_operations','mindlink_tickets','mindlink_conversations') AND ENGINE='InnoDB'`).Scan(&tables); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('apps','users','groupinfos','groupmembers','mindlink_principals','mindlink_owner_barriers','mindlink_operations','mindlink_tickets','mindlink_conversations','mindlink_principal_lifecycle') AND ENGINE='InnoDB'`).Scan(&tables); err != nil {
 		return nil, ErrUnknownResult
 	}
-	if tables != 9 {
+	if tables != 10 {
 		return nil, ErrNotReady
+	}
+	if err := verifyPrincipalLifecycleSchema(ctx, db); err != nil {
+		return nil, err
 	}
 	return &NativeFence{db: db, verified: true}, nil
 }
