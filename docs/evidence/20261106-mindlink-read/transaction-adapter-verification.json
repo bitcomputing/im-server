@@ -1,0 +1,103 @@
+{
+  "source": {
+    "base": "23872613c059f7c181512b5ed8a303c382613c9b",
+    "overlay_sha256": {
+      "services/conversation/services/seenservice.go": "77fff4ebc7f24561aba14e470ee1f5ea4acca7cae36d3b6ff4a92f19073c12a4",
+      "services/conversation/storages/dbs/seen.go": "35eb3dfa688cfb9e41bcfba66d7ff944ddc4ea2ac284d4b60f2aa3aebc06655a",
+      "services/conversation/services/seenservice_tx_test.go": "dbb9855da01bc8f8bae63512ee52ace9e04b6e9995bfdc23e820bfcd2caa0d1e",
+      "simulator/probes/mindlinkread/transaction_test.go": "40b2f986be9fb15536afc12a93f6bdf797acc9711ac97bc1aa9b0725efe82d94"
+    },
+    "archives": {
+      "source-final.tar": "89620561bfe34b518b9b36690725624fb2424418d029f60e71f34603a1f9a83f",
+      "source-no-abort.tar": "275cc434f3c11ca8b9f02e27d9bfbbbff55e4a07336b0565091b13b565c58e70"
+    }
+  },
+  "binary_sha256": "a78d0a99197fd762fa2805d42967578f5dd79ba78ebd1f0e30f2f821f6332ff1",
+  "image_id": "sha256:82ad77656bd7eb7566e5dd59eb0975616a3d6853a3286cc06f249ca3f6582fa7",
+  "checks_exit": 0,
+  "tests": {
+    "top_level_pass": 12,
+    "top_level_skip": 11,
+    "failure_lines": 0
+  },
+  "mysql_started_at_unchanged": "2026-11-09T02:20:37.26071113Z",
+  "im_started_before": "2026-11-09T02:45:20.546820519Z",
+  "im_started_after": "2026-11-09T02:47:19.564194247Z",
+  "scoped_db_identical_across_im_restart": true,
+  "live_and_disk_binary_match_before_after": true,
+  "final_runtime_before_exit": 0,
+  "final_runtime_after_exit": 0,
+  "deadlock_mutation_detected": true,
+  "task": "DG-20261104-003/F1-READ transaction adapter",
+  "scope": "local native adapter only; public HTTP and real page unverified",
+  "evidence_directory": ".local/f1-read/tx-adapter-20261108/",
+  "resources_at_stop": [
+    {
+      "Name": "/im-f1-read-20261106-im-server-1",
+      "Image": "sha256:82ad77656bd7eb7566e5dd59eb0975616a3d6853a3286cc06f249ca3f6582fa7",
+      "Status": "exited",
+      "ExitCode": 137,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-09T02:47:19.564194247Z",
+      "FinishedAt": "2026-11-09T02:48:50.76276018Z"
+    },
+    {
+      "Name": "/im-f1-read-20261106-mysql-1",
+      "Image": "sha256:6cd09145362dfe6831b14545de3d5fd6cc75c37cfd6ef8561429c1fc73518b39",
+      "Status": "exited",
+      "ExitCode": 0,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-09T02:20:37.26071113Z",
+      "FinishedAt": "2026-11-09T02:48:54.713480055Z"
+    },
+    {
+      "Name": "/im-f1-read-20261106-im-server-fresh-1",
+      "Image": "sha256:90ce1013e041bb65e4121a849e4938dd3401f3f73724ff90a815f6316784adb9",
+      "Status": "exited",
+      "ExitCode": 137,
+      "OOMKilled": false,
+      "StartedAt": "2026-11-06T12:04:54.132274659Z",
+      "FinishedAt": "2026-11-06T12:11:51.015528464Z"
+    }
+  ],
+  "review": {
+    "agent": "review_read_tx_adapter",
+    "critical": 0,
+    "important_unresolved": 0,
+    "minor": 0,
+    "fixed_issue": "real MySQL 1213 victim handle reuse",
+    "scope": "read-only source and supplied evidence; final runtime executed by implementer"
+  },
+  "raw_evidence_sha256": {
+    "missing-adapter-red.log": "0cc64253ba777f8e26fd2711704f1e653dbff853c3bbfd00e323d93365222213",
+    "red-result.json": "d12f11dcb0f757f68b5c96775a6a7a174139f442be8c9172a9fdc36481b33b1d",
+    "source-before-mutations.json": "2ee460f43c78ec55e2cbe8837f8cfa84fe0e4a924ee6f0d7a042bad47a43a451",
+    "global-fallback-red.log": "4bc4fa2f12737f963fb5f16a4f7d78d4a5b446299a52fbc1af49a52ec4cd904f",
+    "stale-snapshot-red.log": "471ab817a53203727c867c95941fcc580074c52d072260f6c4f70de3103c8812",
+    "mutation-results.json": "f08f150d2dce06ab3602cca5181318ae36e26c1114288a8a61de9176e5096c1a",
+    "deadlock-fixture-invalid-1205.log": "6818ff3b5f90f34be318203d678896995128c252e71f9beda330bfc09c1998e6",
+    "deadlock-red.log": "2086870b29c254b22f7693d0a9528b7c53e875e0eff571a345bc27d89b0b6f07",
+    "final-no-abort-red.log": "14b6fc2d2314504dfa515fb1f9e095001609b518d0391481058d5fc66571c441",
+    "final-no-abort-result.json": "f1672df7454224054404c4522b4e9b52662e44c979e059a446b0a0f26a3ae9d1",
+    "final-conversation-tests.log": "5610dc16d7a16e6ad2554894415d260559a779c9f0a151daa3faa601b2d84f80",
+    "final-vet.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-build.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "final-checks.sh": "751c8d8c0f5c00881a5b9a10fbfadc7664e7147181b609e17cb74a9f6d647271",
+    "final-checks-result.json": "87d60a55dc9060facdab6d31ecab7d4eed6ed85e737a386f7667803aba2ef5b0",
+    "final-runtime-before.log": "00de132c59b2fd94286a7f9434c54d606c8d737bfe5d938af5ffa8de917995d7",
+    "final-runtime-before-result.json": "3da275c37cd941d3fa214dedc4bf39221e623d8f68348b46be3c6309ea583a99",
+    "final-runtime-after.log": "2e03878c13ecf5d1625ab132f8dc3f6ccce796c602f8950c1526b472ab14b3a5",
+    "final-runtime-after-result.json": "3da275c37cd941d3fa214dedc4bf39221e623d8f68348b46be3c6309ea583a99",
+    "final-db-before.log": "7fb6831993a53c30ca1acdcc018e62a0d2df6fba9dd3da00989403a92f9e1ac0",
+    "final-db-after.log": "7fb6831993a53c30ca1acdcc018e62a0d2df6fba9dd3da00989403a92f9e1ac0",
+    "final-live-before.sha256": "4fcb5ba04595575f296659e588e8893a44838c61de99bd02d7f32b427ec4fcca",
+    "final-live-after.sha256": "4fcb5ba04595575f296659e588e8893a44838c61de99bd02d7f32b427ec4fcca",
+    "final-restart.log": "6f21ecbcd7fa7041f7dae41cb163c121574a2095c432856d3a9de401730103b3",
+    "final-resources.json": "36faa46e04c34aa0934a84d13a4edef1793f3647b2d86163914f6e6a49cb8242",
+    "test-cleanup-verify.log": "6ff87e9526e398ace6d1621ae2e37d4387ab3a419688815476d334b32858b8c7"
+  },
+  "excluded_evidence": {
+    "deadlock-fixture-invalid-1205.log": "fixture failed with 1205; not a valid 1213 reproduction",
+    "pre_task_acceptance": "background only; not rerun or counted"
+  }
+}
