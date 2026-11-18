@@ -55,6 +55,19 @@ func (v *Verifier) transactConversationEnsure(ctx context.Context, db *sql.DB, a
 		if replayed && !read || !replayed && !write {
 			return ErrForbidden
 		}
+		if replayed {
+			var raw []byte
+			if err = tx.QueryRowContext(ctx, `SELECT result_json FROM mindlink_operations WHERE issuer=? AND operation_id=?`, c.Issuer, c.OperationID).Scan(&raw); err != nil {
+				return ErrUnknownResult
+			}
+			var original OperationResult
+			if v.validateOperationResult(raw, c) != nil || json.Unmarshal(raw, &original) != nil {
+				return ErrUnknownResult
+			}
+			if original.State == "cancelled" {
+				return nil
+			}
+		}
 		p, err := lockPolicyConversation(ctx, tx, c)
 		if err != nil && !(errors.Is(err, ErrNotReady) && !replayed && b.ExpectedPolicyVersion == 0) {
 			return err

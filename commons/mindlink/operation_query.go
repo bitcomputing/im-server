@@ -177,8 +177,8 @@ func (v *Verifier) validateOperationResult(raw []byte, original Claims) error {
 	if err != nil || accepted.Format(ReceiptTimeFormat) != result.AcceptedAt {
 		return ErrUnknownResult
 	}
-	if result.State == "ready" {
-		if result.EffectivePolicyVersion == nil || *result.EffectivePolicyVersion != original.DesiredPolicyVersion || result.EffectiveAvatarGeneration == nil || *result.EffectiveAvatarGeneration != desired.TargetAvatarGeneration || result.CommitVersion == nil || !isLowerHex(*result.CommitVersion, 64) || result.CommittedAt == nil || result.Failure != nil {
+	if result.State == "ready" || result.State == "cancelled" && original.OperationType == OperationConversationEnsure {
+		if result.State == "ready" && (result.EffectivePolicyVersion == nil || *result.EffectivePolicyVersion != original.DesiredPolicyVersion || result.EffectiveAvatarGeneration == nil || *result.EffectiveAvatarGeneration != desired.TargetAvatarGeneration) || result.State == "cancelled" && (result.EffectivePolicyVersion != nil || result.EffectiveAvatarGeneration != nil) || result.CommitVersion == nil || !isLowerHex(*result.CommitVersion, 64) || result.CommittedAt == nil || result.Failure != nil {
 			return ErrUnknownResult
 		}
 		committed, err := time.Parse(ReceiptTimeFormat, *result.CommittedAt)

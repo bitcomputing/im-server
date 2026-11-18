@@ -70,6 +70,9 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost && r.URL.Path == ConversationEnsurePath {
 		operation = OperationConversationEnsure
 	}
+	if r.Method == http.MethodPost && r.URL.Path == ConversationCancelPath {
+		operation = OperationConversationCancel
+	}
 	if r.Method == http.MethodPost && r.URL.Path == MessageSendPath {
 		operation = OperationMessageSend
 	}
@@ -131,6 +134,8 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = h.verifier.transactPrincipalEnsure(r.Context(), h.db, auth, h.disableSource)
 	} else if operation == OperationConversationEnsure {
 		result, err = h.verifier.transactConversationEnsure(r.Context(), h.db, auth, h.disableSource)
+	} else if operation == OperationConversationCancel {
+		result, err = h.verifier.transactConversationCancel(r.Context(), h.db, auth, h.disableSource)
 	} else if operation == OperationMessageSend {
 		result, err = h.verifier.SendMessage(r.Context(), h.db, auth)
 	} else if operation == OperationHistoryRead {
@@ -139,6 +144,15 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = h.verifier.QueryMessageResult(r.Context(), h.db, auth)
 	} else {
 		result, err = h.verifier.QueryOperation(r.Context(), h.db, auth, func(tx *sql.Tx, query, original Claims) error {
+			if handled, err := authorizeConversationCancellationRead(r.Context(), tx, query, original); handled {
+				if err != nil {
+					return err
+				}
+				if h.disableSource == nil || !h.disableSource.enabled {
+					return ErrNotReady
+				}
+				return nil
+			}
 			if h.disableSource != nil && h.disableSource.enabled {
 				return authorizeRetirementOperationRead(r.Context(), tx, query, original)
 			}

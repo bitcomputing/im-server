@@ -38,6 +38,10 @@ func (s *DisableAuthoritySource) CheckConversation(ctx context.Context, v *Verif
 
 // The digest binds the complete typed roster; the body hash binds its frozen bytes.
 func checkConversationAuthoritySnapshot(raw []byte, c Claims) error {
+	return checkConversationAuthoritySnapshotFor(raw, c, false)
+}
+
+func checkConversationAuthoritySnapshotFor(raw []byte, c Claims, cancel bool) error {
 	if c.ActorKind != "system" || c.OperationType != OperationConversationEnsure {
 		return ErrForbidden
 	}
@@ -46,7 +50,11 @@ func checkConversationAuthoritySnapshot(raw []byte, c Claims) error {
 	if DecodeStrictObject(raw, &snapshot, fields) != nil || len(snapshot) != len(fields) || !isLowerHex(snapshot["parent_digest"], 64) {
 		return ErrUnknownResult
 	}
-	if snapshot["version"] != "mindlink-conversation-authority-v1" || snapshot["lifecycle_state"] != "active" {
+	version, state := "mindlink-conversation-authority-v1", "active"
+	if cancel {
+		version, state = "mindlink-conversation-cancellation-authority-v1", "obsolete"
+	}
+	if snapshot["version"] != version || snapshot["lifecycle_state"] != state {
 		return ErrUnknownResult
 	}
 	for key, value := range map[string]string{"environment": c.Environment, "tenant_id": c.TenantID, "appkey": c.AppKey, "issuer": c.Issuer, "audience": c.Audience, "owner_id": c.OwnerID} {

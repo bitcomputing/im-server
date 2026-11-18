@@ -80,7 +80,7 @@ func (s *DisableAuthoritySource) Check(ctx context.Context, v *Verifier, auth *A
 }
 
 func (s *DisableAuthoritySource) invoke(ctx context.Context, requestID, mode string) ([]byte, error) {
-	if mode != "" && mode != "--principal" && mode != "--conversation" {
+	if mode != "" && mode != "--principal" && mode != "--conversation" && mode != "--conversation-cancel" {
 		return nil, ErrInvalidRequest
 	}
 	if ctx.Err() != nil {
