@@ -2,7 +2,7 @@
 
 DG-20261104-003/c82，当前3f7ac87b续办。字段/编码来源是本仓库 `commons/mindlink/message_send.go`、`message_result.go` 及[独立Go编码向量](evidence/20261109-mindlink-reliable-wire/vectors.json)。BIZ负责人将固定差异登记到其唯一业务契约；不改旧N1 disable，旧067摘要/DTO不是这套wire。
 
-当前首个增量交付严格解析、摘要、query边界和原回执校验代码，供消费者实现独立持久wire子意图。尚无messages.send/query生产HTTP接线或可宣称持久效果的发送producer；后续原子history/outbox/回执与权限、故障验收完成前保持关闭。私有Go格式函数通过不等于真实persisted。
+本分支在严格wire协议之上提供私有MySQL producer、原回执查询与HTTP适配器，已在独立MySQL8.0.28验证原生历史/outbox/回执原子提交及恢复。公开messages路由固定以nil依赖返回NOT_READY，生产配置工厂仍拒绝启用这两项操作。当前跨项目进度以[独立实施总记录](D:/ClaudeCodeProjects/knowledge/collaboration/tasks/2026/DG-20261104-003-SOLO.md)为准；本文是c325af8基线上的分支事实，不代表现行IM实现已整合或业务全流程通过。
 
 ## 操作与认证
 
@@ -70,10 +70,18 @@ target_id精确等于业务conversation_id。Native requester/peer/group/channel
 
 `MessageNativeBinding`必须来自已确认且属于原actor的不可变投影。`ValidateMessageSendResult`先复核原send严格body/18槽/原字节hash，再检查所有30字段与原请求和expected native绑定。该函数只是形状/绑定校验，不是响应签名或源认证；调用者贴JSON不能凭解析成功成为persisted证据。BIZ只能消费固定受信IM producer/原查询返回，并与自身原父/子意图核对；之后再原子结算067投递/058回复。
 
-## 事务和恢复的后续实现要求
+## 私有MySQL producer与恢复
 
-当前已有Go格式代码，不据此称下面效果已实现：最终锁原operation→owner barrier→主体/固定conversation/member权威→ticket；正文/引用/mention与当前读写scope一致后，在同一真实SQL事务预留原生序列，写真正p/g_hismsgs的DownMsg PB、不可变outbox及严格原回执。同键重放不预留序列/重effect；异摘要/目标/快照/body字节冲突，无新消息/outbox。
+`NewMessageStore`核schema版本20261112、24张依赖表的InnoDB引擎及两张原生历史表的BIGINT序号，Mongo返回NOT_READY。`MessageStore.Send`只接受同一Verifier验证的Authorization；不接收外部effect/grant回调。`NewMessageHTTP`是私有适配器，没有生产启用配置。
+
+发送复用原operation journal，独立使用REPEATABLE READ：最终锁原operation→owner barrier→固定conversation→原生app/主体/users→ban、block、friend或原生group/member→ticket；原生序号、p/g_hismsgs DownMsg PB、固定outbox及严格原回执使用同一个sql.Tx。原通用Transact及disable/query保留READ COMMITTED。群成员范围及不存在的封禁/拉黑键也锁至提交，防止检查后的插入；普通旧发送入口仍通过原wrapper使用相同序号内核。同键重放不预留序列/重effect；异摘要/目标/快照/body字节冲突，无新消息/outbox。
+
+单聊核接收方blocks及app的msg_friend_check/实际friendrels；群聊核固定名单、原生禁言截止时间与白名单，三人群主人始终不能发送。引用核所有固定成员的原生个人删除、会话/个人清理和入群历史边界，并以锁阻止检查后改写。定向、带销毁/阅后寿命的原件不复制为永久引用；非jg:text或非严格content形状返回未就绪。引用仅保留已核文本及消息坐标，不复制嵌套引用和扩展数据。
 
 响应或COMMIT结果未知只沿原wire键查询，重核当前读权、不换ID、重发或刷新受众；原结果查询不是旧operations.query（后者仍限disable），也不由找不到/不可达拼persisted/failed。历史保留或之后撤权不改原committed结果，当前读取权限仍独立核验。
 
+`MessageStore.Query`核原journal绑定、原body、native绑定和30字段回执，再锁当前读权限与query policy；avatar还须有当前原生user和群成员资格。主人保留独立原回执读取语义，write关闭、分身停用或历史物理清理不重写已提交原件，read关闭则拒绝。
+
 现有native DispatchMsg/SendBoxActor会重写recipient时间并重复写inbox/sendbox，异步pool无持久完成保证，不能直接接收此已提交事件。实际客户端投递还需delivery-only接合、原event去重及每用户cursor/cache/restart验证。outbox durable/persisted不声称客户端已收、execute已领/完成或inform已消费；保持生产配置、信任、HTTP候选关闭到适用验收。
+
+本分支验证范围、失败与跳过、审查修复及现行基线限制见[验证记录](evidence/20261117-mindlink-reliable-native/verification.json)。真实BIZ投影/跨库撤权、原生拦截器与限流接合、Web/WS/客户端实收及旧入口运行回归仍未覆盖；独立数据库通过不替代上述验收。

@@ -29,6 +29,10 @@ type MutationResult struct {
 // permission/version for a new effect. effect must only use
 // this transaction. External delivery belongs in a transactional outbox.
 func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error)) (*MutationResult, error) {
+	return v.transact(ctx, db, auth, authorize, effect, sql.LevelReadCommitted)
+}
+
+func (v *Verifier) transact(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error), isolation sql.IsolationLevel) (*MutationResult, error) {
 	if v == nil || len(v.bindings) == 0 || db == nil || authorize == nil || effect == nil {
 		return nil, ErrNotReady
 	}
@@ -58,7 +62,7 @@ func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization
 	if _, err := rand.Read(reservation[:]); err != nil {
 		return nil, ErrUnknownResult
 	}
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: isolation})
 	if err != nil {
 		return nil, ErrUnknownResult
 	}

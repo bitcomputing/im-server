@@ -43,16 +43,16 @@
 
 **Interfaces:** Verifier.SendMessage/QueryMessageResult use verified Authorization, actual SQL transaction and native projection. No caller-supplied arbitrary effect or grant callback.
 
-- [ ] Write real SQL tests for native private/group PB history, original replay/conflict, rollback, response-loss query and authority races; observe relevant failures.
-- [ ] Add ordered/new-init schema and schema readiness; implement authority+native checks, shared sequence reservation and immutable native history/outbox/receipt in one transaction.
-- [ ] Implement separate messages.query validator/read authority, preserving old disable-only operations.query.
-- [ ] Verify new/upgrade schema and real data, errors, response loss/restart and scoped authority races on the owned isolated fixture. Flag UI/WS/online worker and actual business projection limitations explicitly.
+- [x] Write real SQL tests for native private/group PB history, original replay/conflict, rollback, response-loss query and authority races; observe relevant failures.
+- [x] Add ordered/new-init schema and schema readiness; implement authority+native checks, shared sequence reservation and immutable native history/outbox/receipt in one transaction.
+- [x] Implement separate messages.query validator/read authority, preserving old disable-only operations.query.
+- [x] Verify new/upgrade schema and real data, errors, response loss/restart and scoped authority races on the owned isolated fixture. Flag UI/WS/online worker and actual business projection limitations explicitly.
 
 ## Task 3: delivery/recovery review and handoff
 
-- [ ] Inspect frozen outbox recovery/delivery prerequisites. Any native delivery-only hook needs durable per-user cursors/cache coordination; do not silently use DispatchMsg/SendBoxActor or count an enqueue as delivered.
-- [ ] Run applicable Go/race/vet/build and independent review; fix Critical/Important, commit completed changes only.
-- [ ] Verify owned resource identity and stop only the owned test process; retain ignored data/evidence rather than broad deletion.
+- [x] Inspect frozen outbox recovery/delivery prerequisites. Any native delivery-only hook needs durable per-user cursors/cache coordination; do not silently use DispatchMsg/SendBoxActor or count an enqueue as delivered.
+- [x] Run applicable Go/race/vet/build and independent review; fix Critical/Important, commit completed changes only. Windows CI failure is recorded, not a full-suite pass.
+- [x] Verify owned resource identity and stop only the owned test process; retain ignored data/evidence rather than broad deletion.
 - [ ] Return exact code/version/evidence and uncovered paths to 大当家/BIZ. Public capability remains closed, original066/c82/F1/F3 not globally complete.
 
 ## Ledger
@@ -62,3 +62,8 @@
 - Own standalone MySQL8.0.28 at loopback33606, schema mindlink_reliable_3f7, private fixture/owned-process metadata under ignored .local/reliable-sql-3f7. Docker untouched. Initial root-host1130 and monitor-child restart failures were preparation failures; exact own process residuals checked before console-mode/private fixture-account bootstrap succeeded. Never print or commit its DSN/startup file.
 - Ruling: first complete wire exposes parent_digest and delivery_snapshot_sha256 separately. The existing F3 local fingerprint does not itself define IM wire semantics or authorize snapshot recipients; fixed native membership and current policy are independent IM checks.
 - Task1:4top+135sub targeted racePASS,0fail/skip; explicit group receipt positive added. Independent reviewC0/I0, native-format documentation and one-parent-one-message invariant fixed. One initial receipt test had an invalid expectation about an unknown generated messageID; preserved failing log, changed test to true schema violation, no production relaxation.
+- 2026-11-17 Task2: native MySQL commit/query, real HTTP response loss, trigger rollback, owner revocation ordering, phantom roster/ban insert locks, quote visibility, native block/friend/mute, current avatar membership, schema new/forward migration and process crash/restart verified. Fixed contract/source unchanged.
+- Review: independent initial C1/I4/M1. Each blocking finding reproduced in owned SQL before fixing; final selected race run20top+181sub PASS,0fail, one restart harness skip explicitly excluded. Restart seed/offline/restart/verify ran separately; non-integration race36top+441sub PASS,0fail, one external BIZ-source process skip. Targeted vet and Linux router/legacy-sequence test compilation/launcher build passed. Windows CI commonservices/convercache/metrics blocked by existing memory.Stats SwapTotal/SwapUsed/SwapFree fields, not counted as runtime passes. Raw logs remain ignored.
+- Ruling: private sends use REPEATABLE READ for missing-key/range barriers; generic disable transactions retain READ COMMITTED. Quotes copy only plain permanent text visible to the whole frozen roster, excluding ephemeral/directed originals and nested metadata. Cost: unsupported original quote types remain closed.
+- Final minor deferred: legacy MySQL history/seen-floor wrapper duplicates the shared SQL floor; current rules agree, Mongo remains separate.
+- Ruling: latest SOLO progress states collaboration paused since2026-11-09 and current independently integrated IM at b0e7d42. User2026-11-17 "继续" resumes this local branch only; preserve completed work as a local commit for review. Do not send old batch replies/ACKs or claim integration into the current implementation. Current cross-project progress stays in SOLO; this plan records only this branch's dated execution evidence.

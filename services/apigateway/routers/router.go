@@ -15,6 +15,10 @@ func Route(eng *gin.Engine, prefix string, policy http.Handler) {
 	mindlinkRoutes := eng.Group("/" + prefix + "/mindlink")
 	mindlinkRoutes.POST("/principals/disable", gin.WrapH(policy))
 	mindlinkRoutes.GET("/operations/:operation_id", gin.WrapH(policy))
+	// Private SQL coverage is not public activation authority.
+	messages := mindlink.NewMessageHTTP(nil, nil)
+	mindlinkRoutes.POST("/messages/send", gin.WrapH(messages))
+	mindlinkRoutes.GET("/messages/results/:request_id", gin.WrapH(messages))
 
 	group := eng.Group("/" + prefix)
 	group.Use(apis.Signature)

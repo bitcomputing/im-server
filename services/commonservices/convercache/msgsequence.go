@@ -3,7 +3,6 @@ package convercache
 import (
 	"context"
 	"errors"
-	"math"
 	"time"
 
 	"im-server/commons/configures"
@@ -29,41 +28,12 @@ func reserveSequence(app, conver, sub string, channel pbobjs.ChannelType, cached
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err := dbcommons.GetDb().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		key := []interface{}{app, conver, channel, sub}
-		if err := tx.Exec("INSERT INTO message_sequence (app_key,conver_id,channel_type,sub_channel,seq,send_time) VALUES (?,?,?,?,0,0) ON DUPLICATE KEY UPDATE seq=seq", key...).Error; err != nil {
-			return err
-		}
-		var current sequenceWatermark
-		row := tx.Raw("SELECT seq,send_time FROM message_sequence WHERE app_key=? AND conver_id=? AND channel_type=? AND sub_channel=? FOR UPDATE", key...).Scan(&current)
-		if row.Error != nil {
-			return row.Error
-		}
-		if row.RowsAffected != 1 || current.Seq < 0 || current.SendTime < 0 {
-			return errors.New("invalid message sequence watermark")
-		}
-		if current.Seq == 0 {
+		value, err := dbcommons.ReserveMessageSequenceWithTx(ctx, tx, app, conver, sub, int32(channel), dbcommons.MessageSequenceWatermark{Seq: cached.Seq, SendTime: cached.SendTime}, now, func() (dbcommons.MessageSequenceWatermark, error) {
 			floor, err := sequenceFloor(ctx, tx, app, conver, sub, channel)
-			if err != nil {
-				return err
-			}
-			current.Seq = max(current.Seq, floor.Seq)
-			current.SendTime = max(current.SendTime, floor.SendTime)
-		}
-		current.Seq = max(current.Seq, cached.Seq)
-		current.SendTime = max(current.SendTime, cached.SendTime)
-		if current.Seq == math.MaxInt64 || current.SendTime == math.MaxInt64 || now < 0 {
-			return errors.New("message sequence or time exhausted")
-		}
-		next = sequenceWatermark{Seq: current.Seq + 1, SendTime: max(now, current.SendTime+1)}
-		args := append([]interface{}{next.Seq, next.SendTime}, key...)
-		result := tx.Exec("UPDATE message_sequence SET seq=?,send_time=? WHERE app_key=? AND conver_id=? AND channel_type=? AND sub_channel=?", args...)
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected != 1 {
-			return errors.New("message sequence reservation lost")
-		}
-		return nil
+			return dbcommons.MessageSequenceWatermark{Seq: floor.Seq, SendTime: floor.SendTime}, err
+		})
+		next = sequenceWatermark{Seq: value.Seq, SendTime: value.SendTime}
+		return err
 	})
 	if err != nil {
 		return sequenceWatermark{}, err

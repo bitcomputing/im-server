@@ -1,0 +1,92 @@
+{
+  "date": "2026-11-17",
+  "scope": "Private reliable text MySQL producer and original-result recovery on feat/mindlink-policy",
+  "base_commit": "c325af8c0715e9d1af00bba57e6b3f81ad9fdfbc",
+  "current_progress_source": "D:/ClaudeCodeProjects/knowledge/collaboration/tasks/2026/DG-20261104-003-SOLO.md",
+  "integration": "This old-baseline branch is not integrated into current SOLO IM b0e7d42; collaboration remains paused; no platform completion or deployment claim.",
+  "environment": {
+    "go": "1.26.1 windows/amd64; module go1.25.12",
+    "mysql": "8.0.28, owned standalone loopback33606 namespace, synthetic data",
+    "isolation": "send REPEATABLE READ; existing generic mutation/query READ COMMITTED",
+    "public_messages_routes": "hard closed with nil dependencies; production factory rejects messages.send/messages.query"
+  },
+  "verification": [
+    {
+      "command": "go test -p=1 -race -tags=integration ./commons/mindlink -run=^Test(MySQLReliable|Message) -count=1 -json",
+      "result": "PASS",
+      "top_tests_passed": 20,
+      "subtests_passed": 181,
+      "failures": 0,
+      "skipped": ["TestMySQLReliableMessageRestartProof requires separate explicit phases; not counted as restart coverage in this run"],
+      "raw_log": ".local/mindlink-policy/reliable-final-race-sql.jsonl"
+    },
+    {
+      "command": "go test -p=1 -race ./commons/mindlink ./commons/dbcommons -count=1 -json",
+      "result": "PASS",
+      "top_tests_passed": 36,
+      "subtests_passed": 441,
+      "failures": 0,
+      "skipped": ["TestDisableAuthoritySourceRealBIZDisabled: external BIZ executable not supplied"],
+      "raw_log": ".local/mindlink-policy/reliable-final-unit-race.jsonl"
+    },
+    {
+      "command": "go vet -p=1 ./commons/mindlink ./commons/dbcommons",
+      "result": "PASS"
+    },
+    {
+      "command": "GOOS=linux CGO_ENABLED=0 go test -p=1 -c ./services/apigateway/routers; same for ./services/commonservices/convercache; go build -p=1 ./launcher",
+      "result": "PASS compilation/build only; Linux binaries were not executed"
+    },
+    {
+      "command": "go test -p=1 ./simulator/benchmark ./services/commonservices/... ./commons/metrics/... ./services/pushmanager/services/httputil -count=1 -json",
+      "result": "FAIL on Windows",
+      "blocked_packages": ["services/commonservices", "services/commonservices/convercache", "commons/metrics"],
+      "reason": "Existing commons/metrics/metrics.go uses memory.Stats fields SwapTotal, SwapUsed and SwapFree absent on Windows; legacy sequence/router runtime tests not counted as passed.",
+      "raw_log": ".local/mindlink-policy/reliable-ci-windows.jsonl"
+    }
+  ],
+  "real_sql_coverage": [
+    "Actual private/group DownMsg history, sequence, immutable outbox and original receipt in one transaction; no fake pre-dispatch inbox",
+    "Replay identical original bytes, conflicting body rejected, current read revocation and archived original recovery after principal disable/history purge",
+    "Committed private HTTP response deliberately dropped; original-key HTTP query recovers exactly one effect",
+    "History/outbox/receipt SQL trigger failures roll back journal/ticket/history/outbox/sequence",
+    "Owner revoke-first/send-first races observed through MySQL lock waits",
+    "Concurrent roster and default-ban inserts blocked until send commit by native range locks",
+    "Quotes reject expired/ephemeral, personal deletion, clear boundaries, directed group and pre-join history; plain quote/native mention persists",
+    "Native recipient block, friend requirement, mute expiration/allowlist, pair-owner prohibition and current avatar group-read membership",
+    "New native schema and real Upgrade from20261111 retain native rows/int64 sequence; missing table/non-InnoDB/narrow sequence/Mongo readiness rejection",
+    "Seen floor beyond int32, history retention, MaxInt64 sequence exhaustion rollback"
+  ],
+  "process_restart": {
+    "seed": "PASS original committed receipt saved under ignored private fixture directory",
+    "stop": "Verified exact owned executable/datadir/port, process birth and monitor-child ancestry before force-stopping own monitor19136/server66484",
+    "offline": "Expected failure: owned reliable fixture unavailable; not a successful recovery",
+    "restart": "Same retained owned datadir; new monitor19968/server67720; original result bytes/counts recovered without another send",
+    "raw_logs": [".local/mindlink-policy/reliable-restart-seed.log", ".local/mindlink-policy/reliable-restart-offline.log", ".local/mindlink-policy/reliable-restart-after.log"],
+    "cleanup": "Final owned monitor19968/server67720 stopped after binary/datadir/port/birth/ancestry checks; CIM exit recheck found0 own residuals at2026-11-18 UTC. Data and private evidence retained, never committed; snapshot only."
+  },
+  "independent_review": {
+    "initial_critical": 1,
+    "initial_important": 4,
+    "initial_minor": 1,
+    "blocking_findings_fixed": "Hidden quote redistribution; phantom roster inserts; DM block/friend bypass; expelled-avatar result read; native mute semantics",
+    "fix_verification": "Each blocking behavior reproduced RED then fixed and rerun against real owned SQL; final race suite passed. No independent re-review claimed.",
+    "deferred_minor": "Existing MySQL history/seen floor wrapper duplicates the shared floor; current rules match and Mongo path is preserved"
+  },
+  "failures_not_counted_as_pass": [
+    "Initial concurrent race build ran out of Windows memory/system resources; serial-p1/GOMAXPROCS2 race build subsequently passed",
+    "HTTP fixture initially lacked required Content-Type; corrected fixture after400; production authentication unchanged",
+    "MyISAM readiness fixture preparation exceeded outbox key size; corrected test to convert the owned users table",
+    "Synthetic app fixture initially omitted required secret columns; setup failures were not authority coverage",
+    "PowerShell JSON date coercion caused owned-process birth guard rejection before stopping; raw timestamp parsing corrected; immediate post-stop residual then rechecked until actual exit",
+    "Docker unavailable and Ubuntu WSL startup failed; no shared service restart or Linux runtime pass claimed"
+  ],
+  "uncovered": [
+    "Current SOLO implementation integration and business contract compatibility",
+    "Real business provisioning writer, authority source and cross-database revocation feed",
+    "Native interceptor/rate-limit integration and complete ordinary-client regression",
+    "Delivery-only worker, per-user inbox/sendbox cursor/cache/restart coordination",
+    "Web/WS/App actual receipt, offline reconnect and notification/counting flows",
+    "Production configuration, migration, push, merge, release and rollback exercise"
+  ]
+}
