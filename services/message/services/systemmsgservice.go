@@ -14,13 +14,19 @@ import (
 
 func SendSystemMsg(ctx context.Context, senderId, receiverId string, upMsg *pbobjs.UpMsg) (errs.IMErrorCode, string, int64, int64) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, upMsg, []string{senderId, receiverId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code, "", 0, 0
+	}
 	converId := commonservices.GetConversationId(senderId, receiverId, pbobjs.ChannelType_Private)
 	//statistic
 	commonservices.ReportUpMsg(appkey, pbobjs.ChannelType_System, 1)
 	commonservices.ReportDispatchMsg(appkey, pbobjs.ChannelType_System, 1)
 
 	msgConverCache := convercache.GetMsgConverCache(ctx, converId, upMsg.SubChannel, pbobjs.ChannelType_System)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_System, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_System, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0
+	}
 	preMsgId := bases.GetMsgIdFromCtx(ctx)
 	if preMsgId != "" {
 		msgId = preMsgId

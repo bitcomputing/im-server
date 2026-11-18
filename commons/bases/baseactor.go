@@ -128,6 +128,9 @@ func (actor *baseProcessActor) OnReceive(ctx context.Context, input proto.Messag
 				msg := createInputHandler.CreateInputObj()
 				err = tools.PbUnMarshal(msgBytes, msg)
 				if err == nil {
+					if rejectNativeRequest(ctx, msg, actor.Tags["service_name"], actor.GetSender()) {
+						return
+					}
 					receiveHandler, ok := actor.exeActor.(actorsystem.IReceiveHandler)
 					if ok {
 						receiveHandler.OnReceive(ctx, msg)

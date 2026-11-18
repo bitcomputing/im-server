@@ -25,6 +25,20 @@ func (actor *UpstreamActor) OnReceive(ctx context.Context, input proto.Message) 
 		userId := rpcMsg.TargetId
 		targetId := rpcMsg.RequesterId
 		realMethod := rpcMsg.ExtParams[commonservices.RpcExtKey_RealMethod]
+		users := []string{userId}
+		var groups []string
+		switch realMethod {
+		case "p_msg", "imp_pri_msg", "s_msg":
+			users = append(users, targetId)
+		case "g_msg", "imp_grp_msg":
+			groups = append(groups, targetId)
+		}
+		if code := bases.NativePolicyCode(bases.CheckNativeIdentities(ctx, appkey, users, groups)); code != errs.IMErrorCode_SUCCESS {
+			if actor.Sender != nil {
+				actor.Sender.Tell(&pbobjs.RpcMessageWraper{RpcMsgType: pbobjs.RpcMsgType_UserPubAck, ResultCode: int32(code), AppKey: appkey, Session: rpcMsg.Session, ReqIndex: rpcMsg.ReqIndex, Qos: rpcMsg.Qos, Method: rpcMsg.Method, SourceMethod: rpcMsg.SourceMethod, RequesterId: rpcMsg.RequesterId, TargetId: rpcMsg.TargetId, PublishType: rpcMsg.PublishType}, actorsystem.NoSender)
+			}
+			return
+		}
 
 		userInfo := &pbobjs.UserInfo{
 			UserId: userId,

@@ -1,6 +1,7 @@
 package dbs
 
 import (
+	"context"
 	"im-server/commons/dbcommons"
 	"im-server/commons/pbdefines/pbobjs"
 	"im-server/services/conversation/storages/models"
@@ -27,7 +28,7 @@ func (conver *GlobalConverDao) UpsertConversation(item models.GlobalConver) erro
 	return err
 }
 
-func (conver *GlobalConverDao) QryConversations(appkey, targetId, subChannel string, channelType pbobjs.ChannelType, startTime int64, count int32, isPositiveOder bool, excludeUserIds []string) ([]*models.GlobalConver, error) {
+func (conver *GlobalConverDao) QryConversations(ctx context.Context, appkey, targetId, subChannel string, channelType pbobjs.ChannelType, startTime int64, count int32, isPositiveOder bool, excludeUserIds []string) ([]*models.GlobalConver, error) {
 	var items []*GlobalConverDao
 	params := []interface{}{}
 	condition := "app_key=?"
@@ -63,7 +64,15 @@ func (conver *GlobalConverDao) QryConversations(appkey, targetId, subChannel str
 		condition = condition + " and updated_time<?"
 		params = append(params, startTime)
 	}
-	err := dbcommons.GetDb().Debug().Where(condition, params...).Order(orderStr).Limit(int(count)).Find(&items).Error
+	// Match the verified native fence's collation, including aliases, before SQL pagination.
+	const app = "CONVERT(globalconvers.app_key USING utf8mb4) COLLATE utf8mb4_0900_ai_ci"
+	const sender = "CONVERT(globalconvers.sender_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci"
+	const target = "CONVERT(globalconvers.target_id USING utf8mb4) COLLATE utf8mb4_0900_ai_ci"
+	query := dbcommons.GetDb().WithContext(ctx).Where(condition, params...)
+	query = query.Where("NOT EXISTS (SELECT 1 FROM mindlink_principals p WHERE p.native_appkey=" + app + " AND p.native_principal_id=" + sender + ")")
+	query = query.Where("(globalconvers.channel_type NOT IN (?,?) OR NOT EXISTS (SELECT 1 FROM mindlink_principals p WHERE p.native_appkey="+app+" AND p.native_principal_id="+target+"))", int(pbobjs.ChannelType_Private), int(pbobjs.ChannelType_System))
+	query = query.Where("(globalconvers.channel_type<>? OR NOT EXISTS (SELECT 1 FROM groupmembers m JOIN mindlink_principals p ON p.native_appkey=m.app_key AND p.native_principal_id=m.member_id WHERE m.app_key="+app+" AND m.group_id="+target+"))", int(pbobjs.ChannelType_Group))
+	err := query.Order(orderStr).Limit(int(count)).Find(&items).Error
 	if err != nil {
 		return []*models.GlobalConver{}, err
 	}

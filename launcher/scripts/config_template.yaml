@@ -25,6 +25,14 @@ connectManager:
 apiGateway:
   httpPort: {{ API_HTTP_PORT }}
 
+mindlink:
+  enabled: false
+  trusts: []
+  disable_authority_source:
+    enabled: false
+    program: ""
+    config_path: ""
+
 navGateway:
   httpPort: {{ NAV_HTTP_PORT }}
 

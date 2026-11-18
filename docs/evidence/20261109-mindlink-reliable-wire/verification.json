@@ -1,0 +1,58 @@
+{
+  "task": "DG-20261104-003 c82 first RELIABLE format boundary",
+  "batch": "3f7ac87b38aacf5a16622c0e7ec00c35f6829833fc3f212e59773c795638f668",
+  "message": "pb2m3jgqg2ehukeh",
+  "recorded_utc": "2026-11-10T01:29:55.919383+00:00",
+  "base": "9141c5f112df46d31a702dae976984519747f915",
+  "status": "strict_format_code_only_private_go_functions_no_send_producer_or_HTTP",
+  "schema": {
+    "version": "mindlink-reliable-v1",
+    "send_body_fields": 13,
+    "semantic_slots": 18,
+    "persisted_receipt_fields": 30,
+    "scope": "jg:text only; assets[], no streaming/directed/multi-conversation send; one parent→one wire→one physical IM message; business delivery fanout reuses it"
+  },
+  "code_sha256": {
+    "commons/mindlink/message_send.go": "e30a9a963c7feba02930906e6a193eefccd2b4a09f536b70100d1ff48462b465",
+    "commons/mindlink/message_result.go": "0a75392082e3d257ff83a45672da9fa07503ec2dde54dfb1976dfac886357b3a",
+    "commons/mindlink/message_send_test.go": "5c189c0bf39da28863f18f00cc2e7c7911e872b9f7db7c7db01e717b1367ea66",
+    "commons/mindlink/message_result_test.go": "ecccac1780de28a8f16d5fc8393750685c0be73964a91a1ad19eec9dfb93fa4e"
+  },
+  "reference_vectors_sha256": "915a5b6f1445dc7499ad9fed9fab922984e6123b3db594627b11b8f3a46b2dbe",
+  "go_reference_source_sha256": "56ba56a640ce863a597ec47d2f78c1329f66d283344a895438ae5ac0aed41521",
+  "go_reference_log_sha256": "88a733d9fdc35ca215f521653801a1debce171be826e2d4fb2ac56e978ee5b88",
+  "tests": {
+    "toolchain": "Go1.26.1 Windows race",
+    "top_pass": 4,
+    "sub_pass": 135,
+    "fail": 0,
+    "skip": 0,
+    "final_log": ".local/mindlink-policy/reliable-wire-contract-final-race.jsonl",
+    "final_log_sha256": "0fdad3411ca12ef965acde36be38c25a50500aa944ffa7034de202925b8224ff"
+  },
+  "red_history": {
+    "wire_absent_symbols": "reliable-wire-red.log exit1 expected compile RED",
+    "receipt_absent_symbols": "reliable-receipt-red.log exit1 expected compile RED",
+    "first_combined_run": "reliable-wire-receipt-green.jsonl actually exit1: test incorrectly expected a different valid generated messageID to be known before first send; test changed to true20-byte schema violation, no production relaxation",
+    "final_run": "all targeted tests pass, including matching group receipt"
+  },
+  "review": {
+    "agent": "/root/review_reliable_native_plan",
+    "C": 0,
+    "I": 0,
+    "conditions_closed": [
+      "explicit one-parent one-wire one-message invariant",
+      "document all native-format and ASCII-space restrictions",
+      "successful group receipt case"
+    ],
+    "reviewer_checks": "targeted Go tests/vet and all3 vector hashes independently passed; not added to Root counts"
+  },
+  "not_verified": [
+    "native atomic history/outbox/receipt producer",
+    "query persistence/recovery",
+    "production authority or native final commit gates",
+    "SQL/schema/HTTP/WS/SDK/UI/runtime/restart",
+    "deployment/merge/push"
+  ],
+  "next": "Continue actual native SQL/outbox producer and original query on owned loopback fixture within this same in-progress3f7 batch. Do not complete original066/c82 or activate private paths."
+}

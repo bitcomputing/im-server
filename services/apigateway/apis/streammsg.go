@@ -18,6 +18,9 @@ func SendPrivateStreamMsg(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, []string{msgReq.FromId, msgReq.TargetId}, nil, nil) {
+		return
+	}
 	msgId := msgReq.MsgId
 	if msgId == "" {
 		msgId = tools.GenerateMsgId(time.Now().UnixMilli(), int32(pbobjs.ChannelType_Private), msgReq.TargetId)

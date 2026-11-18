@@ -19,6 +19,9 @@ import (
 
 func SendStreamMsg(ctx context.Context, streamMsg *pbobjs.StreamMsg) errs.IMErrorCode {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, streamMsg, []string{bases.GetRequesterIdFromCtx(ctx)}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code
+	}
 	msgId := streamMsg.StreamMsgId
 
 	userId := bases.GetRequesterIdFromCtx(ctx)
@@ -51,6 +54,12 @@ func SendStreamMsg(ctx context.Context, streamMsg *pbobjs.StreamMsg) errs.IMErro
 		cacheItem, exist := GetStreamMsg(ctx, msgId)
 		if !exist {
 			return errs.IMErrorCode_DEFAULT
+		}
+		if cacheItem.Appkey != appkey || cacheItem.SenderId != userId || cacheItem.TargetId != targetId {
+			return errs.IMErrorCode_MINDLINK_FORBIDDEN
+		}
+		if code := bases.NativePolicyCode(bases.CheckNativeIdentities(ctx, appkey, []string{cacheItem.SenderId, cacheItem.TargetId}, nil)); code != errs.IMErrorCode_SUCCESS {
+			return code
 		}
 		streamMsgCacheItem = cacheItem
 		streamMsgCacheItem.Append(&PartialContent{
@@ -126,6 +135,9 @@ func init() {
 			msgId := streamMsgCacheItem.StreamMsgId
 			ctx := context.Background()
 			ctx = context.WithValue(ctx, bases.CtxKey_AppKey, appkey)
+			if bases.CheckNativeIdentities(ctx, appkey, []string{userId, targetId}, nil) != nil {
+				return
+			}
 			//update history msg
 			finalContent, maxSeq := streamMsgCacheItem.FinalContent()
 			maxSeq = maxSeq + 1
@@ -206,6 +218,9 @@ func getStreamMsgKey(appkey, msgId string) string {
 
 func AddStreamMsg(ctx context.Context, item *StreamMsgCacheItem) bool {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if item == nil || item.Appkey != appkey || item.SenderId != bases.GetRequesterIdFromCtx(ctx) || item.SenderId == "" || item.TargetId == "" || bases.CheckNativeIdentities(ctx, appkey, []string{item.SenderId, item.TargetId}, nil) != nil {
+		return false
+	}
 	key := getStreamMsgKey(appkey, item.StreamMsgId)
 	if item.items == nil {
 		item.items = skipmap.NewInt64()

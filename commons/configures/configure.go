@@ -20,9 +20,10 @@ const (
 )
 
 type ImConfig struct {
-	NodeName       string `yaml:"nodeName"`
-	NodeHost       string `yaml:"nodeHost"`
-	MsgStoreEngine string `yaml:"msgStoreEngine"`
+	Mindlink       MindlinkConfig `yaml:"mindlink"`
+	NodeName       string         `yaml:"nodeName"`
+	NodeHost       string         `yaml:"nodeHost"`
+	MsgStoreEngine string         `yaml:"msgStoreEngine"`
 
 	Log struct {
 		LogPath        string `yaml:"logPath"`

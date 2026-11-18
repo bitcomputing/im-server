@@ -21,6 +21,9 @@ import (
 
 func SavePrivateHisMsg(ctx context.Context, converId, senderId, receiverId string, downMsg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, []string{senderId, receiverId}, nil) != nil {
+		return
+	}
 	privateHisMsgStorage := storages.NewPrivateHisMsgStorage()
 	var index int64 = downMsg.MsgSeqNo
 	msgBs, _ := tools.PbMarshal(downMsg)
@@ -61,6 +64,9 @@ func SavePrivateHisMsg(ctx context.Context, converId, senderId, receiverId strin
 }
 func SaveGroupHisMsg(ctx context.Context, converId string, downMsg *pbobjs.DownMsg, groupMemberCount int) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, []string{bases.GetRequesterIdFromCtx(ctx)}, []string{converId}) != nil {
+		return
+	}
 	grpHisMsgStorage := storages.NewGroupHisMsgStorage()
 	msgBs, _ := tools.PbMarshal(downMsg)
 
@@ -147,6 +153,9 @@ func SaveGroupHisMsg(ctx context.Context, converId string, downMsg *pbobjs.DownM
 
 func SaveSystemHisMsg(ctx context.Context, converId, senderId, receiverId string, downMsg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, []string{senderId, receiverId}, nil) != nil {
+		return
+	}
 	storage := storages.NewSystemHisMsgStorage()
 	msgBs, _ := tools.PbMarshal(downMsg)
 
@@ -168,6 +177,9 @@ func SaveSystemHisMsg(ctx context.Context, converId, senderId, receiverId string
 
 func SaveGroupCastHisMsg(ctx context.Context, converId, senderId, receiverId string, downMsg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, []string{senderId}, nil) != nil {
+		return
+	}
 	storage := storages.NewGrpCastHisMsgStorage()
 	msgBs, _ := tools.PbMarshal(downMsg)
 	storage.SaveGrpCastHisMsg(models.GrpCastHisMsg{
@@ -186,6 +198,9 @@ func SaveGroupCastHisMsg(ctx context.Context, converId, senderId, receiverId str
 
 func SaveBroadCastHisMsg(ctx context.Context, converId, senderId string, downMsg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, downMsg, []string{senderId}, nil) != nil {
+		return
+	}
 	storage := storages.NewBrdCastHisMsgStorage()
 	msgBs, _ := tools.PbMarshal(downMsg)
 	storage.SaveBrdCastHisMsg(models.BrdCastHisMsg{

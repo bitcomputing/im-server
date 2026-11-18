@@ -94,11 +94,19 @@ func AddConversation(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
-	bases.SyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "add_conver", req.UserId, &pbobjs.Conversation{
+	code, _, err := bases.SyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "add_conver", req.UserId, &pbobjs.Conversation{
 		UserId:      req.UserId,
 		TargetId:    req.TargetId,
 		ChannelType: pbobjs.ChannelType(req.ChannelType),
 	}, nil)
+	if err != nil {
+		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_INTERNAL_TIMEOUT)
+		return
+	}
+	if code != errs.IMErrorCode_SUCCESS {
+		tools.ErrorHttpResp(ctx, code)
+		return
+	}
 	tools.SuccessHttpResp(ctx, nil)
 }
 
@@ -121,9 +129,17 @@ func DelConversation(ctx *gin.Context) {
 		})
 	}
 
-	bases.SyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "del_convers", req.UserId, &pbobjs.ConversationsReq{
+	code, _, err := bases.SyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "del_convers", req.UserId, &pbobjs.ConversationsReq{
 		Conversations: convers,
 	}, nil)
+	if err != nil {
+		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_INTERNAL_TIMEOUT)
+		return
+	}
+	if code != errs.IMErrorCode_SUCCESS {
+		tools.ErrorHttpResp(ctx, code)
+		return
+	}
 	tools.SuccessHttpResp(ctx, nil)
 }
 
@@ -144,6 +160,9 @@ func ClearConverUnread(ctx *gin.Context) {
 			TargetId:    c.TargetId,
 			ChannelType: pbobjs.ChannelType(c.ChannelType),
 		})
+	}
+	if !nativeHTTPAllowed(ctx, []string{req.UserId}, nil, &pbobjs.ClearUnreadReq{Conversations: convers}) {
+		return
 	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, req.UserId), "clear_unread", req.UserId, &pbobjs.ClearUnreadReq{
 		Conversations: convers,
@@ -171,9 +190,17 @@ func UndisturbConvers(ctx *gin.Context) {
 			UndisturbType: reqItem.UndisturbType,
 		})
 	}
-	bases.SyncRpcCall(services.ToRpcCtx(ctx, undisturbConversReq.UserId), "undisturb_convers", undisturbConversReq.UserId, &pbobjs.UndisturbConversReq{
+	code, _, err := bases.SyncRpcCall(services.ToRpcCtx(ctx, undisturbConversReq.UserId), "undisturb_convers", undisturbConversReq.UserId, &pbobjs.UndisturbConversReq{
 		Items: items,
 	}, nil)
+	if err != nil {
+		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_INTERNAL_TIMEOUT)
+		return
+	}
+	if code != errs.IMErrorCode_SUCCESS {
+		tools.ErrorHttpResp(ctx, code)
+		return
+	}
 	tools.SuccessHttpResp(ctx, nil)
 }
 
@@ -200,9 +227,17 @@ func TopConversations(ctx *gin.Context) {
 			IsTop:       int32(isTopInt),
 		})
 	}
-	bases.SyncRpcCall(services.ToRpcCtx(ctx, topConversReq.UserId), "top_convers", topConversReq.UserId, &pbobjs.ConversationsReq{
+	code, _, err := bases.SyncRpcCall(services.ToRpcCtx(ctx, topConversReq.UserId), "top_convers", topConversReq.UserId, &pbobjs.ConversationsReq{
 		Conversations: items,
 	}, nil)
+	if err != nil {
+		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_INTERNAL_TIMEOUT)
+		return
+	}
+	if code != errs.IMErrorCode_SUCCESS {
+		tools.ErrorHttpResp(ctx, code)
+		return
+	}
 	tools.SuccessHttpResp(ctx, nil)
 }
 

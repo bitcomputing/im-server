@@ -56,7 +56,6 @@ func (listener *ImListenerImpl) Connected(msg *codec.ConnectMsgBody, ctx imconte
 	// }
 	ucLog := &pbobjs.UserConnectLog{
 		AppKey:   msg.Appkey,
-		UserId:   msg.Token,
 		Session:  imcontext.GetConnSession(ctx),
 		Platform: msg.Platform,
 		ClientIp: clientIp,

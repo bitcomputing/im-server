@@ -1,12 +1,28 @@
 package routers
 
 import (
+	"im-server/commons/mindlink"
 	"im-server/services/apigateway/apis"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 )
 
-func Route(eng *gin.Engine, prefix string) {
+func Route(eng *gin.Engine, prefix string, policy http.Handler) {
+	if policy == nil {
+		policy = mindlink.NewPolicyHTTP(nil, nil)
+	}
+	mindlinkRoutes := eng.Group("/" + prefix + "/mindlink")
+	mindlinkRoutes.POST("/principals/disable", gin.WrapH(policy))
+	mindlinkRoutes.POST("/principals/ensure", gin.WrapH(policy))
+	mindlinkRoutes.POST("/conversations/ensure", gin.WrapH(policy))
+	mindlinkRoutes.GET("/operations/:operation_id", gin.WrapH(policy))
+	mindlinkRoutes.POST("/messages/send", gin.WrapH(policy))
+	mindlinkRoutes.GET("/messages/results/:request_id", gin.WrapH(policy))
+	mindlinkRoutes.GET("/history/:conversation_id/:before/:limit", gin.WrapH(policy))
+	mindlinkRoutes.GET("/conversations/:conversation_id/seen", gin.WrapH(policy))
+	mindlinkRoutes.PUT("/conversations/:conversation_id/seen", gin.WrapH(policy))
+
 	group := eng.Group("/" + prefix)
 	group.Use(apis.Signature)
 	group.POST("/users/register", apis.Register)

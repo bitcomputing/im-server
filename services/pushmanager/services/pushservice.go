@@ -24,6 +24,9 @@ import (
 )
 
 func SendPush(ctx context.Context, userId string, req *pbobjs.PushData) {
+	if bases.CheckNativeMessage(ctx, bases.GetAppKeyFromCtx(ctx), req, []string{userId}, nil) != nil {
+		return
+	}
 	if req.PushText == "" {
 		return
 	}

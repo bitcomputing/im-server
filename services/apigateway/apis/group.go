@@ -41,6 +41,9 @@ func SetGroupSettings(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, nil, []string{req.GroupId}, nil) {
+		return
+	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "upd_group_info", req.GroupId, &pbobjs.GroupInfo{
 		GroupId:  req.GroupId,
 		Settings: commonservices.Map2KvItems(kvMap),
@@ -85,6 +88,9 @@ func SetGroupMemberSettings(ctx *gin.Context) {
 	}
 	if len(kvMap) <= 0 {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
+		return
+	}
+	if !nativeHTTPAllowed(ctx, []string{req.MemberId}, []string{req.GroupId}, nil) {
 		return
 	}
 	bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "set_grp_member_setting", req.GroupId, &pbobjs.GroupMember{
@@ -498,11 +504,15 @@ func AddGroupGlobalMuteMembers(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, req.UserIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := bases.GroupTargets("grp_global_mute", req.UserIds)
 	for _, ids := range groups {
 		uIds := ids
 		go func() {
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "grp_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "grp_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
 				UserIds:  uIds,
 				IsDelete: false,
 			})
@@ -517,11 +527,15 @@ func DelGroupGlobalMuteMembers(ctx *gin.Context) {
 		tools.ErrorHttpResp(ctx, errs.IMErrorCode_API_REQ_BODY_ILLEGAL)
 		return
 	}
+	if !nativeHTTPAllowed(ctx, req.UserIds, nil, nil) {
+		return
+	}
+	rpcCtx := services.ToRpcCtx(ctx, "")
 	groups := bases.GroupTargets("grp_global_mute", req.UserIds)
 	for _, ids := range groups {
 		uIds := ids
 		go func() {
-			bases.AsyncRpcCall(services.ToRpcCtx(ctx, ""), "grp_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
+			bases.AsyncRpcCall(rpcCtx, "grp_global_mute", uIds[0], &pbobjs.BatchMuteUsersReq{
 				UserIds:  uIds,
 				IsDelete: true,
 			})

@@ -29,6 +29,9 @@ var (
 
 // TODO save immediately when user online, other wise, use async queue.
 func SaveMsg2Inbox(appkey, receiverId string, msg *pbobjs.DownMsg) error {
+	if err := bases.CheckNativeMessage(context.Background(), appkey, msg, []string{receiverId}, nil); err != nil {
+		return err
+	}
 	if appkey == "" {
 		err := fmt.Errorf("refuse to store inbox message with empty appkey, receiver_id:%s msg_id:%s", receiverId, msg.MsgId)
 		logs.NewLogEntity().Error(err.Error())
@@ -72,6 +75,9 @@ func SaveMsg2Inbox(appkey, receiverId string, msg *pbobjs.DownMsg) error {
 }
 
 func SaveMsg2Sendbox(ctx context.Context, appkey, senderId string, msg *pbobjs.DownMsg) error {
+	if err := bases.CheckNativeMessage(ctx, appkey, msg, []string{senderId}, nil); err != nil {
+		return err
+	}
 	if appkey == "" {
 		err := fmt.Errorf("refuse to store sendbox message with empty appkey, sender_id:%s msg_id:%s", senderId, msg.MsgId)
 		logs.NewLogEntity().Error(err.Error())

@@ -16,7 +16,10 @@ func BroadcastMsg(ctx context.Context, msg *pbobjs.UpMsg) (errs.IMErrorCode, str
 
 	converId := commonservices.GetConversationId(senderId, senderId, pbobjs.ChannelType_BroadCast)
 	msgConverCache := convercache.GetMsgConverCache(ctx, converId, "", pbobjs.ChannelType_BroadCast)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_BroadCast, time.Now().UnixMilli(), msg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_BroadCast, time.Now().UnixMilli(), msg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0
+	}
 
 	downMsg := &pbobjs.DownMsg{
 		SenderId:    senderId,

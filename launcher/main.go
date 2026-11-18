@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"im-server/services/botmsg"
 	"im-server/services/broadcast"
@@ -72,7 +73,15 @@ func main() {
 		return
 	}
 	//upgrade mysql
-	dbcommons.Upgrade()
+	if err := dbcommons.Upgrade(); err != nil {
+		logs.Error("Upgrade Mysql failed; IM listeners remain closed.", err)
+		return
+	}
+	sqlDB, err := dbcommons.GetDb().DB()
+	if err != nil || bases.InitNativePolicy(context.Background(), sqlDB) != nil {
+		logs.Error("Init native identity policy failed; IM listeners remain closed.")
+		return
+	}
 	//init tsdb
 	if err := kvdbcommons.InitKvdb(); err != nil {
 		logs.Error("Init KvDB failed.", err)

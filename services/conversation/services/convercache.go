@@ -393,7 +393,7 @@ func (uc *UserConversations) queueConverSnapshotLocked(item *models.Conversation
 	persistCache.Add(key, snapshot)
 }
 
-func (uc *UserConversations) SyncConvers(startTime int64, count int32) []*models.Conversation {
+func (uc *UserConversations) SyncConvers(startTime int64, count int32, visible map[string]bool) []*models.Conversation {
 	key := getUserConverCacheKey(uc.Appkey, uc.UserId)
 	lock := userLocks.GetLocks(key)
 	lock.RLock()
@@ -404,6 +404,9 @@ func (uc *UserConversations) SyncConvers(startTime int64, count int32) []*models
 	var index int32 = 0
 	for _, node := range nodes {
 		itemKey := node.Value
+		if !visible[itemKey] {
+			continue
+		}
 		if conver, exist := uc.ConverItemMap[itemKey]; exist {
 			resp = append(resp, &models.Conversation{
 				UserId:      conver.UserId,
@@ -471,7 +474,7 @@ func (uc *UserConversations) QryConver(targetId, subChannel string, channelType 
 	return nil
 }
 
-func (uc *UserConversations) QryConvers(startTime int64, count int32, isPositive bool, targetId string, channelType pbobjs.ChannelType, tag, exceptTag string) []*models.Conversation {
+func (uc *UserConversations) QryConvers(startTime int64, count int32, isPositive bool, targetId string, channelType pbobjs.ChannelType, tag, exceptTag string, visible map[string]bool) []*models.Conversation {
 	key := getUserConverCacheKey(uc.Appkey, uc.UserId)
 	lock := userLocks.GetLocks(key)
 	lock.RLock()
@@ -486,6 +489,9 @@ func (uc *UserConversations) QryConvers(startTime int64, count int32, isPositive
 	var index int32 = 0
 	for _, node := range nodes {
 		itemKey := node.Value
+		if !visible[itemKey] {
+			continue
+		}
 		if conver, exist := uc.ConverItemMap[itemKey]; exist {
 			if channelType != pbobjs.ChannelType_Unknown && conver.ChannelType != channelType {
 				continue
@@ -527,7 +533,7 @@ func (uc *UserConversations) QryConvers(startTime int64, count int32, isPositive
 	return resp
 }
 
-func (uc *UserConversations) QryTopConvers(startTime int64, count int32, sortType pbobjs.TopConverSortType, isPositive bool) []*models.Conversation {
+func (uc *UserConversations) QryTopConvers(startTime int64, count int32, sortType pbobjs.TopConverSortType, isPositive bool, visible map[string]bool) []*models.Conversation {
 	key := getUserConverCacheKey(uc.Appkey, uc.UserId)
 	lock := userLocks.GetLocks(key)
 	lock.RLock()
@@ -551,6 +557,9 @@ func (uc *UserConversations) QryTopConvers(startTime int64, count int32, sortTyp
 	var index int32 = 0
 	for _, node := range nodes {
 		itemKey := node.Value
+		if !visible[itemKey] {
+			continue
+		}
 		if conver, exist := uc.ConverItemMap[itemKey]; exist {
 			resp = append(resp, &models.Conversation{
 				UserId:      conver.UserId,
@@ -673,6 +682,10 @@ func converMatchedTotalUnreadFilter(conver *models.Conversation, filter *pbobjs.
 }
 
 func (uc *UserConversations) TotalUnreadCount(filter *pbobjs.ConverFilter) int64 {
+	return uc.totalUnreadCount(filter, nil)
+}
+
+func (uc *UserConversations) totalUnreadCount(filter *pbobjs.ConverFilter, visible map[string]bool) int64 {
 	key := getUserConverCacheKey(uc.Appkey, uc.UserId)
 	lock := userLocks.GetLocks(key)
 	lock.RLock()
@@ -693,7 +706,10 @@ func (uc *UserConversations) TotalUnreadCount(filter *pbobjs.ConverFilter) int64
 			excludeConvers = buildConverFilterSet(filter.ExcludeConvers)
 		}
 	}
-	for _, conver := range uc.ConverItemMap {
+	for key, conver := range uc.ConverItemMap {
+		if visible != nil && !visible[key] {
+			continue
+		}
 		if conver.IsDeleted == 0 {
 			if !converMatchedTotalUnreadFilter(conver, filter, channelTypes, includeConvers, excludeConvers) {
 				continue

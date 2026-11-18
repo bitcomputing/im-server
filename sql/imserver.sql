@@ -364,7 +364,7 @@ CREATE TABLE IF NOT EXISTS `g_hismsgs` (
   `msg_type` varchar(50) DEFAULT NULL COMMENT '消息类型',
   `msg_id` varchar(20) DEFAULT NULL COMMENT '消息id',
   `send_time` bigint DEFAULT NULL COMMENT '发送时间',
-  `msg_seq_no` int DEFAULT NULL COMMENT '消息seq',
+  `msg_seq_no` bigint DEFAULT NULL COMMENT '消息seq',
   `msg_body` mediumblob COMMENT '消息体',
   `app_key` varchar(20) DEFAULT NULL COMMENT '应用key',
   `member_count` int DEFAULT '0' COMMENT '成员数',
@@ -671,7 +671,7 @@ CREATE TABLE IF NOT EXISTS `p_hismsgs` (
   `msg_type` varchar(50) DEFAULT NULL COMMENT '消息类型',
   `msg_id` varchar(20) DEFAULT NULL COMMENT '消息id',
   `send_time` bigint DEFAULT NULL COMMENT '发送时间',
-  `msg_seq_no` int DEFAULT NULL COMMENT '消息seq',
+  `msg_seq_no` bigint DEFAULT NULL COMMENT '消息seq',
   `msg_body` mediumblob COMMENT '消息体',
   `app_key` varchar(20) DEFAULT NULL COMMENT '应用key',
   `is_read` tinyint DEFAULT '0' COMMENT '是否已读 0未读，1已读',
@@ -797,7 +797,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `id` int NOT NULL AUTO_INCREMENT COMMENT '主键id',
   `user_type` tinyint DEFAULT '0' COMMENT '用户类型 0用户, 1机器人',
   `user_id` varchar(32) NOT NULL COMMENT '用户id',
-  `nickname` varchar(50) DEFAULT NULL COMMENT '昵称',
+  `nickname` varchar(80) DEFAULT NULL COMMENT '昵称',
   `user_portrait` varchar(200) DEFAULT NULL COMMENT '用户头像',
   `pinyin` varchar(50) DEFAULT NULL,
   `phone` varchar(50) DEFAULT NULL,
@@ -990,5 +990,122 @@ CREATE TABLE IF NOT EXISTS `performance_metrics` (
   KEY `idx_metric_type_collect_time` (`metric_type`,`collect_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT = '统计-性能指标';
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20260908');
+CREATE TABLE IF NOT EXISTS `conversation_seen` (
+  `app_key` varchar(20) NOT NULL,
+  `user_id` varchar(32) NOT NULL,
+  `target_id` varchar(32) NOT NULL,
+  `channel_type` tinyint NOT NULL,
+  `sub_channel` varchar(32) NOT NULL DEFAULT '',
+  `seen_seq` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`app_key`,`user_id`,`target_id`,`channel_type`,`sub_channel`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS `message_sequence` (
+  `app_key` varchar(20) NOT NULL,
+  `conver_id` varchar(100) NOT NULL,
+  `channel_type` tinyint NOT NULL,
+  `sub_channel` varchar(50) NOT NULL DEFAULT '',
+  `seq` bigint NOT NULL DEFAULT 0,
+  `send_time` bigint NOT NULL DEFAULT 0,
+  PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261114');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
+
+-- Mindlink original request binding
+CREATE TABLE IF NOT EXISTS `mindlink_operations` (
+  `issuer` VARBINARY(1024) NOT NULL,
+  `operation_id` BINARY(64) NOT NULL,
+  `request_key` BINARY(32) NOT NULL,
+  `binding_hash` BINARY(32) NOT NULL,
+  `binding_json` MEDIUMBLOB NOT NULL,
+  `reservation_id` BINARY(32) NOT NULL,
+  `result_json` MEDIUMBLOB NULL,
+  `created_time` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`issuer`, `operation_id`),
+  UNIQUE KEY `uniq_mindlink_request` (`request_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS `mindlink_tickets` (
+  `issuer` VARBINARY(1024) NOT NULL,
+  `jti` BINARY(64) NOT NULL,
+  `ticket_hash` BINARY(32) NOT NULL,
+  `operation_id` BINARY(64) NOT NULL,
+  `created_time` DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`issuer`, `jti`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+-- Mindlink current read authority
+CREATE TABLE IF NOT EXISTS `mindlink_owner_barriers` (
+  `environment` VARBINARY(6) NOT NULL,
+  `tenant_id` VARBINARY(128) NOT NULL,
+  `appkey` VARBINARY(20) NOT NULL,
+  `owner_id` VARBINARY(20) NOT NULL,
+  `read_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
+  `write_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (`environment`,`tenant_id`,`appkey`,`owner_id`),
+  CONSTRAINT `chk_mindlink_owner_read` CHECK (`read_enabled` IN (0,1)),
+  CONSTRAINT `chk_mindlink_owner_write` CHECK (`write_enabled` IN (0,1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS `mindlink_principals` (
+  `environment` VARBINARY(6) NOT NULL,
+  `tenant_id` VARBINARY(128) NOT NULL,
+  `appkey` VARBINARY(20) NOT NULL,
+  `owner_id` VARBINARY(20) NOT NULL,
+  `principal_id` BINARY(32) NOT NULL,
+  `avatar_id` VARBINARY(400) NOT NULL,
+  `avatar_generation` BIGINT NOT NULL,
+  `policy_version` BIGINT NOT NULL,
+  `state` VARBINARY(8) NOT NULL,
+  `native_appkey` VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (CONVERT(`appkey` USING utf8mb4)) STORED,
+  `native_principal_id` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (CONVERT(`principal_id` USING utf8mb4)) STORED,
+  PRIMARY KEY (`appkey`,`principal_id`),
+  UNIQUE KEY `uniq_mindlink_avatar` (`environment`,`tenant_id`,`appkey`,`avatar_id`),
+  UNIQUE KEY `uniq_mindlink_native_identity` (`native_appkey`,`native_principal_id`),
+  CONSTRAINT `chk_mindlink_principal_generation` CHECK (`avatar_generation` > 0),
+  CONSTRAINT `chk_mindlink_principal_policy` CHECK (`policy_version` > 0),
+  CONSTRAINT `chk_mindlink_principal_state` CHECK (`state` IN ('active','disabled'))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+CREATE TABLE IF NOT EXISTS `mindlink_conversations` (
+  `environment` VARBINARY(6) NOT NULL,
+  `tenant_id` VARBINARY(128) NOT NULL,
+  `appkey` VARBINARY(20) NOT NULL,
+  `owner_id` VARBINARY(20) NOT NULL,
+  `conversation_id` BINARY(64) NOT NULL,
+  `kind` VARBINARY(24) NOT NULL,
+  `channel_type` TINYINT NOT NULL,
+  `native_target_id` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `owner_im_id` VARCHAR(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL,
+  `native_appkey` VARCHAR(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (CONVERT(`appkey` USING utf8mb4)) STORED,
+  `native_group_id` VARCHAR(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci GENERATED ALWAYS AS (IF(`channel_type`=2,`native_target_id`,NULL)) STORED,
+  `policy_version` BIGINT NOT NULL,
+  `state` VARBINARY(8) NOT NULL,
+  `members_json` MEDIUMBLOB NOT NULL,
+  PRIMARY KEY (`appkey`,`conversation_id`),
+  UNIQUE KEY `uniq_mindlink_native_conversation` (`native_appkey`,`channel_type`,`native_target_id`,`owner_im_id`),
+  UNIQUE KEY `uniq_mindlink_native_group` (`native_appkey`,`native_group_id`),
+  CONSTRAINT `chk_mindlink_conversation_policy` CHECK (`policy_version` > 0),
+  CONSTRAINT `chk_mindlink_conversation_state` CHECK (`state` IN ('active','disabled')),
+  CONSTRAINT `chk_mindlink_conversation_kind` CHECK (
+    (`kind`='owner_avatar_dm' AND `channel_type`=1) OR
+    (`kind` IN ('mindlink_group','avatar_pair_group') AND `channel_type`=2))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+-- Mindlink reliable message outbox
+CREATE TABLE IF NOT EXISTS mindlink_message_outbox (
+  outbox_id BINARY(64) NOT NULL,
+  issuer VARBINARY(1024) NOT NULL,
+  operation_id BINARY(64) NOT NULL,
+  request_body MEDIUMBLOB NOT NULL,
+  native_binding MEDIUMBLOB NOT NULL,
+  payload MEDIUMBLOB NOT NULL,
+  recipients_json MEDIUMBLOB NOT NULL,
+  state VARBINARY(16) NOT NULL DEFAULT 'pending',
+  created_time DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (outbox_id),
+  UNIQUE KEY uniq_mindlink_message_operation (issuer,operation_id),
+  KEY idx_mindlink_message_pending (state,created_time,outbox_id)
+) ENGINE=InnoDB;

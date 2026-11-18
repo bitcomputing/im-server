@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"im-server/commons/bases"
+	"im-server/commons/configures"
 	"im-server/commons/errs"
 	"im-server/commons/pbdefines/pbobjs"
 	"im-server/commons/tools"
@@ -76,29 +77,38 @@ func SyncMessages(ctx context.Context, syncMsg *pbobjs.SyncMsgReq) (errs.IMError
 	}
 	latestMsgTime, existLatestMsgTime := userStatus.GetLatestMsgTime()
 	//拉取收件箱
-	if !existLatestMsgTime || latestMsgTime > syncTime || latestMsgTime > cmdSyncTime {
+	// Durable mindlink delivery may be committed by another gateway process.
+	if configures.Config.Mindlink.Enabled || !existLatestMsgTime || latestMsgTime > syncTime || latestMsgTime > cmdSyncTime {
 		queueMsgs := SyncOfflineQueueMessages(appKey, userId, syncTime, msgSyncBatchCount)
 		ret.Msgs = append(ret.Msgs, queueMsgs...)
 
-		inboxMsgs := SyncInboxMessages(appKey, userId, syncTime, cmdSyncTime, msgSyncBatchCount)
+		inboxMsgs, err := SyncInboxMessages(appKey, userId, syncTime, cmdSyncTime, msgSyncBatchCount)
+		if err != nil {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, &pbobjs.DownMsgSet{}
+		}
 		for _, msg := range inboxMsgs {
 			downMsg := &pbobjs.DownMsg{}
 			err := tools.PbUnMarshal(msg.MsgBody, downMsg)
-			if err == nil {
-				ret.Msgs = append(ret.Msgs, downMsg)
+			if err != nil {
+				return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, &pbobjs.DownMsgSet{}
 			}
+			ret.Msgs = append(ret.Msgs, downMsg)
 		}
 	}
 
 	//拉取发件箱
 	if syncMsg.ContainsSendBox {
-		sendboxMsgs := SyncSendboxMessages(appKey, userId, sendboxSyncTime, cmdSendboxSyncTime, msgSyncBatchCount)
+		sendboxMsgs, err := SyncSendboxMessages(appKey, userId, sendboxSyncTime, cmdSendboxSyncTime, msgSyncBatchCount)
+		if err != nil {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, &pbobjs.DownMsgSet{}
+		}
 		for _, msg := range sendboxMsgs {
 			downMsg := &pbobjs.DownMsg{}
 			err := tools.PbUnMarshal(msg.MsgBody, downMsg)
-			if err == nil {
-				ret.Msgs = append(ret.Msgs, downMsg)
+			if err != nil {
+				return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, &pbobjs.DownMsgSet{}
 			}
+			ret.Msgs = append(ret.Msgs, downMsg)
 		}
 	}
 
@@ -130,6 +140,17 @@ func SyncMessages(ctx context.Context, syncMsg *pbobjs.SyncMsgReq) (errs.IMError
 			}
 		}
 	}
+	// Advance over rejected entries as well; an empty filtered page must not loop.
+	for _, msg := range ret.Msgs {
+		if !msg.IsSend {
+			ret.SyncTime = max(ret.SyncTime, msg.MsgTime)
+		}
+	}
+	visible, err := bases.FilterOwnerInboxMessages(ctx, appKey, userId, ret.Msgs)
+	if err != nil {
+		return bases.NativePolicyCode(err), &pbobjs.DownMsgSet{}
+	}
+	ret.Msgs = visible
 	//statistic
 	if len(ret.Msgs) > 0 {
 		for _, msg := range ret.Msgs {
@@ -140,40 +161,44 @@ func SyncMessages(ctx context.Context, syncMsg *pbobjs.SyncMsgReq) (errs.IMError
 	return errs.IMErrorCode_SUCCESS, ret
 }
 
-func SyncInboxMessages(appkey, userid string, startTime, cmdStartTime int64, count int) []*models.Msg {
+func SyncInboxMessages(appkey, userid string, startTime, cmdStartTime int64, count int) ([]*models.Msg, error) {
 	retMsgs := []*models.Msg{}
 	//cmd msg
 	cmdStorage := storages.NewCmdInboxMsgStorage()
 	msgs, err := cmdStorage.QryMsgsBaseTime(appkey, userid, cmdStartTime, count)
-	if err == nil {
-		retMsgs = append(retMsgs, msgs...)
+	if err != nil {
+		return nil, err
 	}
+	retMsgs = append(retMsgs, msgs...)
 
 	//general msg
 	storage := storages.NewInboxMsgStorage()
 	msgs, err = storage.QryMsgsBaseTime(appkey, userid, startTime, count)
-	if err == nil {
-		retMsgs = append(retMsgs, msgs...)
+	if err != nil {
+		return nil, err
 	}
-	return retMsgs
+	retMsgs = append(retMsgs, msgs...)
+	return retMsgs, nil
 }
 
-func SyncSendboxMessages(appkey, userid string, startTime, cmdStartTime int64, count int) []*models.Msg {
+func SyncSendboxMessages(appkey, userid string, startTime, cmdStartTime int64, count int) ([]*models.Msg, error) {
 	retMsgs := []*models.Msg{}
 	//cmd msg
 	cmdStorage := storages.NewCmdSendboxMsgStorage()
 	msgs, err := cmdStorage.QryMsgsBaseTime(appkey, userid, cmdStartTime, count)
-	if err == nil {
-		retMsgs = append(retMsgs, msgs...)
+	if err != nil {
+		return nil, err
 	}
+	retMsgs = append(retMsgs, msgs...)
 
 	//general msg
 	storage := storages.NewSendboxMsgStorage()
 	msgs, err = storage.QryMsgsBaseTime(appkey, userid, startTime, count)
-	if err == nil {
-		retMsgs = append(retMsgs, msgs...)
+	if err != nil {
+		return nil, err
 	}
-	return retMsgs
+	retMsgs = append(retMsgs, msgs...)
+	return retMsgs, nil
 }
 
 func SyncOfflineQueueMessages(appkey, userId string, startTime int64, count int) []*pbobjs.DownMsg {

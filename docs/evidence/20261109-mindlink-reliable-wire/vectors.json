@@ -1,0 +1,21 @@
+{
+  "version": "mindlink-reliable-v1",
+  "encoding": "Go json.Marshal defaults, UTF8, no newline; int64 exact",
+  "vectors": [
+    {
+      "name": "ascii",
+      "semantic_json": "[\"mindlink-reliable-v1\",\"messages.send\",\"dev\",\"fixture-tenant\",\"fixture-app\",\"42\",\"owner\",\"42\",0,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",7,\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"jg:text\",\"hello\",[],null,[]]",
+      "sha256": "06a2f8529fab54e80451005f7ba11c7ff7bce6de9c8abf92aaf37fc350f4abed"
+    },
+    {
+      "name": "unicode",
+      "semantic_json": "[\"mindlink-reliable-v1\",\"messages.send\",\"dev\",\"fixture-tenant\",\"fixture-app\",\"42\",\"avatar\",\"avatar-A\",3,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",7,\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"jg:text\",\"分身\\u003c\\u0026\\u003e\\u2028😀\",[\"avatar-A\",\"avatar-B\"],\"pb2aa22bb33cc44dd55e\",[]]",
+      "sha256": "c31b5de34a3bc904e5be1c954b6bd6836328be458ca1cac515e93b6cafbf6322"
+    },
+    {
+      "name": "max_policy",
+      "semantic_json": "[\"mindlink-reliable-v1\",\"messages.send\",\"dev\",\"fixture-tenant\",\"fixture-app\",\"42\",\"owner\",\"42\",0,\"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",9223372036854775807,\"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd\",\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"jg:text\",\" \",[],null,[]]",
+      "sha256": "8d951dea59551c55120b0e5fbeef319eee1e1cc8c87fb67e4539da98cd0c6645"
+    }
+  ]
+}

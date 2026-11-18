@@ -22,6 +22,9 @@ import (
 
 func SendPrivateMsg(ctx context.Context, senderId, receiverId string, upMsg *pbobjs.UpMsg) (errs.IMErrorCode, string, int64, int64, string, *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, upMsg, []string{senderId, receiverId}, nil)); code != errs.IMErrorCode_SUCCESS {
+		return code, "", 0, 0, "", nil
+	}
 	converId := commonservices.GetConversationId(senderId, receiverId, pbobjs.ChannelType_Private)
 	//statistic
 	commonservices.ReportUpMsg(appkey, pbobjs.ChannelType_Private, 1)
@@ -75,7 +78,10 @@ func SendPrivateMsg(ctx context.Context, senderId, receiverId string, upMsg *pbo
 		}
 	}
 	msgConverCache := convercache.GetMsgConverCache(ctx, converId, upMsg.SubChannel, pbobjs.ChannelType_Private)
-	msgId, sendTime, msgSeq := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_Private, time.Now().UnixMilli(), upMsg.Flags)
+	msgId, sendTime, msgSeq, err := msgConverCache.GenerateMsgId(converId, pbobjs.ChannelType_Private, time.Now().UnixMilli(), upMsg.Flags)
+	if err != nil {
+		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, "", 0, 0, upMsg.ClientUid, nil
+	}
 	preMsgId := bases.GetMsgIdFromCtx(ctx)
 	if preMsgId != "" {
 		msgId = preMsgId
@@ -381,6 +387,9 @@ func (actor *SendMsgAckActor) OnTimeout() {
 
 func SendPush(ctx context.Context, senderId, receiverId string, msg *pbobjs.DownMsg) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if bases.CheckNativeMessage(ctx, appkey, msg, []string{senderId, receiverId}, nil) != nil {
+		return
+	}
 	appInfo, exist := commonservices.GetAppInfo(appkey)
 	if exist && appInfo != nil && appInfo.IsOpenPush {
 		pushLevel := pbobjs.PushLevel_DefaultPuhsLevel
@@ -427,6 +436,9 @@ func SendPush(ctx context.Context, senderId, receiverId string, msg *pbobjs.Down
 }
 
 func ImportPrivateHisMsg(ctx context.Context, senderId, targetId string, msg *pbobjs.UpMsg) {
+	if bases.CheckNativeMessage(ctx, bases.GetAppKeyFromCtx(ctx), msg, []string{senderId, targetId}, nil) != nil {
+		return
+	}
 	msgId := tools.GenerateMsgId(msg.MsgTime, int32(pbobjs.ChannelType_Private), targetId)
 	/*
 		downMsg4Sendbox := &pbobjs.DownMsg{
