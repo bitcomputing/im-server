@@ -1,0 +1,20 @@
+{
+  "nodeName": "jim-sta-1",
+  "nodeHost": "127.0.0.1",
+  "adminSecret": "",
+  "msgStoreEngine": "mysql",
+  "log": {"logPath": "./logs", "logName": "jim-info"},
+  "kvdb": {"isOpen": true},
+  "mysql": {
+    "user": "im_sta",
+    "password": "",
+    "address": "rm-8vbq47371g7791242.mysql.zhangbei.rds.aliyuncs.com:3306",
+    "name": "im_sta",
+    "debug": false
+  },
+  "connectManager": {"wsPort": 9003},
+  "apiGateway": {"httpPort": 9001},
+  "navGateway": {"httpPort": 9002},
+  "adminGateway": {"httpPort": 8090},
+  "imApiDomain": "http://127.0.0.1:9001"
+}

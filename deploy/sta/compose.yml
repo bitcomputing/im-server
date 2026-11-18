@@ -1,0 +1,42 @@
+# Dedicated sta database: creation/init/check are explicit, separately approved steps.
+name: im-server-sta
+services:
+  im-server:
+    image: ${IM_SERVER_IMAGE:?Set the verified IM image ID}
+    pull_policy: never
+    restart: unless-stopped
+    cpus: 2
+    mem_limit: 2g
+    # The stock renderer fixes mysql.user=root and uses unsafe sed substitution.
+    entrypoint: ["/opt/imserver"]
+    environment:
+      IM_DB_HOST: ${IM_DB_HOST:?Set the verified sta database hostname}
+      IM_DB_PORT: ${IM_DB_PORT:-3306}
+    ports:
+      - "127.0.0.1:19001:9001"
+      - "127.0.0.1:19002:9002"
+      - "127.0.0.1:19003:9003"
+      - "127.0.0.1:18090:8090"
+    volumes:
+      - type: bind
+        source: /opt/43chat-im-sta/secrets/config.yml
+        target: /opt/conf/config.yml
+        read_only: true
+        bind:
+          create_host_path: false
+      - im-logs:/opt/logs
+      - im-uploads:/opt/uploads
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, "http://127.0.0.1:9003/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+volumes:
+  im-logs:
+  im-uploads:
