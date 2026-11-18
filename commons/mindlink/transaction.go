@@ -37,6 +37,10 @@ func (v *Verifier) Transact(ctx context.Context, db *sql.DB, auth *Authorization
 
 // The READ query producer uses the same journal without a seen mutation.
 func (v *Verifier) transactBound(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error)) (*MutationResult, error) {
+	return v.transactWithIsolation(ctx, db, auth, authorize, effect, sql.LevelReadCommitted)
+}
+
+func (v *Verifier) transactWithIsolation(ctx context.Context, db *sql.DB, auth *Authorization, authorize func(*sql.Tx, Claims, bool) error, effect func(*sql.Tx) (json.RawMessage, error), isolation sql.IsolationLevel) (*MutationResult, error) {
 	if v == nil || len(v.bindings) == 0 || db == nil || authorize == nil || effect == nil {
 		return nil, ErrNotReady
 	}
@@ -66,7 +70,7 @@ func (v *Verifier) transactBound(ctx context.Context, db *sql.DB, auth *Authoriz
 	if _, err := rand.Read(reservation[:]); err != nil {
 		return nil, ErrUnknownResult
 	}
-	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
+	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: isolation})
 	if err != nil {
 		return nil, ErrUnknownResult
 	}

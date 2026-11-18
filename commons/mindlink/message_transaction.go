@@ -24,10 +24,22 @@ func messageStorageReady(ctx context.Context, db *sql.DB) error {
 		return err
 	}
 	var n int
-	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('p_hismsgs','g_hismsgs','message_sequence','conversation_seen','mindlink_message_outbox') AND ENGINE='InnoDB'`).Scan(&n); err != nil {
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.TABLES
+		WHERE TABLE_SCHEMA=DATABASE() AND ENGINE='InnoDB' AND TABLE_NAME IN (
+		'p_hismsgs','g_hismsgs','message_sequence','conversation_seen','mindlink_message_outbox',
+		'mindlink_conversations','banusers','blocks','appexts','friendrels',
+		'p_delhismsgs','g_delhismsgs','convercleantimes','usercleantimes','groupinfoexts','groupmemberexts')`).Scan(&n); err != nil {
 		return ErrUnknownResult
 	}
-	if n != 5 {
+	if n != 16 {
+		return ErrNotReady
+	}
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM information_schema.COLUMNS
+		WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('p_hismsgs','g_hismsgs')
+		AND COLUMN_NAME='msg_seq_no' AND DATA_TYPE='bigint'`).Scan(&n); err != nil {
+		return ErrUnknownResult
+	}
+	if n != 2 {
 		return ErrNotReady
 	}
 	return nil
@@ -44,7 +56,8 @@ func (v *Verifier) SendMessage(ctx context.Context, db *sql.DB, auth *Authorizat
 		return nil, err
 	}
 	var authority *messageAuthority
-	return v.Transact(ctx, db, auth, func(tx *sql.Tx, c Claims, replayed bool) error {
+	// Range locks keep roster and absent native policy keys stable until commit.
+	return v.transactWithIsolation(ctx, db, auth, func(tx *sql.Tx, c Claims, replayed bool) error {
 		authority, err = authorizeMessage(ctx, tx, c, b, replayed)
 		if err != nil {
 			return err
@@ -91,17 +104,10 @@ func (v *Verifier) SendMessage(ctx context.Context, db *sql.DB, auth *Authorizat
 			table = "g_hismsgs"
 		}
 		if b.ReplyTo != nil {
-			var raw []byte
-			if err := tx.QueryRowContext(ctx, "SELECT msg_body FROM "+table+" WHERE app_key=? AND conver_id=? AND sub_channel=? AND BINARY msg_id=? AND is_delete=0 LIMIT 1", c.AppKey, native.ConversationID, native.SubChannel, *b.ReplyTo).Scan(&raw); err != nil {
-				return nil, ErrNotReady
+			down.ReferMsg, err = lockMessageQuote(ctx, tx, c, native, authority.recipients, *b.ReplyTo)
+			if err != nil {
+				return nil, err
 			}
-			refer := &pbobjs.DownMsg{}
-			if proto.Unmarshal(raw, refer) != nil || refer.MsgId != *b.ReplyTo || refer.ChannelType != down.ChannelType {
-				return nil, ErrNotReady
-			}
-			// A reply carries one referenced message, not its entire recursive ancestry.
-			refer.ReferMsg = nil
-			down.ReferMsg = refer
 		}
 		payload, err := proto.Marshal(down)
 		if err != nil {
@@ -150,5 +156,5 @@ func (v *Verifier) SendMessage(ctx context.Context, db *sql.DB, auth *Authorizat
 			return nil, err
 		}
 		return raw, nil
-	})
+	}, sql.LevelRepeatableRead)
 }

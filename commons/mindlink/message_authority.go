@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"sort"
+	"strconv"
+	"time"
 
 	"im-server/commons/pbdefines/pbobjs"
 )
@@ -29,6 +31,9 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 	if reading && !read || !reading && !write {
 		return nil, ErrForbidden
 	}
+	if !reading && b != nil && b.ReplyTo != nil && !read {
+		return nil, ErrForbidden
+	}
 	p, err := lockPolicyConversation(ctx, tx, c)
 	if err != nil {
 		return nil, err
@@ -40,7 +45,7 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 		return nil, ErrStalePolicy
 	}
 	var raw []byte
-	if err = tx.QueryRowContext(ctx, `SELECT members_json FROM mindlink_conversations WHERE appkey=? AND conversation_id=?`, c.AppKey, c.TargetID).Scan(&raw); err != nil {
+	if err = tx.QueryRowContext(ctx, `SELECT members_json FROM mindlink_conversations WHERE appkey=? AND conversation_id=? FOR UPDATE`, c.AppKey, c.TargetID).Scan(&raw); err != nil {
 		return nil, ErrUnknownResult
 	}
 	var members []ConversationMember
@@ -91,6 +96,28 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 	if a.native.SenderPrincipalID == "" {
 		return nil, ErrForbidden
 	}
+	if !reading {
+		var app string
+		var status int
+		err = tx.QueryRowContext(ctx, `SELECT app_key,app_status FROM apps WHERE app_key=? FOR SHARE`, c.AppKey).Scan(&app, &status)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotReady
+		}
+		if err != nil {
+			return nil, ErrUnknownResult
+		}
+		if app != c.AppKey || status != 0 {
+			return nil, ErrForbidden
+		}
+		var until int64
+		err = tx.QueryRowContext(ctx, `SELECT end_time FROM banusers WHERE app_key=? AND user_id=? AND scope_key='default' FOR SHARE`, c.AppKey, a.native.SenderPrincipalID).Scan(&until)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrUnknownResult
+		}
+		if err == nil && (until == 0 || until > time.Now().UnixMilli()) {
+			return nil, ErrForbidden
+		}
+	}
 	switch p.kind {
 	case "owner_avatar_dm":
 		if len(members) != 1 || members[0].PrincipalID != p.native {
@@ -102,6 +129,11 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 			a.native.TargetPrincipalID = p.ownerIM
 		}
 		a.native.ConversationID = min(p.ownerIM, p.native) + ":" + max(p.ownerIM, p.native)
+		if !reading {
+			if err := authorizeNativeDM(ctx, tx, c.AppKey, a.native); err != nil {
+				return nil, err
+			}
+		}
 	case "avatar_pair_group", "mindlink_group":
 		if p.kind == "avatar_pair_group" {
 			if len(members) != 2 {
@@ -115,19 +147,27 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 		a.native.ConversationID = p.native
 		a.native.TargetPrincipalID = p.native
 		var group string
-		if err = tx.QueryRowContext(ctx, `SELECT group_id FROM groupinfos WHERE app_key=? AND group_id=? FOR UPDATE`, c.AppKey, p.native).Scan(&group); err != nil || group != p.native {
+		var groupMute int
+		if err = tx.QueryRowContext(ctx, `SELECT group_id,is_mute FROM groupinfos WHERE app_key=? AND group_id=? FOR UPDATE`, c.AppKey, p.native).Scan(&group, &groupMute); err != nil || group != p.native {
 			return nil, ErrNotReady
 		}
-		rows, err := tx.QueryContext(ctx, `SELECT member_id FROM groupmembers WHERE app_key=? AND group_id=? ORDER BY member_id FOR UPDATE`, c.AppKey, p.native)
+		rows, err := tx.QueryContext(ctx, `SELECT member_id,is_mute,is_allow,mute_end_at FROM groupmembers WHERE app_key=? AND group_id=? ORDER BY member_id FOR UPDATE`, c.AppKey, p.native)
 		if err != nil {
 			return nil, ErrUnknownResult
 		}
 		actual := map[string]bool{}
 		for rows.Next() {
 			var id string
-			if err = rows.Scan(&id); err != nil {
+			var muted, allowed int
+			var muteUntil int64
+			if err = rows.Scan(&id, &muted, &allowed, &muteUntil); err != nil {
 				rows.Close()
 				return nil, ErrUnknownResult
+			}
+			if !reading && id == a.native.SenderPrincipalID &&
+				(muted > 0 && (muteUntil <= 0 || muteUntil > time.Now().UnixMilli()) || groupMute > 0 && allowed <= 0) {
+				rows.Close()
+				return nil, ErrForbidden
 			}
 			actual[id] = true
 		}
@@ -161,4 +201,41 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 	}
 	sort.Strings(a.recipients)
 	return a, nil
+}
+
+func authorizeNativeDM(ctx context.Context, tx *sql.Tx, app string, native MessageNativeBinding) error {
+	var id string
+	err := tx.QueryRowContext(ctx, `SELECT block_user_id FROM blocks WHERE app_key=? AND user_id=? AND block_user_id=? FOR SHARE`, app, native.TargetPrincipalID, native.SenderPrincipalID).Scan(&id)
+	if err == nil {
+		return ErrForbidden
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return ErrUnknownResult
+	}
+	var setting string
+	err = tx.QueryRowContext(ctx, `SELECT app_item_value FROM appexts WHERE app_key=? AND app_item_key='msg_friend_check' FOR SHARE`, app).Scan(&setting)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return ErrUnknownResult
+	}
+	required, err := strconv.ParseBool(setting)
+	if err != nil {
+		return ErrNotReady
+	}
+	if !required {
+		return nil
+	}
+	err = tx.QueryRowContext(ctx, `SELECT friend_id FROM friendrels WHERE app_key=? AND user_id=? AND friend_id=? FOR SHARE`, app, native.TargetPrincipalID, native.SenderPrincipalID).Scan(&id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrForbidden
+	}
+	if err != nil {
+		return ErrUnknownResult
+	}
+	if id != native.SenderPrincipalID {
+		return ErrForbidden
+	}
+	return nil
 }

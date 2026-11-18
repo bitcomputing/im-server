@@ -58,6 +58,48 @@ func currentMessageProof(t *testing.T, actor string) (*Verifier, *Authorization)
 	return v, auth
 }
 
+func TestMySQLReliableSendRejectsRestrictedHistory(t *testing.T) {
+	for _, tc := range []struct{ name, change string }{
+		{"directed", "UPDATE g_hismsgs SET is_portion=1"},
+		{"expired", "UPDATE g_hismsgs SET destroy_time=1"},
+		{"read_revoked", "UPDATE mindlink_owner_barriers SET read_enabled=FALSE"},
+		{"recipient_cleared", "INSERT INTO usercleantimes(app_key,user_id,target_id,channel_type,clean_time) SELECT app_key,'owner-native',conver_id,2,send_time FROM g_hismsgs"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db, cv, ca, source, _ := conversationFixture(t)
+			ctx := context.Background()
+			if _, err := cv.transactConversationEnsure(ctx, db, ca, source); err != nil {
+				t.Fatal(err)
+			}
+			v, auth := currentMessageProof(t, "A")
+			first, err := v.SendMessage(ctx, db, auth)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var receipt MessageSendResult
+			if err := json.Unmarshal(first.Result, &receipt); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.Exec(tc.change); err != nil {
+				t.Fatal(err)
+			}
+			reply := changedMessageProof(t, v, auth, func(b *MessageSendRequest, c *Claims) {
+				b.ReplyTo = &receipt.MessageID
+				b.OperationID, b.RequestID = strings.Repeat("a", 64), strings.Repeat("b", 64)
+				c.OperationID, c.RequestID, c.JTI = b.OperationID, b.RequestID, strings.Repeat("2", 64)
+			})
+			got, err := v.SendMessage(ctx, db, reply)
+			if got != nil || !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrNotReady) {
+				t.Fatalf("restricted history was quoted: %v", err)
+			}
+			var n int
+			if err := db.QueryRow("SELECT COUNT(*) FROM mindlink_message_outbox").Scan(&n); err != nil || n != 1 {
+				t.Fatalf("rejected quote changed outbox: %d %v", n, err)
+			}
+		})
+	}
+}
+
 func TestMySQLReliableMessageAtomicNativeHistory(t *testing.T) {
 	db, cv, ca, source, conversation := conversationFixture(t)
 	if _, err := cv.transactConversationEnsure(context.Background(), db, ca, source); err != nil {
