@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 	"im-server/commons/pbdefines/pbobjs"
@@ -95,7 +96,7 @@ func lockMessageQuote(ctx context.Context, tx *sql.Tx, c Claims, b MessageNative
 				if err != nil {
 					return nil, ErrUnknownResult
 				}
-				hide, err = strconv.ParseBool(value)
+				hide, err = strconv.ParseBool(strings.TrimSpace(value))
 				if err != nil {
 					return nil, ErrNotReady
 				}

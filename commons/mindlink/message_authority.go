@@ -7,6 +7,7 @@ import (
 	"errors"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"im-server/commons/pbdefines/pbobjs"
@@ -220,7 +221,7 @@ func authorizeNativeDM(ctx context.Context, tx *sql.Tx, app string, native Messa
 	if err != nil {
 		return ErrUnknownResult
 	}
-	required, err := strconv.ParseBool(setting)
+	required, err := strconv.ParseBool(strings.TrimSpace(setting))
 	if err != nil {
 		return ErrNotReady
 	}

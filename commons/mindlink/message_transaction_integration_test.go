@@ -265,7 +265,16 @@ func TestMySQLReliableDMUsesNativeReceiverHistory(t *testing.T) {
 	if _, err := db.Exec(`UPDATE mindlink_conversations SET kind='owner_avatar_dm',channel_type=1,native_target_id=?,members_json=?`, b.Members[1].PrincipalID, roster); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.Exec(`INSERT INTO appexts(app_key,app_item_key,app_item_value) VALUES('fixture-app','msg_friend_check',' true ')`); err != nil {
+		t.Fatal(err)
+	}
 	v, a := currentMessageProof(t, "B")
+	if result, err := v.SendMessage(context.Background(), db, a); result != nil || !errors.Is(err, ErrForbidden) {
+		t.Fatalf("recipient requires friendship: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO friendrels(app_key,user_id,friend_id) VALUES('fixture-app',?,?)`, b.OwnerIMID, b.Members[1].PrincipalID); err != nil {
+		t.Fatal(err)
+	}
 	first, err := v.SendMessage(context.Background(), db, a)
 	if err != nil {
 		t.Fatal(err)
@@ -312,7 +321,7 @@ func changedMessageProof(t *testing.T, v *Verifier, a *Authorization, change fun
 }
 
 func TestMySQLReliableReplyAndOriginalConflict(t *testing.T) {
-	db, cv, ca, source, _ := conversationFixture(t)
+	db, cv, ca, source, conversation := conversationFixture(t)
 	if _, err := cv.transactConversationEnsure(context.Background(), db, ca, source); err != nil {
 		t.Fatal(err)
 	}
@@ -328,6 +337,10 @@ func TestMySQLReliableReplyAndOriginalConflict(t *testing.T) {
 	conflict := changedMessageProof(t, v, a, func(b *MessageSendRequest, c *Claims) { b.Text = "changed"; c.JTI = strings.Repeat("2", 64) })
 	if _, err = v.SendMessage(context.Background(), db, conflict); !errors.Is(err, ErrRequestConflict) {
 		t.Fatalf("same-key body conflict: %v", err)
+	}
+	if _, err := db.Exec(`INSERT INTO groupinfoexts(app_key,group_id,item_type,item_key,item_value)
+		VALUES('fixture-app',?,1,'hide_grp_msg',' false ')`, conversation.NativeTargetID); err != nil {
+		t.Fatal(err)
 	}
 	reply := changedMessageProof(t, v, a, func(b *MessageSendRequest, c *Claims) {
 		b.OperationID = strings.Repeat("4", 64)
