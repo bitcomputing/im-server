@@ -85,8 +85,8 @@ func TestMySQLReliableSendRejectsRestrictedHistory(t *testing.T) {
 			}
 			reply := changedMessageProof(t, v, auth, func(b *MessageSendRequest, c *Claims) {
 				b.ReplyTo = &receipt.MessageID
-				b.OperationID, b.RequestID = strings.Repeat("a", 64), strings.Repeat("b", 64)
-				c.OperationID, c.RequestID, c.JTI = b.OperationID, b.RequestID, strings.Repeat("2", 64)
+				b.OperationID, b.RequestID = strings.Repeat("4", 64), strings.Repeat("5", 64)
+				c.OperationID, c.RequestID, c.JTI = b.OperationID, b.RequestID, strings.Repeat("3", 64)
 			})
 			got, err := v.SendMessage(ctx, db, reply)
 			if got != nil || !errors.Is(err, ErrForbidden) && !errors.Is(err, ErrNotReady) {
