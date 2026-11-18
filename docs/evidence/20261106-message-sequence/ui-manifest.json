@@ -1,0 +1,30 @@
+{
+  "code_commit": "33d2b9bb1a8aad82d95ed25d890476e9496d5546",
+  "binary_sha256": "a4458bccbfd2e05d0a2237fc7adf2757134950575ab33a87b1b7e74505af52fb",
+  "artifact_text_normalization": "CRLF to LF for txt; PNG hashes use raw bytes",
+  "artifacts": {
+    "ui/binary-verify.txt": "e48d7e13c0c5704f4345c2312b884fcc6d25a539400b4c1dda67695e09a9e3f4",
+    "ui/browser-close.txt": "12e94dcfbcdff7fcd41bdec5846080e5396060d1e0dc8c59c031448f5b2b66dd",
+    "ui/dashboard.png": "638b22272f31f5a348b2a9f1f5f9bf13a70ef3895639059480819b534ca67f78",
+    "ui/final-db-verify.txt": "2d50241bcadd55d2ba3e89394be9dc57a01e23a6470689ff1000a399134e8aad",
+    "ui/group-db-verify.txt": "02b675a983186ee07e5dbaf3f58400e930b448ef6dbba2c84eac9c30757c10fc",
+    "ui/group-history-result.txt": "486b92a70f7d110dbbc1a6ee5073eb96bfeb6c6c838a9f9304ba4f39ec4108ce",
+    "ui/group-response.png": "5b46b5993f9e7b7e132e491cf5424de5eaf8fd7aad365bbb5baedba6db6d19e2",
+    "ui/private-db-verify.txt": "f8e8179a075dddc8c9b0c38833317f5969d01317788cc5eab21604f9e259861e",
+    "ui/private-history-result.txt": "805a686b5c5a5eff435e73ab43e9a8b2956349bcd175c52646fc0144db0664a9",
+    "ui/private-response.png": "a7163b166a559676e4436136b14d38310049981e62e91982198ab1453e344202",
+    "ui/residual-containers.txt": "ab8d48ac0b16ae262388c928251d74ec4ea53ff0c53f6d8cd518bc931f5b904b"
+  },
+  "private_message_id": "pbyc3b68aachlzrr",
+  "group_message_id": "pbyc3tys2agkbg4m",
+  "database_sequence": 3,
+  "unchanged_seen": 1,
+  "browser_flow": "management UI login, existing tenant, API-debug private/group sends and history queries",
+  "not_accepted": [
+    "business READ page",
+    "published App",
+    "Mongo",
+    "production/mixed old writers",
+    "merge/release"
+  ]
+}
