@@ -27,6 +27,13 @@ func (v *Verifier) transactPrincipalEnsure(ctx context.Context, db *sql.DB, auth
 		return nil, ErrNotReady
 	}
 	return v.Transact(ctx, db, auth, func(tx *sql.Tx, c Claims, replayed bool) error {
+		lifecycle, err := lockPrincipalLifecycle(ctx, tx, c, body.AvatarID, true)
+		if err != nil {
+			return err
+		}
+		if lifecycle.state == "retired" {
+			return ErrPrincipalDisabled
+		}
 		// A current source can bootstrap a missing barrier, never reopen a revoked one.
 		if _, err := tx.ExecContext(ctx, `INSERT INTO mindlink_owner_barriers(environment,tenant_id,appkey,owner_id,read_enabled,write_enabled) VALUES(?,?,?,?,TRUE,TRUE) ON DUPLICATE KEY UPDATE owner_id=owner_id`, c.Environment, c.TenantID, c.AppKey, c.OwnerID); err != nil {
 			return ErrUnknownResult

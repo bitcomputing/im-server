@@ -66,6 +66,9 @@ func TestMySQLPublicDisableRequiresSourceAndCommitsOriginal(t *testing.T) {
 	if json.Unmarshal(first.Body.Bytes(), &result) != nil || result.Data.Replayed || v.validateDisableResult(result.Data.Operation, auth.claims) != nil {
 		t.Fatal("invalid original receipt")
 	}
+	if _, err := db.Exec("DELETE FROM mindlink_principal_lifecycle"); err != nil {
+		t.Fatal(err)
+	}
 	again := request()
 	var replay struct {
 		Data struct {
@@ -77,6 +80,10 @@ func TestMySQLPublicDisableRequiresSourceAndCommitsOriginal(t *testing.T) {
 		t.Fatal("retry did not recover original")
 	}
 	assertDisableProjection(t, db, "disabled", 3, 8, 1, 1)
+	var lifecycles int
+	if err := db.QueryRow("SELECT COUNT(*) FROM mindlink_principal_lifecycle").Scan(&lifecycles); err != nil || lifecycles != 0 {
+		t.Fatal("legacy N1 replay created a new lifecycle", err)
+	}
 	denied, _ := sourceChild(t, "", 4, 0)
 	h, err = NewPolicyHTTPWithDisable(context.Background(), v, db, denied)
 	if err != nil {

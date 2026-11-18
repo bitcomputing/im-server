@@ -139,6 +139,9 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = h.verifier.QueryMessageResult(r.Context(), h.db, auth)
 	} else {
 		result, err = h.verifier.QueryOperation(r.Context(), h.db, auth, func(tx *sql.Tx, query, original Claims) error {
+			if h.disableSource != nil && h.disableSource.enabled {
+				return authorizeRetirementOperationRead(r.Context(), tx, query, original)
+			}
 			return authorizeOperationRead(r.Context(), tx, query, original)
 		})
 	}
