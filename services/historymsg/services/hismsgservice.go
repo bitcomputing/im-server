@@ -656,7 +656,7 @@ func retrievePrivateReferenceMsg(ctx context.Context, targetId, subChannel strin
 					pbMsg.IsDelete = delMarkMap[pbMsg.MsgId]
 				}
 				pbMsg.IsRead = dbMsg.IsRead > 0
-				referencedMsgMap[pbMsg.MsgId] = pbMsg
+				referencedMsgMap[pbMsg.MsgId] = commonservices.FillReferMsg(ctx, &pbobjs.UpMsg{ReferMsg: pbMsg})
 			}
 		}
 		for _, haveReferMsg := range haveReferMsgs {
