@@ -107,6 +107,10 @@ func (v *Verifier) transactPrincipalDisable(ctx context.Context, db *sql.DB, aut
 			if err := retirePrincipalLifecycle(ctx, tx, c, body, absent); err != nil {
 				return nil, err
 			}
+			// Retired pair conversations keep their history, but not active membership.
+			if _, err := tx.ExecContext(ctx, `DELETE FROM groupmembers WHERE app_key=? AND member_id=?`, c.AppKey, body.PrincipalID); err != nil {
+				return nil, ErrUnknownResult
+			}
 		}
 		desired, err := json.Marshal(PrincipalDisabledState{"disabled", body.AvatarID, body.PrincipalID, body.TargetAvatarGeneration})
 		if err != nil {
