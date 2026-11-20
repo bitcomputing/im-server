@@ -8,12 +8,47 @@ import (
 	"errors"
 	"fmt"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 	"im-server/commons/configures"
 	"im-server/commons/mindlink"
 )
+
+func TestMindlinkHTTPSTADeploymentExample(t *testing.T) {
+	raw, err := os.ReadFile("../../../deploy/sta/mindlink.example.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cfg configures.ImConfig
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	h, err := NewMindlinkHTTP(cfg.Mindlink, nil)
+	if err != nil || cfg.Mindlink.Enabled || cfg.Mindlink.DisableAuthoritySource.Enabled {
+		t.Fatal("deployment example must remain disabled", err)
+	}
+	r := httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("POST", "/apigateway/mindlink/principals/ensure", nil))
+	if r.Code != 409 {
+		t.Fatalf("disabled example is not closed: status=%d", r.Code)
+	}
+	valid := mindlinkConfigFixture()
+	cfg.Mindlink.Enabled = true
+	// Test the complete operation list and STA binding without a live authority or DB.
+	cfg.Mindlink.Trusts[0].AppKey = "fixture-sta-app"
+	cfg.Mindlink.Trusts[0].PublicKey = valid.Trusts[0].PublicKey
+	h, err = NewMindlinkHTTP(cfg.Mindlink, &sql.DB{})
+	if err != nil {
+		t.Fatal("STA trust with the deployment operation list rejected", err)
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/apigateway/mindlink/operations/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", nil))
+	if r.Code != 403 {
+		t.Fatalf("STA handler did not enforce actor authorization: status=%d", r.Code)
+	}
+}
 
 func mindlinkConfigFixture() configures.MindlinkConfig {
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))

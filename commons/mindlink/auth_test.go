@@ -18,6 +18,80 @@ var fixtureNow = time.Unix(1700000000, 0)
 
 const fixturePath = "/apigateway/mindlink/fixture"
 
+func TestVerifierEnvironmentNamespaceIsolation(t *testing.T) {
+	environments := []string{"dev", "sta", "pre", "online"}
+	for _, environment := range environments {
+		t.Run(environment, func(t *testing.T) {
+			trust, key := fixtureTrust()
+			trust.Environment = environment
+			v, err := NewVerifier([]Trust{trust})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, claimed := range environments {
+				payload := fixtureClaims(`{}`)
+				payload["environment"] = claimed
+				token := fixtureToken(t, key, []byte(`{"alg":"EdDSA","typ":"mindlink-actor+jwt","kid":"fixture-key"}`), fixtureJSON(t, payload))
+				auth, err := v.Verify(fixtureRequest(t, token, "POST", fixturePath, `{}`), "fixture.mutate", fixtureNow)
+				if claimed == environment {
+					if err != nil || auth == nil || auth.Claims().Environment != environment {
+						t.Fatalf("matching environment %q rejected: %v", claimed, err)
+					}
+				} else if auth != nil || !errors.Is(err, ErrScopeMismatch) {
+					t.Fatalf("%q trust accepted %q environment: %v", environment, claimed, err)
+				}
+			}
+		})
+	}
+	for _, environment := range []string{"", "STA", "staging", "prod", "sta "} {
+		trust, _ := fixtureTrust()
+		trust.Environment = environment
+		if _, err := NewVerifier([]Trust{trust}); !errors.Is(err, ErrInvalidRequest) {
+			t.Fatalf("unsupported environment %q accepted: %v", environment, err)
+		}
+	}
+}
+
+func TestVerifySTAKeepsScopeActorAndOperationProtection(t *testing.T) {
+	trust, key := fixtureTrust()
+	trust.Environment, trust.TenantID, trust.AppKey = "sta", "fixture-sta-tenant", "fixture-sta-app"
+	v, err := NewVerifier([]Trust{trust})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name, field, value string
+		want               error
+	}{
+		{"tenant", "tenant_id", "fixture-tenant", ErrScopeMismatch},
+		{"app", "appkey", "fixture-app", ErrScopeMismatch},
+		{"audience", "aud", "other-im", ErrScopeMismatch},
+		{"issuer", "iss", "other-biz", ErrForbidden},
+		{"owner", "owner_id", "43", ErrForbidden},
+		{"system identity", "actor_id", "other-system", ErrForbidden},
+		{"operation", "operation_type", "fixture.unlisted", ErrForbidden},
+		{"body", "body_sha256", strings.Repeat("f", 64), ErrForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			payload := fixtureClaims(`{}`)
+			payload["environment"], payload["tenant_id"], payload["appkey"] = trust.Environment, trust.TenantID, trust.AppKey
+			if tc.name == "system identity" {
+				payload["actor_kind"] = "system"
+			}
+			payload[tc.field] = tc.value
+			token := fixtureToken(t, key, []byte(`{"alg":"EdDSA","typ":"mindlink-actor+jwt","kid":"fixture-key"}`), fixtureJSON(t, payload))
+			operation := "fixture.mutate"
+			if tc.field == "operation_type" {
+				operation = tc.value
+			}
+			auth, err := v.Verify(fixtureRequest(t, token, "POST", fixturePath, `{}`), operation, fixtureNow)
+			if auth != nil || !errors.Is(err, tc.want) {
+				t.Fatalf("STA binding changed: identity=%t err=%v, want %v", auth != nil, err, tc.want)
+			}
+		})
+	}
+}
+
 func fixtureTrust() (Trust, ed25519.PrivateKey) {
 	key := ed25519.NewKeyFromSeed(bytes.Repeat([]byte{7}, ed25519.SeedSize))
 	return Trust{

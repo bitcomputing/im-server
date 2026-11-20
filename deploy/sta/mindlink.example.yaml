@@ -1,0 +1,29 @@
+# Merge this block into the private /opt/conf/config.yml after replacing placeholders.
+# Activation also requires the matching BIZ build, original facts and native schema.
+mindlink:
+  enabled: false
+  trusts:
+    - issuer: REPLACE_WITH_STA_ISSUER
+      kid: REPLACE_WITH_STA_KID
+      audience: REPLACE_WITH_STA_AUDIENCE
+      environment: sta
+      tenant_id: REPLACE_WITH_STA_TENANT
+      appkey: REPLACE_WITH_STA_APP
+      system_actor_id: REPLACE_WITH_STA_SYSTEM_ACTOR
+      public_key_ed25519_base64: REPLACE_WITH_STA_PUBLIC_KEY_BASE64
+      query_operations:
+        - operations.query
+        - messages.query
+        - history.read
+        - conversation_seen.query
+      mutation_operations:
+        - principals.ensure
+        - principals.disable
+        - conversation.ensure
+        - conversation.cancel
+        - messages.send
+        - conversation_seen.advance
+  disable_authority_source:
+    enabled: false
+    program: /opt/mindlink-authority
+    config_path: /run/43chat-sta/authority.json

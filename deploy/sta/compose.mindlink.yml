@@ -1,0 +1,22 @@
+# Explicit override for the matching, verified BIZ authority build.
+services:
+  im-server:
+    volumes:
+      - type: bind
+        source: ${MINDLINK_AUTHORITY_PROGRAM:?Set the verified STA authority binary path}
+        target: /opt/mindlink-authority
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MINDLINK_AUTHORITY_CONFIG:?Set the private STA authority configuration path}
+        target: /run/43chat-sta/authority.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${MINDLINK_AUTHORITY_DSN:?Set the private STA authority DSN file path}
+        target: /run/43chat-sta/authority.dsn
+        read_only: true
+        bind:
+          create_host_path: false

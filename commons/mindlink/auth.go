@@ -76,7 +76,7 @@ func NewVerifier(trusts []Trust) (*Verifier, error) {
 		if trust.Issuer == "" || trust.KeyID == "" || trust.Audience == "" || trust.TenantID == "" || trust.AppKey == "" || len(trust.AppKey) > 20 || !utf8.ValidString(trust.AppKey) || len(trust.PublicKey) != ed25519.PublicKeySize {
 			return nil, ErrInvalidRequest
 		}
-		if trust.Environment != "dev" && trust.Environment != "pre" && trust.Environment != "online" {
+		if trust.Environment != "dev" && trust.Environment != "sta" && trust.Environment != "pre" && trust.Environment != "online" {
 			return nil, ErrInvalidRequest
 		}
 		key := trustKey{trust.Issuer, trust.KeyID}

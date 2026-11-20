@@ -41,7 +41,7 @@ class StaDatabaseTests(unittest.TestCase):
 
     def test_package_schema_version(self):
         root = Path(__file__).resolve().parents[2]
-        self.assertEqual(db.schema_version(root), '20260908')
+        self.assertEqual(db.schema_version(root), '20261117')
 
     def test_sta_admin_secret_required(self):
         with self.assertRaisesRegex(ValueError, 'adminSecret'):

@@ -1,0 +1,10 @@
+{
+  "enabled": false,
+  "environment": "sta",
+  "tenant_id": "REPLACE_WITH_STA_TENANT",
+  "appkey": "REPLACE_WITH_STA_APP",
+  "issuer": "REPLACE_WITH_STA_ISSUER",
+  "audience": "REPLACE_WITH_STA_AUDIENCE",
+  "system_actor_id": "REPLACE_WITH_STA_SYSTEM_ACTOR",
+  "dsn_file": "/run/43chat-sta/authority.dsn"
+}
