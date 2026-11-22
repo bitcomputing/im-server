@@ -22,7 +22,7 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 				t.Fatal(err)
 			}
 			target, channel := b.NativeTargetID, 2
-			if kind == "owner_avatar_dm" {
+			if kind == "owner_avatar_dm" || kind == "owner_send" {
 				target, channel = b.Members[1].PrincipalID, 1
 				if _, err := db.Exec(`UPDATE mindlink_conversations SET members_json=?`, fixtureJSON(t, b.Members[1:])); err != nil {
 					t.Fatal(err)
@@ -30,7 +30,7 @@ func TestMySQLOwnerInboxAtomicAndIdempotent(t *testing.T) {
 			}
 			storedKind, actor, box := kind, "B", "inboxmsgs"
 			if kind == "owner_send" {
-				storedKind, actor, box = "mindlink_group", "owner", "sendboxmsgs"
+				storedKind, actor, box = "owner_avatar_dm", "owner", "sendboxmsgs"
 			}
 			if _, err := db.Exec(`UPDATE mindlink_conversations SET kind=?,native_target_id=?,channel_type=?`, storedKind, target, channel); err != nil {
 				t.Fatal(err)

@@ -1010,7 +1010,7 @@ CREATE TABLE IF NOT EXISTS `message_sequence` (
   PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261117');
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261122');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding
@@ -1132,3 +1132,32 @@ CREATE TABLE IF NOT EXISTS mindlink_principal_lifecycle (
     (state='retired' AND avatar_generation>0 AND policy_version>0 AND projection_absent IN (0,1) AND OCTET_LENGTH(operation_issuer)>0 AND OCTET_LENGTH(operation_id)=64 AND OCTET_LENGTH(binding_hash)=32)
   )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
+
+-- Mindlink trusted station stop events
+CREATE TABLE IF NOT EXISTS mindlink_station_stops (
+  environment VARBINARY(6) NOT NULL,
+  tenant_id VARBINARY(128) NOT NULL,
+  appkey VARBINARY(20) NOT NULL,
+  owner_id VARBINARY(20) NOT NULL,
+  event_id BINARY(64) NOT NULL,
+  access_id VARBINARY(128) NOT NULL,
+  instance_id VARBINARY(128) NOT NULL,
+  epoch BIGINT NOT NULL,
+  reason VARBINARY(24) NOT NULL,
+  issuer VARBINARY(1024) NOT NULL,
+  operation_id BINARY(64) NOT NULL,
+  conversation_id BINARY(64) NOT NULL,
+  policy_version BIGINT NOT NULL,
+  system_actor_id VARBINARY(128) NOT NULL,
+  native_conversation_id VARBINARY(64) NOT NULL,
+  sender_principal_id VARBINARY(32) NOT NULL,
+  message_id VARBINARY(20) NOT NULL,
+  msg_seq_no BIGINT NOT NULL,
+  msg_time BIGINT NOT NULL,
+  payload_sha256 BINARY(32) NOT NULL,
+  PRIMARY KEY (environment,tenant_id,appkey,owner_id,event_id),
+  UNIQUE KEY uniq_mindlink_station_epoch (environment,tenant_id,appkey,owner_id,access_id,instance_id,epoch),
+  UNIQUE KEY uniq_mindlink_station_message (appkey,native_conversation_id,message_id),
+  UNIQUE KEY uniq_mindlink_station_operation (issuer,operation_id),
+  CONSTRAINT chk_mindlink_station_stop CHECK (epoch>0 AND policy_version>0 AND msg_seq_no>0 AND msg_time>0 AND reason IN ('auth_failed','account_unavailable','server_rejected','tls_failed'))
+) ENGINE=InnoDB;

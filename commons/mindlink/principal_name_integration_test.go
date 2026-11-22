@@ -35,7 +35,7 @@ func TestMySQLPrincipalNameUpgradePreservesExistingUsers(t *testing.T) {
 	if _, err := db.Exec("UPDATE users SET nickname=? WHERE app_key='fixture-app' AND user_id='42'", legacy); err != nil {
 		t.Fatal(err)
 	}
-	if err := upgradeNativeFixture(t, db, cfg, "20261117"); err != nil {
+	if err := upgradeNativeFixture(t, db, cfg, "20261122"); err != nil {
 		t.Fatal(err)
 	}
 	var name string
@@ -50,7 +50,7 @@ func TestMySQLPrincipalNameUpgradePreservesExistingUsers(t *testing.T) {
 	if err := db.QueryRow("SELECT nickname FROM users WHERE app_key='fixture-app' AND user_id='42'").Scan(&got); err != nil || got != name {
 		t.Fatal("upgraded readback differs", err)
 	}
-	if err := upgradeNativeFixture(t, db, cfg, "20261117"); err != nil {
+	if err := upgradeNativeFixture(t, db, cfg, "20261122"); err != nil {
 		t.Fatal(err)
 	}
 }

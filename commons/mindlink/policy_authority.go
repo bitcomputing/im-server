@@ -20,13 +20,19 @@ func authorizeOperationRead(ctx context.Context, tx *sql.Tx, query, original Cla
 	if !readable {
 		return ErrForbidden
 	}
-	if original.OperationType == OperationConversationEnsure {
+	if original.OperationType == OperationConversationEnsure || original.OperationType == OperationStationStopped {
+		if original.OperationType == OperationStationStopped && (query.ActorKind != "owner" && (query.ActorKind != "system" || query.ActorID != original.ActorID)) {
+			return ErrForbidden
+		}
 		conversation, err := lockPolicyConversation(ctx, tx, original)
 		if err != nil {
 			return err
 		}
 		if query.ExpectedPolicyVersion != conversation.policy || query.DesiredPolicyVersion != conversation.policy {
 			return ErrStalePolicy
+		}
+		if original.OperationType == OperationStationStopped && conversation.kind != "mindlink_group" {
+			return ErrForbidden
 		}
 		return nil
 	}

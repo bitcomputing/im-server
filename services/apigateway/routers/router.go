@@ -19,8 +19,10 @@ func Route(eng *gin.Engine, prefix string, policy http.Handler) {
 	mindlinkRoutes.POST("/conversations/cancel", gin.WrapH(policy))
 	mindlinkRoutes.GET("/operations/:operation_id", gin.WrapH(policy))
 	mindlinkRoutes.POST("/messages/send", gin.WrapH(policy))
+	mindlinkRoutes.POST("/stations/stopped", gin.WrapH(policy))
 	mindlinkRoutes.GET("/messages/results/:request_id", gin.WrapH(policy))
 	mindlinkRoutes.GET("/history/:conversation_id/:before/:limit", gin.WrapH(policy))
+	mindlinkRoutes.GET("/history-v3/:conversation_id/:before/:limit", gin.WrapH(policy))
 	mindlinkRoutes.GET("/conversations/:conversation_id/seen", gin.WrapH(policy))
 	mindlinkRoutes.PUT("/conversations/:conversation_id/seen", gin.WrapH(policy))
 

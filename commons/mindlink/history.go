@@ -17,8 +17,10 @@ import (
 
 const OperationHistoryRead = "history.read"
 const HistoryPathPrefix = "/apigateway/mindlink/history/"
+const HistoryV3PathPrefix = "/apigateway/mindlink/history-v3/"
 
 type HistoryMessage struct {
+	Category    string         `json:"category,omitempty"`
 	ID          string         `json:"message_id"`
 	SenderID    string         `json:"sender_id"`
 	Sequence    string         `json:"sequence"`
@@ -53,8 +55,12 @@ func (v *Verifier) parseHistory(a *Authorization) (int64, int, error) {
 	if c.OperationType != OperationHistoryRead || c.Method != http.MethodGet || c.ActorKind != "owner" || validateMessageActor(c) != nil {
 		return 0, 0, ErrForbidden
 	}
-	parts := strings.Split(strings.TrimPrefix(c.Path, HistoryPathPrefix), "/")
-	if !strings.HasPrefix(c.Path, HistoryPathPrefix) || len(parts) != 3 || !isLowerHex(parts[0], 64) || parts[0] != c.TargetID || c.ExpectedPolicyVersion <= 0 || c.ExpectedPolicyVersion != c.DesiredPolicyVersion || len(a.body) != 0 {
+	prefix := HistoryPathPrefix
+	if strings.HasPrefix(c.Path, HistoryV3PathPrefix) {
+		prefix = HistoryV3PathPrefix
+	}
+	parts := strings.Split(strings.TrimPrefix(c.Path, prefix), "/")
+	if !strings.HasPrefix(c.Path, prefix) || len(parts) != 3 || !isLowerHex(parts[0], 64) || parts[0] != c.TargetID || c.ExpectedPolicyVersion <= 0 || c.ExpectedPolicyVersion != c.DesiredPolicyVersion || len(a.body) != 0 {
 		return 0, 0, ErrInvalidRequest
 	}
 	before, e1 := strconv.ParseInt(parts[1], 10, 64)
@@ -85,12 +91,18 @@ func (v *Verifier) History(ctx context.Context, db *sql.DB, a *Authorization) (*
 	if err = messageStorageReady(ctx, db); err != nil {
 		return nil, err
 	}
+	c := a.claims
+	v3 := strings.HasPrefix(c.Path, HistoryV3PathPrefix)
+	if v3 {
+		if err := stationStopStorageReady(ctx, db); err != nil {
+			return nil, err
+		}
+	}
 	tx, err := db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 	if err != nil {
 		return nil, ErrUnknownResult
 	}
 	defer tx.Rollback()
-	c := a.claims
 	original := c
 	original.OperationType = OperationConversationEnsure
 	if err = authorizeOperationRead(ctx, tx, c, original); err != nil {
@@ -119,9 +131,19 @@ COALESCE((SELECT clean_time FROM usercleantimes WHERE app_key=? AND user_id=? AN
 		return nil, ErrUnknownResult
 	}
 	// Match native deletion/expiry/portion visibility; the retained owner's authority is independent of current group membership.
-	query := "SELECT his.msg_id,his.sender_id,his.msg_seq_no,his.msg_body FROM " + table + " AS his WHERE his.app_key=? AND his.conver_id=? AND his.sub_channel='' AND his.is_delete=0 AND his.send_time>? AND (his.destroy_time=0 OR his.destroy_time>?)"
+	query := "SELECT his.msg_id,his.sender_id,his.msg_seq_no,his.msg_body"
+	if v3 {
+		query += ",stop.payload_sha256"
+	}
+	query += " FROM " + table + " AS his"
+	args := []any{}
+	if v3 {
+		query += " LEFT JOIN mindlink_station_stops AS stop ON stop.appkey=BINARY his.app_key AND stop.native_conversation_id=BINARY his.conver_id AND stop.message_id=BINARY his.msg_id AND stop.sender_principal_id=BINARY his.sender_id AND stop.msg_seq_no=his.msg_seq_no AND stop.msg_time=his.send_time AND stop.environment=? AND stop.tenant_id=? AND stop.owner_id=? AND stop.conversation_id=?"
+		args = append(args, c.Environment, c.TenantID, c.OwnerID, c.TargetID)
+	}
+	query += " WHERE his.app_key=? AND his.conver_id=? AND his.sub_channel='' AND his.is_delete=0 AND his.send_time>? AND (his.destroy_time=0 OR his.destroy_time>?)"
 	now := time.Now().UnixMilli()
-	args := []any{c.AppKey, native, clean, now}
+	args = append(args, c.AppKey, native, clean, now)
 	deleted := "p_delhismsgs"
 	if channel == 2 {
 		deleted = "g_delhismsgs"
@@ -148,12 +170,20 @@ COALESCE((SELECT clean_time FROM usercleantimes WHERE app_key=? AND user_id=? AN
 		return nil, ErrUnknownResult
 	}
 	result := HistoryResult{Version: "mindlink-history-v1", Environment: c.Environment, Tenant: c.TenantID, AppKey: c.AppKey, Owner: c.OwnerID, ConversationID: c.TargetID, PolicyVersion: p.policy, Kind: p.kind, RequesterID: p.ownerIM, TargetID: p.native, Before: strconv.FormatInt(before, 10), Limit: limit, Messages: []HistoryMessage{}}
+	if v3 {
+		result.Version = "mindlink-history-v3"
+	}
 	budget, last := 0, int64(0)
 	for rows.Next() {
 		var id, sender string
 		var sequence int64
 		var raw []byte
-		if err = rows.Scan(&id, &sender, &sequence, &raw); err != nil {
+		var eventHash []byte
+		columns := []any{&id, &sender, &sequence, &raw}
+		if v3 {
+			columns = append(columns, &eventHash)
+		}
+		if err = rows.Scan(columns...); err != nil {
 			rows.Close()
 			return nil, ErrUnknownResult
 		}
@@ -181,7 +211,13 @@ COALESCE((SELECT clean_time FROM usercleantimes WHERE app_key=? AND user_id=? AN
 			return nil, contentErr
 		}
 		message.ID, message.SenderID, message.Sequence = id, sender, strconv.FormatInt(sequence, 10)
-		if message.ContentType != "" || message.ReplyTo != "" {
+		if v3 {
+			message.Category, err = stationHistoryCategory(p.kind, p.ownerIM, sender, raw, eventHash)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+		} else if message.ContentType != "" || message.ReplyTo != "" {
 			result.Version = "mindlink-history-v2"
 		}
 		result.Messages = append(result.Messages, message)

@@ -58,6 +58,14 @@ func mindlinkConfigFixture() configures.MindlinkConfig {
 	}}}
 }
 
+func TestMindlinkStationStopMutationIsExplicitlyConfigurable(t *testing.T) {
+	cfg := mindlinkConfigFixture()
+	cfg.Trusts[0].MutationOperations = []string{"stations.stopped"}
+	if _, err := NewMindlinkHTTP(cfg, &sql.DB{}); err != nil {
+		t.Fatalf("restricted station operation rejected: %v", err)
+	}
+}
+
 func TestMindlinkHTTPConfigFailsClosed(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

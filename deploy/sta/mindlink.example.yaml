@@ -22,6 +22,7 @@ mindlink:
         - conversation.ensure
         - conversation.cancel
         - messages.send
+        - stations.stopped
         - conversation_seen.advance
   disable_authority_source:
     enabled: false

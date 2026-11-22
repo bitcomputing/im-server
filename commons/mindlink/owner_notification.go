@@ -40,18 +40,10 @@ func (h *PolicyHTTP) SignalOwnerInbox(ctx context.Context, id string, signal fun
 	if !bytes.Equal(digest[:], hash) || json.Unmarshal(binding, &c) != nil || json.Unmarshal(nativeRaw, &native) != nil || c.Issuer != issuer || c.OperationID != operation || messageOutboxID(c) != id {
 		return ErrUnknownResult
 	}
-	trusted := false
-	for _, b := range h.verifier.bindings {
-		t := b.trust
-		if b.mutations[OperationMessageSend] && t.Issuer == c.Issuer && t.Audience == c.Audience && t.Environment == c.Environment && t.TenantID == c.TenantID && t.AppKey == c.AppKey {
-			trusted = true
-			break
-		}
-	}
-	if !trusted {
+	if !h.verifier.trustsMessageOperation(c) {
 		return ErrForbidden
 	}
-	receipt, err := h.verifier.ValidateMessageSendResult(&Authorization{verifier: h.verifier, claims: c, body: body}, receiptRaw, native)
+	receipt, err := h.verifier.validateOutboxResult(&Authorization{verifier: h.verifier, claims: c, body: body}, receiptRaw, native)
 	if err != nil {
 		return err
 	}
@@ -65,6 +57,14 @@ func (h *PolicyHTTP) SignalOwnerInbox(ctx context.Context, id string, signal fun
 	p, err := lockPolicyConversation(ctx, tx, c)
 	if err != nil {
 		return err
+	}
+	if c.OperationType == OperationStationStopped {
+		if p.kind != "mindlink_group" || native.SenderPrincipalID != p.ownerIM {
+			return ErrUnknownResult
+		}
+		if err := h.verifier.validateStationStopOriginal(ctx, tx, c, receiptRaw); err != nil {
+			return err
+		}
 	}
 	box := "inboxmsgs"
 	if native.SenderPrincipalID == p.ownerIM {

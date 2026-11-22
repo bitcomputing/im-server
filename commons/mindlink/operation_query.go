@@ -34,7 +34,12 @@ func (v *Verifier) QueryOperation(ctx context.Context, db *sql.DB, auth *Authori
 	if err := v.parseOperationQuery(auth); err != nil {
 		return nil, err
 	}
-	return v.queryOriginal(ctx, db, auth, func(_ *sql.Tx, original Claims, raw []byte) error { return v.validateOperationResult(raw, original) }, authorize)
+	return v.queryOriginal(ctx, db, auth, func(tx *sql.Tx, original Claims, raw []byte) error {
+		if original.OperationType == OperationStationStopped {
+			return v.validateStationStopOriginal(ctx, tx, original, raw)
+		}
+		return v.validateOperationResult(raw, original)
+	}, authorize)
 }
 
 func (v *Verifier) queryOriginal(ctx context.Context, db *sql.DB, auth *Authorization, validate func(*sql.Tx, Claims, []byte) error, authorize func(*sql.Tx, Claims, Claims) error) (*MutationResult, error) {

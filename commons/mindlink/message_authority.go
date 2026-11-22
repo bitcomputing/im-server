@@ -45,6 +45,9 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 	if p.policy != c.ExpectedPolicyVersion || p.policy != c.DesiredPolicyVersion {
 		return nil, ErrStalePolicy
 	}
+	if c.OperationType == OperationStationStopped && p.kind != "mindlink_group" {
+		return nil, ErrForbidden
+	}
 	var raw []byte
 	if err = tx.QueryRowContext(ctx, `SELECT members_json FROM mindlink_conversations WHERE appkey=? AND conversation_id=? FOR UPDATE`, c.AppKey, c.TargetID).Scan(&raw); err != nil {
 		return nil, ErrUnknownResult
@@ -165,7 +168,8 @@ func authorizeMessage(ctx context.Context, tx *sql.Tx, c Claims, b *MessageSendR
 				rows.Close()
 				return nil, ErrUnknownResult
 			}
-			if !reading && id == a.native.SenderPrincipalID &&
+			// The signed station event uses the read-only owner only as a native anchor.
+			if !reading && c.OperationType != OperationStationStopped && id == a.native.SenderPrincipalID &&
 				(muted > 0 && (muteUntil <= 0 || muteUntil > time.Now().UnixMilli()) || groupMute > 0 && allowed <= 0) {
 				rows.Close()
 				return nil, ErrForbidden

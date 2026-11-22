@@ -55,7 +55,7 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			operation = OperationSeenAdvance
 		}
 	}
-	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, HistoryPathPrefix) {
+	if r.Method == http.MethodGet && (strings.HasPrefix(r.URL.Path, HistoryPathPrefix) || strings.HasPrefix(r.URL.Path, HistoryV3PathPrefix)) {
 		operation = OperationHistoryRead
 	}
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/apigateway/mindlink/operations/") {
@@ -75,6 +75,9 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == http.MethodPost && r.URL.Path == MessageSendPath {
 		operation = OperationMessageSend
+	}
+	if r.Method == http.MethodPost && r.URL.Path == StationStoppedPath {
+		operation = OperationStationStopped
 	}
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, MessageResultPathPrefix) {
 		operation = OperationMessageQuery
@@ -138,6 +141,8 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		result, err = h.verifier.transactConversationCancel(r.Context(), h.db, auth, h.disableSource)
 	} else if operation == OperationMessageSend {
 		result, err = h.verifier.SendMessage(r.Context(), h.db, auth)
+	} else if operation == OperationStationStopped {
+		result, err = h.verifier.StationStopped(r.Context(), h.db, auth)
 	} else if operation == OperationHistoryRead {
 		result, err = h.verifier.History(r.Context(), h.db, auth)
 	} else if operation == OperationMessageQuery {

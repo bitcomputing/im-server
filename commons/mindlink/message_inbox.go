@@ -63,19 +63,11 @@ func (v *Verifier) MaterializeOwnerInbox(ctx context.Context, db *sql.DB, id str
 	if !bytes.Equal(digest[:], hash) || json.Unmarshal(binding, &c) != nil || json.Unmarshal(nativeRaw, &native) != nil || json.Unmarshal(recipientsRaw, &recipients) != nil || c.Issuer != issuer || c.OperationID != operation || messageOutboxID(c) != id {
 		return false, ErrUnknownResult
 	}
-	trusted := false
-	for _, b := range v.bindings {
-		t := b.trust
-		if b.mutations[OperationMessageSend] && t.Issuer == c.Issuer && t.Audience == c.Audience && t.Environment == c.Environment && t.TenantID == c.TenantID && t.AppKey == c.AppKey {
-			trusted = true
-			break
-		}
-	}
-	if !trusted {
+	if !v.trustsMessageOperation(c) {
 		return false, ErrForbidden
 	}
 	auth := &Authorization{verifier: v, claims: c, body: body}
-	receipt, err := v.ValidateMessageSendResult(auth, receiptRaw, native)
+	receipt, err := v.validateOutboxResult(auth, receiptRaw, native)
 	if err != nil {
 		return false, err
 	}
@@ -118,6 +110,14 @@ func (v *Verifier) MaterializeOwnerInbox(ctx context.Context, db *sql.DB, id str
 	}
 	if native.ConversationID != expectedNative || table == "g_hismsgs" && (native.ChannelType != 2 || native.TargetPrincipalID != p.native) {
 		return false, ErrUnknownResult
+	}
+	if c.OperationType == OperationStationStopped {
+		if p.kind != "mindlink_group" || native.SenderPrincipalID != p.ownerIM {
+			return false, ErrUnknownResult
+		}
+		if err := v.validateStationStopOriginal(ctx, tx, c, receiptRaw); err != nil {
+			return false, err
+		}
 	}
 	var stored []byte
 	if err = tx.QueryRowContext(ctx, "SELECT msg_body FROM "+table+" WHERE app_key=? AND conver_id=? AND sub_channel='' AND BINARY msg_id=? AND is_delete=0", c.AppKey, expectedNative, receipt.MessageID).Scan(&stored); err != nil {

@@ -559,9 +559,14 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 	suffix := fmt.Sprintf("%x", time.Now().UnixNano())
 	names := []string{"mindlink_policy_c82_fresh_" + suffix, "mindlink_policy_c82_upgrade_" + suffix}
 	for _, name := range names {
-		if _, err := db.Exec("CREATE DATABASE IF NOT EXISTS `" + name + "`"); err != nil {
+		if _, err := db.Exec("CREATE DATABASE `" + name + "`"); err != nil {
 			t.Fatal(err)
 		}
+		t.Cleanup(func() {
+			if _, err := db.Exec("DROP DATABASE `" + name + "`"); err != nil {
+				t.Error("owned migration scratch cleanup failed")
+			}
+		})
 	}
 	var config struct {
 		DSN string `json:"dsn"`
@@ -608,7 +613,7 @@ func TestMySQLFreshAndUpgradeKeepExistingData(t *testing.T) {
 		dbcommons.CloseDB()
 		configures.Config = saved
 		var version string
-		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261117" {
+		if err := other.QueryRow("SELECT conf_value FROM globalconfs WHERE conf_key='jimdb_version'").Scan(&version); err != nil || version != "20261122" {
 			t.Fatal("real migration entry did not finish new metadata version")
 		}
 		var nickname string

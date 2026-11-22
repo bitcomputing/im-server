@@ -33,8 +33,10 @@ docker compose -p im-server-sta --env-file /ABSOLUTE/sta-release.env \
 | `conversation.cancel` | POST `/conversations/cancel` | system，只取消已被替代的旧 C1 原件 |
 | `operations.query` | GET `/operations/:operation_id` | owner/system 按原控制操作和当前读权核原件 |
 | `messages.send` | POST `/messages/send` | owner/avatar，当前会话写权；pair 主人拒发 |
+| `stations.stopped` | POST `/stations/stopped` | 固定 system actor，仅当前账号已授权 `mindlink_group` 的永久停机事件 |
 | `messages.query` | GET `/messages/results/:request_id` | 原 send 的独立结果恢复及当前读权 |
 | `history.read` | GET `/history/:conversation_id/:before/:limit` | owner，实际原生历史及当前读权 |
+| `history.read` | GET `/history-v3/:conversation_id/:before/:limit` | owner，按可信服务端账本返回每条消息的 category |
 | `conversation_seen.query` | GET `/conversations/:conversation_id/seen` | owner，已读快照 |
 | `conversation_seen.advance` | PUT `/conversations/:conversation_id/seen` | owner，读写权及真实已展示位置 |
 
@@ -61,6 +63,10 @@ owner read 控制原件、历史、已读查询和收件箱读取；新发送/�
 
 BIZ 账户准入正式入口为同提交的 `cmd/mindlink_account_gate`，先使用其 `--config ABSOLUTE_SCOPE_JSON --owner OWNER` 只读查询；既有接入/分身恢复由正式 backfill 入口处理，之后按当前 revision、固定 request-id 和实际能力清单执行 active/paused。`--apply`、`--backfill`、`--ack-legacy-write-freeze`、`--expected-revision`、`--request-id`、`--capabilities`、`--ack-compatible-builds` 的前提以该版本 BIZ 源和交付为准。它不修改 IM barrier；不上传自造 Native 回执，不直接写映射 ready/generation/policy。本轮 `isolated_web` 仅在 BIZ STA 配套验证后启用，App 不冒充已验。
 
-当前 IM 源内最新 `jimdb_version` 为 `20261117`，无需新增 STA schema。现有 `im_sta` 必须先备份、核当前版本和结构，再由 [Upgrade](../commons/dbcommons/dbmigration.go) 仅执行大于当前版本的内嵌有序迁移。禁止执行空库 `db.py init`、重放新库 SQL 或改版本号跳过迁移。MySQL8 的 InnoDB、utf8mb4_0900_ai_ci 原生身份/生成列/唯一索引、owner/principal/conversation/lifecycle 表及 nickname 容量均需满足；可靠消息还需 outbox、history、sequence、seen 等同库事务表。启动器先升级再初始化 native fence，失败则关闭 IM 监听；gateway 构造失败只保留 NOT_READY 处理器，不能因 `/health` 通过就判断能力已启用。
+当前 IM 源内最新 `jimdb_version` 为 `20261122`，新增 [可信停机事件账本](../commons/dbcommons/sqls/20261122.sql)，[新库初始化](../sql/imserver.sql) 同步覆盖。现有 `im_sta` 必须先备份、核当前版本和结构，再由 [Upgrade](../commons/dbcommons/dbmigration.go) 仅执行大于当前版本的内嵌有序迁移。禁止执行空库 `db.py init`、重放新库 SQL 或改版本号跳过迁移。MySQL8 的 InnoDB、utf8mb4_0900_ai_ci 原生身份/生成列/唯一索引、owner/principal/conversation/lifecycle 表及 nickname 容量均需满足；可靠消息还需 outbox、history、sequence、seen 等同库事务表。启动器先升级再初始化 native fence，失败则关闭 IM 监听；gateway 构造失败只保留 NOT_READY 处理器，不能因 `/health` 通过就判断能力已启用。
+
+`stations.stopped` 必须单独加入服务端 mutation 白名单。该受限 [system 操作](../commons/mindlink/station_stop.go) 先核固定签名身份、严格正文及语义摘要，再在 [同一事务](../commons/mindlink/station_stop_transaction.go) 核 owner 写屏障、真实会话归属、当前策略和完整原生成员，写入 Native 群历史、停机事实、既有消息 outbox 及原始回执。Native sender 使用 owner IM 锚点，只有此操作可绕过该锚点的群禁言；普通 `messages.send` 的 system 拒发、主人只读及 Native 栅栏不变。原键重放不重复写真群，按原 operation 查询保留原件并独立检查当前读权。
+
+新历史路径返回 `mindlink-history-v3`，每条消息的 `category` 为 `message` 或 `station_stopped`。分类只来自同 scope/会话/Native 消息关联的服务端停机账本，并核原件哈希和 owner sender；客户端 `extra` 不参与分类。原 `/history/` 保持 v1/v2 结构。既有 owner 入箱和同步提示 worker 已支持受限停机原件，`persisted` 仍只证明事务保存，不能代称客户端送达。[隔离 SQL 用例](../commons/mindlink/station_stop_integration_test.go) 覆盖丢响应并发重放、原件查询、策略漂移、原生入箱、普通主人拒发、事务回滚及伪分类。
 
 现场核验应从真实业务 sdk-bindings/账号准入、正式 P1/C1 回执、可靠消息原件恢复、收件箱/客户端收取和历史/seen 走通。核对同一消息 ID、序列、唯一 history/outbox/operation/ticket、当前 owner 屏障和实际版本；失败、未知、跳过和未覆盖分列。部署、真实数据库、Linux 运行、浏览器/CLI/App、重启与跨库竞争由整合负责人单独验收，本源码交付不代称已完成。
