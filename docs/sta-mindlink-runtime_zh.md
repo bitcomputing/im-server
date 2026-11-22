@@ -65,7 +65,7 @@ BIZ 账户准入正式入口为同提交的 `cmd/mindlink_account_gate`，先使
 
 当前 IM 源内最新 `jimdb_version` 为 `20261122`，新增 [可信停机事件账本](../commons/dbcommons/sqls/20261122.sql)，[新库初始化](../sql/imserver.sql) 同步覆盖。现有 `im_sta` 必须先备份、核当前版本和结构，再由 [Upgrade](../commons/dbcommons/dbmigration.go) 仅执行大于当前版本的内嵌有序迁移。禁止执行空库 `db.py init`、重放新库 SQL 或改版本号跳过迁移。MySQL8 的 InnoDB、utf8mb4_0900_ai_ci 原生身份/生成列/唯一索引、owner/principal/conversation/lifecycle 表及 nickname 容量均需满足；可靠消息还需 outbox、history、sequence、seen 等同库事务表。启动器先升级再初始化 native fence，失败则关闭 IM 监听；gateway 构造失败只保留 NOT_READY 处理器，不能因 `/health` 通过就判断能力已启用。
 
-`stations.stopped` 必须单独加入服务端 mutation 白名单。该受限 [system 操作](../commons/mindlink/station_stop.go) 先核固定签名身份、严格正文及语义摘要，再在 [同一事务](../commons/mindlink/station_stop_transaction.go) 核 owner 写屏障、真实会话归属、当前策略和完整原生成员，写入 Native 群历史、停机事实、既有消息 outbox 及原始回执。Native sender 使用 owner IM 锚点，只有此操作可绕过该锚点的群禁言；普通 `messages.send` 的 system 拒发、主人只读及 Native 栅栏不变。原键重放不重复写真群，按原 operation 查询保留原件并独立检查当前读权。
+`stations.stopped` 必须单独加入服务端 mutation 白名单。该受限 [system 操作](../commons/mindlink/station_stop.go) 先核固定签名身份、严格正文及语义摘要，再在 [同一事务](../commons/mindlink/station_stop_transaction.go) 核 owner 写屏障、真实会话归属、当前策略和完整原生成员，写入 Native 群历史、停机事实、既有消息 outbox 及原始回执。Native sender 使用 owner IM 锚点，只有此操作可绕过该锚点的群禁言；普通 `messages.send` 的 system 拒发、主人只读及 Native 栅栏不变。原键重放不重复写真群。已提交停机原件的查询及 POST 重放保留冻结的策略号；后续群策略增长不阻止原键恢复，但仍独立核当前读屏障、会话归属和种类、固定 system 权限及完整原件账本。新停机写入和其他控制操作仍核当前策略。
 
 新历史路径返回 `mindlink-history-v3`，每条消息的 `category` 为 `message` 或 `station_stopped`。分类只来自同 scope/会话/Native 消息关联的服务端停机账本，并核原件哈希和 owner sender；客户端 `extra` 不参与分类。原 `/history/` 保持 v1/v2 结构。既有 owner 入箱和同步提示 worker 已支持受限停机原件，`persisted` 仍只证明事务保存，不能代称客户端送达。[隔离 SQL 用例](../commons/mindlink/station_stop_integration_test.go) 覆盖丢响应并发重放、原件查询、策略漂移、原生入箱、普通主人拒发、事务回滚及伪分类。
 

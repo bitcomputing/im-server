@@ -152,17 +152,108 @@ func TestMySQLStationStoppedAtomicReplayQueryAndOutbox(t *testing.T) {
 		t.Fatal(err)
 	}
 	q := queryProof(t, v, key, a.claims, func(c *Claims) {
-		c.ExpectedPolicyVersion, c.DesiredPolicyVersion, c.JTI = 2, 2, strings.Repeat("f", 64)
+		c.ExpectedPolicyVersion, c.DesiredPolicyVersion, c.JTI = 1, 1, strings.Repeat("f", 64)
 	})
 	got, err := v.QueryOperation(ctx, db, q, func(tx *sql.Tx, c, original Claims) error { return authorizeOperationRead(ctx, tx, c, original) })
 	if err != nil || !bytes.Equal(got.Result, first) {
 		t.Fatal("policy drift rewrote original", err)
+	}
+	if replayed, err := v.StationStopped(ctx, db, a); err != nil || !replayed.Replayed || !bytes.Equal(replayed.Result, first) {
+		t.Fatal("policy drift blocked original POST replay", err)
 	}
 	if _, err := db.Exec(`UPDATE mindlink_owner_barriers SET read_enabled=0`); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := v.QueryOperation(ctx, db, q, func(tx *sql.Tx, c, original Claims) error { return authorizeOperationRead(ctx, tx, c, original) }); !errors.Is(err, ErrForbidden) {
 		t.Fatal("revoked owner queried original", err)
+	}
+	if _, err := v.StationStopped(ctx, db, a); !errors.Is(err, ErrForbidden) {
+		t.Fatal("revoked owner replayed original POST", err)
+	}
+	stationRows(t, db, 1)
+}
+
+func TestMySQLStationStoppedHistoricalRecoveryKeepsCurrentReadAndOriginalTrust(t *testing.T) {
+	db, v, a, _ := stationStopFixture(t)
+	ctx := context.Background()
+	first, err := v.StationStopped(ctx, db, a)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`UPDATE mindlink_conversations SET policy_version=2`); err != nil {
+		t.Fatal(err)
+	}
+	// A fresh write still needs the current policy; the exception only reads an existing original.
+	nv, fresh := stationStopProof(t, func(b *StationStopRequest, c *Claims) {
+		b.EventID, b.Epoch = strings.Repeat("e", 64), 8
+		b.OperationID = stationStopOperationID(*c, b.EventID)
+		b.RequestID = b.OperationID
+		c.OperationID, c.RequestID, c.JTI = b.OperationID, b.RequestID, strings.Repeat("2", 64)
+	})
+	if _, err := nv.StationStopped(ctx, db, fresh); !errors.Is(err, ErrStalePolicy) {
+		t.Fatal("historical recovery exception admitted a stale fresh write", err)
+	}
+	_, key := fixtureTrust()
+	q := queryProof(t, v, key, a.claims, func(c *Claims) { c.ExpectedPolicyVersion, c.DesiredPolicyVersion = 1, 1 })
+	serve := func(handler *PolicyHTTP, c Claims, body []byte) *httptest.ResponseRecorder {
+		t.Helper()
+		token := fixtureToken(t, key, []byte(`{"alg":"EdDSA","typ":"mindlink-actor+jwt","kid":"fixture-key"}`), fixtureJSON(t, c))
+		out := httptest.NewRecorder()
+		handler.ServeHTTP(out, fixtureRequest(t, token, c.Method, c.Path, string(body)))
+		return out
+	}
+	handler := NewPolicyHTTP(v, db)
+	for _, change := range []func(*Claims){
+		func(c *Claims) { c.TenantID = "forged-tenant" },
+		func(c *Claims) { c.OwnerID = "43" },
+		func(c *Claims) { c.ActorID = "forged-system" },
+		func(c *Claims) { c.ActorKind, c.ActorID, c.AvatarGeneration = "avatar", "A", 1 },
+	} {
+		c := q.claims
+		change(&c)
+		if out := serve(handler, c, nil); out.Code != 403 {
+			t.Fatalf("historical recovery accepted forged scope/actor: %d", out.Code)
+		}
+	}
+	for _, tc := range []struct {
+		name, change, restore string
+		status                int
+	}{
+		{"read_revoked", `UPDATE mindlink_owner_barriers SET read_enabled=0`, `UPDATE mindlink_owner_barriers SET read_enabled=1`, 403},
+		{"current_scope_changed", `UPDATE mindlink_conversations SET owner_id='43'`, `UPDATE mindlink_conversations SET owner_id='42'`, 403},
+		{"current_kind_changed", `UPDATE mindlink_conversations SET kind='avatar_pair_group'`, `UPDATE mindlink_conversations SET kind='mindlink_group'`, 403},
+		{"original_fact_changed", `UPDATE mindlink_station_stops SET reason='auth_failed'`, `UPDATE mindlink_station_stops SET reason='tls_failed'`, 503},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := db.Exec(tc.change); err != nil {
+				t.Fatal(err)
+			}
+			for _, input := range []struct {
+				c    Claims
+				body []byte
+			}{{q.claims, nil}, {a.claims, a.body}} {
+				if out := serve(handler, input.c, input.body); out.Code != tc.status {
+					t.Fatalf("historical recovery ignored current/original protection: status=%d", out.Code)
+				}
+			}
+			if _, err := db.Exec(tc.restore); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	trust, _ := fixtureTrust()
+	trust.MutationOperations = nil
+	trust.QueryOperations = []string{"operations.query"}
+	ungranted, err := NewVerifier([]Trust{trust})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out := serve(NewPolicyHTTP(ungranted, db), q.claims, nil); out.Code != 403 {
+		t.Fatalf("historical original ignored configured system permission: %d", out.Code)
+	}
+	queried, err := v.QueryOperation(ctx, db, q, func(tx *sql.Tx, c, original Claims) error { return authorizeOperationRead(ctx, tx, c, original) })
+	if err != nil || !bytes.Equal(queried.Result, first.Result) {
+		t.Fatal("restored current authority could not recover original", err)
 	}
 	stationRows(t, db, 1)
 }

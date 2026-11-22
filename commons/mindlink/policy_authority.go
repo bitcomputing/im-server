@@ -28,7 +28,8 @@ func authorizeOperationRead(ctx context.Context, tx *sql.Tx, query, original Cla
 		if err != nil {
 			return err
 		}
-		if query.ExpectedPolicyVersion != conversation.policy || query.DesiredPolicyVersion != conversation.policy {
+		// A committed station event retains its frozen policy across later group changes.
+		if original.OperationType != OperationStationStopped && (query.ExpectedPolicyVersion != conversation.policy || query.DesiredPolicyVersion != conversation.policy) {
 			return ErrStalePolicy
 		}
 		if original.OperationType == OperationStationStopped && conversation.kind != "mindlink_group" {
