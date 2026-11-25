@@ -79,7 +79,7 @@ func nativeFixture(t *testing.T) *sql.DB {
 	if _, err := db.Exec("INSERT INTO mindlink_operations(issuer,operation_id,request_key,binding_hash,binding_json,reservation_id,result_json) VALUES('fixture-biz',?,UNHEX(REPEAT('11',32)),UNHEX(REPEAT('22',32)),'{}',UNHEX(REPEAT('33',32)),?)", strings.Repeat("a", 64), nativeMigrationOriginal); err != nil {
 		t.Fatal(err)
 	}
-	upgradeNativeFixture(t, db, cfg, "20261122")
+	upgradeNativeFixture(t, db, cfg, "20261125")
 	return db
 }
 
@@ -120,7 +120,7 @@ func TestNativeMigrationResumesAfterCommittedDDL(t *testing.T) {
 			if err := db.QueryRow("SELECT DATABASE()").Scan(&cfg.DBName); err != nil {
 				t.Fatal(err)
 			}
-			upgradeNativeFixture(t, db, cfg, "20261122")
+			upgradeNativeFixture(t, db, cfg, "20261125")
 			if _, err := NewNativeFence(context.Background(), db); err != nil {
 				t.Fatal("resumed migration did not restore fence", err)
 			}

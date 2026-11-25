@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"im-server/commons/pbdefines/pbobjs"
@@ -14,6 +15,22 @@ import (
 
 // Latest matches native history visibility using only the supplied transaction.
 func (dao SeenDao) Latest(app, user, target, sub string, channel pbobjs.ChannelType) (int64, error) {
+	return dao.latest(app, user, target, sub, channel, nil)
+}
+
+type VisiblePreview struct {
+	MsgId    string
+	MsgBody  []byte
+	MsgSeqNo int64
+}
+
+func (dao SeenDao) LatestPreview(app, user, target, sub string, channel pbobjs.ChannelType) (VisiblePreview, error) {
+	var row VisiblePreview
+	_, err := dao.latest(app, user, target, sub, channel, &row)
+	return row, err
+}
+
+func (dao SeenDao) latest(app, user, target, sub string, channel pbobjs.ChannelType, preview *VisiblePreview) (int64, error) {
 	if dao.DB == nil {
 		return 0, errors.New("transaction required for READ visibility")
 	}
@@ -73,9 +90,15 @@ WHERE his.app_key=? AND his.conver_id=? AND his.sub_channel=? AND (his.is_portio
 		query += " AND his.send_time>?"
 		params = append(params, boundary.CleanTime)
 	}
-	query += " ORDER BY his.send_time DESC LIMIT 1"
-	var row struct{ MsgSeqNo int64 }
-	result := dao.DB.Raw(query, params...).Scan(&row)
+	if preview != nil {
+		query = strings.Replace(query, "SELECT his.msg_seq_no FROM", "SELECT his.msg_seq_no,his.msg_id,his.msg_body FROM", 1)
+	}
+	query += " ORDER BY his.send_time DESC,his.msg_seq_no DESC LIMIT 1"
+	row := preview
+	if row == nil {
+		row = &VisiblePreview{}
+	}
+	result := dao.DB.Raw(query, params...).Scan(row)
 	if result.Error != nil {
 		return 0, result.Error
 	}

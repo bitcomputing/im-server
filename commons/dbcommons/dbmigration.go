@@ -109,6 +109,17 @@ func executeSqlFile(fileName string) error {
 		if strings.HasSuffix(line, ";") {
 			query := strings.TrimSpace(queryBuilder.String())
 			if query != "" {
+				if fileName == "sqls/20261125.sql" {
+					var existing int64
+					err := GetDb().Raw("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='mindlink_owner_barriers' AND column_name='list_projection_ready' AND data_type='tinyint' AND is_nullable='NO' AND column_default='0'").Scan(&existing).Error
+					if err != nil {
+						return err
+					}
+					if existing == 1 {
+						queryBuilder.Reset()
+						continue
+					}
+				}
 				if fileName == "sqls/20261110.sql" {
 					done, err := nativeFenceDDLApplied(query)
 					if err != nil {

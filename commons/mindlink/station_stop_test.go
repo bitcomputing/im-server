@@ -248,7 +248,7 @@ func TestStationStopMigrationMatchesFreshSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(strings.ReplaceAll(string(initial), "\r\n", "\n"), strings.ReplaceAll(string(migration), "\r\n", "\n")) || !strings.Contains(string(initial), "VALUES('jimdb_version','20261122')") {
+	if !strings.Contains(strings.ReplaceAll(string(initial), "\r\n", "\n"), strings.ReplaceAll(string(migration), "\r\n", "\n")) || !strings.Contains(string(initial), "VALUES('jimdb_version','20261125')") {
 		t.Fatal("fresh schema or migration registration differs")
 	}
 }

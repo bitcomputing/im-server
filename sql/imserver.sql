@@ -1010,7 +1010,7 @@ CREATE TABLE IF NOT EXISTS `message_sequence` (
   PRIMARY KEY (`app_key`,`conver_id`,`channel_type`,`sub_channel`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
 
-INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261122');
+INSERT IGNORE INTO `globalconfs` (`conf_key`,`conf_value`)VALUES('jimdb_version','20261125');
 INSERT IGNORE INTO `accounts`(`account`,`password`)VALUES('admin','7c4a8d09ca3762af61e59520943dc26494f8941b');
 
 -- Mindlink original request binding
@@ -1043,6 +1043,7 @@ CREATE TABLE IF NOT EXISTS `mindlink_owner_barriers` (
   `appkey` VARBINARY(20) NOT NULL,
   `owner_id` VARBINARY(20) NOT NULL,
   `read_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
+  `list_projection_ready` BOOLEAN NOT NULL DEFAULT FALSE,
   `write_enabled` BOOLEAN NOT NULL DEFAULT FALSE,
   PRIMARY KEY (`environment`,`tenant_id`,`appkey`,`owner_id`),
   CONSTRAINT `chk_mindlink_owner_read` CHECK (`read_enabled` IN (0,1)),

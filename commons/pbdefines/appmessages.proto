@@ -511,6 +511,8 @@ message GlobalConver{
   int64 updatedTime = 6;
 }
 message QryConversationsReq{
+  bool ownerBusinessList = 52;
+  string ownerListCursor = 53;
   int64 startTime = 1;
   int32 count = 2;
   int32 order = 3;
@@ -523,6 +525,8 @@ message QryConversationsReq{
   bool onlyConver = 51;
 }
 message QryConversationsResp{
+  bool ownerBusinessList = 3;
+  string ownerListCursor = 4;
   repeated Conversation conversations = 1;
   bool isFinished = 2;
 }
@@ -703,6 +707,7 @@ message MemberReadDetailItem{
 }
 
 message QryConverReq{
+  bool ownerBusinessList = 52;
   string targetId = 1;
   ChannelType channelType = 2;
   bool isInner = 3;
@@ -1176,4 +1181,6 @@ message ConversationBusiness {
   string type = 1;
   string businessId = 2;
   repeated string avatarIds = 3;
+  bool readOnly = 4;
+  bool hasNew = 5;
 }

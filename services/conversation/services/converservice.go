@@ -201,6 +201,25 @@ func SyncConversationsV2(ctx context.Context, appkey, userId string, startTime i
 
 func QryConverV2(ctx context.Context, userId string, req *pbobjs.QryConverReq) (errs.IMErrorCode, *pbobjs.Conversation) {
 	appkey := bases.GetAppKeyFromCtx(ctx)
+	if req == nil {
+		return errs.IMErrorCode_MSG_PARAM_ILLEGAL, nil
+	}
+	if req.OwnerBusinessList && !req.IsInner && len(req.UserIds) == 0 && req.SubChannel == "" && req.TargetId != "" && userId == bases.GetRequesterIdFromCtx(ctx) {
+		if code := bases.NativePolicyCode(bases.CheckNativeIdentities(ctx, appkey, []string{userId}, nil)); code != 0 {
+			return code, nil
+		}
+		rows, ready, err := ownerListRows(ctx, req.TargetId)
+		if err != nil {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+		}
+		if ready {
+			for _, row := range rows {
+				if row.ChannelType == req.ChannelType {
+					return errs.IMErrorCode_SUCCESS, row
+				}
+			}
+		}
+	}
 	if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, req, []string{userId}, nil)); code != 0 {
 		return code, nil
 	}
@@ -303,6 +322,15 @@ func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) (e
 	if code != 0 {
 		return code, nil
 	}
+	if req.OwnerBusinessList && req.Tag == "" && req.ExceptTag == "" {
+		rows, ready, err := ownerListRows(ctx, req.TargetId)
+		if err != nil {
+			return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil
+		}
+		if ready {
+			return pageOwnerList(ctx, userConvers, visible, rows, req)
+		}
+	}
 	convers := userConvers.QryConvers(startTime, count+1, isPositiveOrder, req.TargetId, req.ChannelType, req.Tag, req.ExceptTag, visible)
 	if len(convers) > int(count) {
 		convers = convers[:count]
@@ -314,6 +342,7 @@ func QryConversationsV2(ctx context.Context, req *pbobjs.QryConversationsReq) (e
 		return code, nil
 	}
 	resp.Conversations = append(resp.Conversations, conversations...)
+
 	if isPositiveOrder {
 		sort.Slice(resp.Conversations, func(i, j int) bool {
 			return resp.Conversations[i].SortTime > resp.Conversations[j].SortTime

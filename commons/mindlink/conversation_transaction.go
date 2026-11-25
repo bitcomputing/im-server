@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 )
 
 type policyConversation struct {
@@ -138,6 +139,11 @@ func (v *Verifier) transactConversationEnsure(ctx context.Context, db *sql.DB, a
 		if b.ExpectedPolicyVersion == 0 {
 			if _, err := tx.ExecContext(ctx, `INSERT INTO mindlink_conversations(environment,tenant_id,appkey,owner_id,conversation_id,kind,channel_type,native_target_id,owner_im_id,policy_version,state,members_json) VALUES(?,?,?,?,?,?,?,?,?,?,'active',?)`, c.Environment, c.TenantID, c.AppKey, c.OwnerID, b.ConversationID, b.Kind, channel, b.NativeTargetID, b.OwnerIMID, b.DesiredPolicyVersion, members); err != nil {
 				return nil, ErrRequestConflict
+			}
+			// Create an empty inbox row without restoring a previously hidden one.
+			now := time.Now().UnixMilli()
+			if _, err := tx.ExecContext(ctx, `INSERT INTO conversations(app_key,user_id,target_id,channel_type,sub_channel,sort_time,sync_time) VALUES(?,?,?,?,'',?,?) ON DUPLICATE KEY UPDATE id=id`, c.AppKey, b.OwnerIMID, b.NativeTargetID, channel, now, now); err != nil {
+				return nil, ErrUnknownResult
 			}
 			if channel == 2 {
 				// A native collision is never an invitation to adopt an existing group.
