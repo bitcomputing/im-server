@@ -33,6 +33,9 @@ func TestNativeReadPaginationAndTombstones(t *testing.T) {
 		if code != 0 || resp == nil || len(resp.Conversations) != 1 || resp.Conversations[0].TargetId != tc.want || resp.IsFinished != tc.finished {
 			t.Fatalf("native pagination start=%d order=%d code=%d: %+v", tc.start, tc.order, code, resp)
 		}
+		if got := resp.Conversations[0].GetBusiness().GetType(); got != "normal_dm" {
+			t.Fatalf("ordinary private conversation classification = %q", got)
+		}
 	}
 	uc.ConverItemMap[getConverItemKey(listAvatar, "", pbobjs.ChannelType_Private)].IsDeleted = 1
 	code, syncResp := SyncConversationsV2(ctx, "list-app", "42", 98, 10)

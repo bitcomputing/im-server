@@ -722,6 +722,12 @@ func fillConvers(ctx context.Context, userId string, convers []*models.Conversat
 		if code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, conversation, []string{userId}, nil)); code != 0 {
 			return code, nil
 		}
+		switch conversation.ChannelType {
+		case pbobjs.ChannelType_Private:
+			conversation.Business = &pbobjs.ConversationBusiness{Type: "normal_dm"}
+		case pbobjs.ChannelType_Group:
+			conversation.Business = &pbobjs.ConversationBusiness{Type: "normal_group"}
+		}
 		retConvers = append(retConvers, conversation)
 	}
 	return errs.IMErrorCode_SUCCESS, retConvers

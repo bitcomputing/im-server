@@ -37,7 +37,7 @@ func nativeConverVisibility(ctx context.Context, uc *UserConversations) (errs.IM
 	if err := prepareNativeReadRows(ctx, appkey, uc.UserId, rows); err != nil {
 		return errs.IMErrorCode_API_INTERNAL_RESP_FAIL, nil, nil
 	}
-	items := make([]*pbobjs.Conversation, 0, len(rows))
+	items := make([]proto.Message, 0, len(rows))
 	for _, item := range rows {
 		conver := &pbobjs.Conversation{UserId: uc.UserId, TargetId: item.TargetId, ChannelType: item.ChannelType, SubChannel: item.SubChannel}
 		if len(item.LatestMsg) > 0 {
@@ -58,22 +58,15 @@ func nativeConverVisibility(ctx context.Context, uc *UserConversations) (errs.IM
 		items = append(items, conver)
 	}
 	visible := make(map[string]bool, len(items))
-	// Ordinary users usually need one batched lookup; mixed lists classify each candidate.
-	code := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, &pbobjs.QryConversationsResp{Conversations: items}, nil, nil))
-	if code != 0 && code != errs.IMErrorCode_MINDLINK_FORBIDDEN {
-		return code, nil, nil
+	mask, err := bases.FilterNativeMessages(ctx, appkey, items)
+	if err != nil {
+		return bases.NativePolicyCode(err), nil, nil
 	}
-	for _, item := range items {
-		if code != 0 {
-			itemCode := bases.NativePolicyCode(bases.CheckNativeMessage(ctx, appkey, item, nil, nil))
-			if itemCode == errs.IMErrorCode_MINDLINK_FORBIDDEN {
-				continue
-			}
-			if itemCode != 0 {
-				return itemCode, nil, nil
-			}
+	for i, allowed := range mask {
+		if allowed {
+			row := rows[i]
+			visible[getConverItemKey(row.TargetId, row.SubChannel, row.ChannelType)] = true
 		}
-		visible[getConverItemKey(item.TargetId, item.SubChannel, item.ChannelType)] = true
 	}
 	return errs.IMErrorCode_SUCCESS, view, visible
 }
