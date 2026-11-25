@@ -7,11 +7,11 @@ import db
 
 
 class StaDatabaseTests(unittest.TestCase):
-    def load(self, name, user, address, admin_secret="synthetic-secret-" * 3):
+    def load(self, name, user, address, admin_secret="synthetic-secret-" * 3, max_connections=16):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'config.yml'
             path.write_text(json.dumps({'adminSecret': admin_secret, 'mysql': {'name': name, 'user': user,
-                                                  'address': address, 'password': 'fixture-only'}}))
+                                                  'address': address, 'password': 'fixture-only', 'maxOpenConns': max_connections}}))
             return db.load_config(path)
 
     def test_sta_database_and_account_only(self):
@@ -34,14 +34,30 @@ class StaDatabaseTests(unittest.TestCase):
 
     def test_initialization_requires_write_grant_for_exact_sta_library(self):
         readonly = [r"GRANT SELECT ON `im\_sta`.* TO 'im_sta'@'host'"]
-        with self.assertRaisesRegex(ValueError, 'ALL PRIVILEGES'):
+        with self.assertRaisesRegex(ValueError, 'missing'):
             db.validate_grants(readonly, 'im_sta', initializing=True)
         db.validate_grants([r"GRANT ALL PRIVILEGES ON `im\_sta`.* TO 'im_sta'@'host'"],
                            'im_sta', initializing=True)
 
+    def test_initialization_accepts_explicit_sta_privileges(self):
+        privileges = 'SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER'
+        grant = r"GRANT " + privileges + r" ON `im\_sta`.* TO 'im_sta'@'host'"
+        db.validate_grants([grant], 'im_sta', initializing=True)
+        with self.assertRaisesRegex(ValueError, 'DROP'):
+            db.validate_grants([grant], 'im_sta', initializing=True, restoring=True)
+
+    def test_sta_pool_limit_range(self):
+        for limit in (1, 16, 24, 32):
+            with self.subTest(limit=limit):
+                config = self.load('im_sta', 'im_sta', db.RDS_ADDRESS, max_connections=limit)
+                self.assertEqual(config['mysql']['maxOpenConns'], limit)
+        for limit in (None, True, 0, 33):
+            with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, 'maxOpenConns'):
+                self.load('im_sta', 'im_sta', db.RDS_ADDRESS, max_connections=limit)
+
     def test_package_schema_version(self):
         root = Path(__file__).resolve().parents[2]
-        self.assertEqual(db.schema_version(root), '20261117')
+        self.assertEqual(db.schema_version(root), '20261122')
 
     def test_sta_admin_secret_required(self):
         with self.assertRaisesRegex(ValueError, 'adminSecret'):

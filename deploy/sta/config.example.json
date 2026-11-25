@@ -10,7 +10,8 @@
     "password": "",
     "address": "rm-8vbq47371g7791242.mysql.zhangbei.rds.aliyuncs.com:3306",
     "name": "im_sta",
-    "debug": false
+    "debug": false,
+    "maxOpenConns": 16
   },
   "connectManager": {"wsPort": 9003},
   "apiGateway": {"httpPort": 9001},

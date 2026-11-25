@@ -179,6 +179,10 @@ func RouteJuggleChat(mux *http.ServeMux) {
 		fmt.Println("Init Jim Mysql failed")
 		return
 	}
+	if err := dbcommons.LimitMysqlPool(jimDb.GetDb()); err != nil {
+		fmt.Println("Limit Jim Mysql pool failed", err)
+		return
+	}
 	jimDb.Upgrade()
 
 	ginEngine := gin.Default()
