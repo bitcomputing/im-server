@@ -14,7 +14,7 @@ import (
 func TestOwnerListRequiresNegotiationReadAndMigration(t *testing.T) {
 	db, ctx, _ := nativeReadFixture(t)
 	id := strings.Repeat("b", 64)
-	_, err := db.Exec("INSERT INTO mindlink_conversations(environment,tenant_id,appkey,owner_id,conversation_id,kind,channel_type,native_target_id,owner_im_id,policy_version,state,members_json) VALUES('dev','list-tenant','list-app','42',?,'owner_avatar_dm',1,?,'42',1,'active',?)", id, listAvatar, []byte(`[{"avatar_id":"list-avatar"}]`))
+	_, err := db.Exec("INSERT INTO mindlink_conversations(environment,tenant_id,appkey,owner_id,conversation_id,kind,channel_type,native_target_id,owner_im_id,policy_version,state,members_json) VALUES('dev','list-tenant','list-app','42',?,'owner_avatar_dm',1,?,'42',1,'active',?)", id, listAvatar, []byte(`[{"avatar_id":"list-avatar","principal_id":"ma111111111111111111111111111111"}]`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,6 +97,12 @@ func TestOwnerListRequiresNegotiationReadAndMigration(t *testing.T) {
 			t.Fatal("wrong paused owner projection", enabled, rows, err)
 		}
 	}
+	set("UPDATE mindlink_principals SET state='disabled' WHERE avatar_id='list-avatar'")
+	rows, ready, err := ownerListRows(ctx, listAvatar)
+	if err != nil || !ready || len(rows) != 1 || !rows[0].Business.ReadOnly || rows[0].Msg == nil {
+		t.Fatal("retired DM lost retained read-only history", rows, err)
+	}
+	set("UPDATE mindlink_principals SET state='active' WHERE avatar_id='list-avatar'")
 	for i, kind := range []string{"mindlink_group", "avatar_pair_group"} {
 		target := []string{"test-home", "test-pair"}[i]
 		biz := strings.Repeat([]string{"a", "c"}[i], 64)

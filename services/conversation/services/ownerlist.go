@@ -35,6 +35,14 @@ func ownerListRows(ctx context.Context, target string) ([]*pbobjs.Conversation, 
 		if err := tx.Raw("SELECT EXISTS(SELECT 1"+scope+allowed+")", app, owner).Scan(&ready).Error; err != nil || !ready {
 			return err
 		}
+		var retiredIDs []string
+		if err := tx.Raw("SELECT DISTINCT p.native_principal_id"+scope+" JOIN mindlink_principals p ON p.environment=m.environment AND p.tenant_id=m.tenant_id AND p.appkey=m.appkey AND p.owner_id=m.owner_id"+allowed+" AND p.state='disabled'", app, owner).Scan(&retiredIDs).Error; err != nil {
+			return err
+		}
+		retired := make(map[string]bool, len(retiredIDs))
+		for _, id := range retiredIDs {
+			retired[id] = true
+		}
 		filter := ""
 		args := []any{app, owner}
 		if target != "" {
@@ -70,6 +78,9 @@ func ownerListRows(ctx context.Context, target string) ([]*pbobjs.Conversation, 
 						return errors.New("missing mapped avatar")
 					}
 					b.AvatarIds = append(b.AvatarIds, m.AvatarID)
+					if retired[m.PrincipalID] {
+						b.ReadOnly = true
+					}
 				}
 				if !(b.Type == "owner_avatar_dm" && len(roster) == 1 && r.ChannelType == pbobjs.ChannelType_Private || b.Type == "avatar_pair_group" && len(roster) == 2 && roster[0].AvatarID != roster[1].AvatarID && r.ChannelType == pbobjs.ChannelType_Group) {
 					return errors.New("invalid mapped conversation")
