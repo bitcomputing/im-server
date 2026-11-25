@@ -549,7 +549,10 @@ message Conversation{
   repeated ConverTag converTags = 20;
   string subChannel = 21;
   FriendInfo friendInfo = 22;
+  ConversationBusiness business = 23;
 }
+
+
 
 message BatchAddConvers{
   repeated Conversation convers = 1;
@@ -1166,4 +1169,11 @@ message UserStatusItem{
 message UserStatusFriDispatch{
   DownMsg msg = 1;
   repeated string excludedUserIds = 2;
+}
+
+// Set by the server for the authenticated list reader; absence means unknown.
+message ConversationBusiness {
+  string type = 1;
+  string businessId = 2;
+  repeated string avatarIds = 3;
 }
