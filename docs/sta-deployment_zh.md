@@ -2,7 +2,7 @@
 
 `sta` 与现有 `pre` 并行。用户要求覆盖 IM、43Chat 服务端、Web、Soul。先建独立 IM 验收环境，再接四端。本文件是本项目的部署入口，跨项目组合由各项目整合负责人核对同一组发布版本。
 
-2026-11-20：现有 STA 的新版心灵传输启用配置、authority 对接、原件及准入要求见[STA Mindlink 运行合同](sta-mindlink-runtime_zh.md)。本页收录首次建库、IM 验收与公网接入步骤；现有 `im_sta` 升级不得执行新库 `init` 或重放 `sql/imserver.sql`。升级前在 STA 的 `secrets/config.yml` 中补齐 `mysql.maxOpenConns: 16`。完成升级后，用同版 `db.py check` 核对配置和数据库。
+2026-11-20：现有 STA 的新版心灵传输启用配置、authority 对接、原件及准入要求见[STA Mindlink 运行合同](sta-mindlink-runtime_zh.md)。本页收录首次建库、IM 验收与公网接入步骤；现有 `im_sta` 升级不得执行新库 `init` 或重放 `sql/imserver.sql`。升级前在 STA 的 `secrets/config.yml` 中配置 `mysql.maxOpenConns`，模板值为 `16`。完成升级后，用同版 `db.py check` 核对配置和数据库。
 
 ## 2026-11-17 首次部署记录
 
@@ -37,7 +37,7 @@ ALB 终止 TLS，按域名转发 HTTP 到部署机 Nginx 的 80 端口。将 `de
 
 ## 准备与启动
 
-1. 在经核定的 RDS 实例上准备空库 `im_sta` 和同名账号，库字符集 `utf8mb4`、排序 `utf8mb4_0900_ai_ci`。账号绑定实测的容器出口。在准确转义的 `im\_sta` 库范围内授予 `SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER`，用于建表、写入和库内的启动迁移。STA 单实例的 IM、JuggleChat 和管理台各有一个连接池，每池 `mysql.maxOpenConns: 16`，合计最多 48 条应用连接。凭据经已有密钥渠道交付，受限配置目录权限 `0700`、文件 `0600`。用真实连接回查 TLS 和应用驱动能力，按部署时测得的 RDS 配置定连接方式。
+1. 在经核定的 RDS 实例上准备空库 `im_sta` 和同名账号，库字符集 `utf8mb4`、排序 `utf8mb4_0900_ai_ci`。账号绑定实测的容器出口。在准确转义的 `im\_sta` 库范围内授予 `SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER`，用于建表、写入和库内的启动迁移。STA 单实例的 IM、JuggleChat 和管理台各有一个连接池，`mysql.maxOpenConns` 接受 `1–32` 的整数。模板值为 `16`，单实例合计最多 48 条应用连接。调高前，按发布时最多同时运行的实例数乘以 3 个池和每池上限估算连接需求，核对 STA 账号上限及 RDS 实例余量。凭据经已有密钥渠道交付，受限配置目录权限 `0700`、文件 `0600`。用真实连接回查 TLS 和应用驱动能力，按部署时测得的 RDS 配置定连接方式。
 2. 从同一提交构建 `linux/amd64` 镜像。校验发布包 SHA256、镜像 ID、实际运行二进制与该提交。将 `deploy/sta` 和该提交的 `sql/imserver.sql` 放入 `/opt/43chat-im-sta/releases/<commit>`，新建专用 volumes 与 `secrets`、`backups` 目录。按 `.env.example` 写发布配置，按 `config.example.json` 写受限 `config.yml`，写入 sta 独有的至少 32 字符随机 `adminSecret`，并由密钥渠道装入专用密码。
 3. 在发布目录用 `db.py preflight` 验证账号、空库、库级授权、应用连接池配置、版本与字符集。核对容器到 RDS 的网络后才初始化。`init` 接受空库并校验同包 SQL 的版本，使用新管理员口令文件。确认安装日志和版本一致后再发布端口。
 

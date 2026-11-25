@@ -47,8 +47,8 @@ def load_config(path):
         raise ValueError("database password must be nonempty and contain no newline/NUL")
     limit = db.get("maxOpenConns")
     # IM, JuggleChat and the console each have a pool; leave room for deployment checks.
-    if type(limit) is not int or not 1 <= limit <= 16:
-        raise ValueError("sta mysql.maxOpenConns must be between 1 and 16 per pool")
+    if type(limit) is not int or not 1 <= limit <= 32:
+        raise ValueError("sta mysql.maxOpenConns must be between 1 and 32 per pool")
     return config
 
 

@@ -46,8 +46,12 @@ class StaDatabaseTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'DROP'):
             db.validate_grants([grant], 'im_sta', initializing=True, restoring=True)
 
-    def test_sta_pool_limit_required(self):
-        for limit in (None, True, 0, 17):
+    def test_sta_pool_limit_range(self):
+        for limit in (1, 16, 24, 32):
+            with self.subTest(limit=limit):
+                config = self.load('im_sta', 'im_sta', db.RDS_ADDRESS, max_connections=limit)
+                self.assertEqual(config['mysql']['maxOpenConns'], limit)
+        for limit in (None, True, 0, 33):
             with self.subTest(limit=limit), self.assertRaisesRegex(ValueError, 'maxOpenConns'):
                 self.load('im_sta', 'im_sta', db.RDS_ADDRESS, max_connections=limit)
 
