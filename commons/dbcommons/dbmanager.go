@@ -60,9 +60,27 @@ func InitMysql() error {
 		return err
 	}
 	sqlDB.SetMaxIdleConns(20)
-	sqlDB.SetMaxOpenConns(500)
+	maxOpenConns := configures.Config.Mysql.MaxOpenConns
+	if maxOpenConns <= 0 {
+		maxOpenConns = 500
+	}
+	sqlDB.SetMaxOpenConns(maxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Hour)
 	sqlDB.SetConnMaxIdleTime(30 * time.Minute)
+	return nil
+}
+
+// LimitMysqlPool applies the configured limit to an embedded service's separate MySQL pool.
+func LimitMysqlPool(db *gorm.DB) error {
+	limit := configures.Config.Mysql.MaxOpenConns
+	if limit <= 0 {
+		return nil
+	}
+	pool, err := db.DB()
+	if err != nil {
+		return err
+	}
+	pool.SetMaxOpenConns(limit)
 	return nil
 }
 

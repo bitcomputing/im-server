@@ -3,6 +3,7 @@ package admingateway
 import (
 	"fmt"
 	"im-server/commons/configures"
+	"im-server/commons/dbcommons"
 	"im-server/commons/gmicro"
 	"im-server/commons/logs"
 
@@ -33,6 +34,10 @@ func (ser *AdminGateway) Startup(args map[string]interface{}) {
 	consoleLogger.SetLogger(logs.GetInfoLogger(), logs.GetErrorLogger())
 	if err := consoleDb.InitMysql(); err != nil {
 		fmt.Println("Init Console Mysql failed", err)
+		return
+	}
+	if err := dbcommons.LimitMysqlPool(consoleDb.GetDb()); err != nil {
+		fmt.Println("Limit Console Mysql pool failed", err)
 		return
 	}
 	consoleDb.Upgrade()

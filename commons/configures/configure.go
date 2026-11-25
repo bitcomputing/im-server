@@ -43,11 +43,12 @@ type ImConfig struct {
 	}
 
 	Mysql struct {
-		User     string `yaml:"user"`
-		Password string `yaml:"password"`
-		Address  string `yaml:"address"`
-		DbName   string `yaml:"name"`
-		Debug    bool   `yaml:"debug"`
+		User         string `yaml:"user"`
+		Password     string `yaml:"password"`
+		Address      string `yaml:"address"`
+		DbName       string `yaml:"name"`
+		Debug        bool   `yaml:"debug"`
+		MaxOpenConns int    `yaml:"maxOpenConns"`
 	} `yaml:"mysql"`
 
 	MongoDb struct {

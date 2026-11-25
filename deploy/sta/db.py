@@ -45,6 +45,10 @@ def load_config(path):
         raise ValueError("database endpoint differs from the inspected sta RDS target")
     if not db["password"] or any(c in db["password"] for c in "\r\n\0"):
         raise ValueError("database password must be nonempty and contain no newline/NUL")
+    limit = db.get("maxOpenConns")
+    # IM, JuggleChat and the console each have a pool; leave room for deployment checks.
+    if type(limit) is not int or not 1 <= limit <= 16:
+        raise ValueError("sta mysql.maxOpenConns must be between 1 and 16 per pool")
     return config
 
 
@@ -52,8 +56,8 @@ def option_quote(value):
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def validate_grants(lines, database, initializing=False):
-    write_grant = False
+def validate_grants(lines, database, initializing=False, restoring=False):
+    scoped_privileges = set()
     for line in lines:
         if "WITH GRANT OPTION" in line:
             raise ValueError("grant delegation is not permitted")
@@ -66,9 +70,14 @@ def validate_grants(lines, database, initializing=False):
         # Database grant underscores are wildcards unless escaped (partial_revokes is not assumed).
         if scope.replace("`", "") != database.replace("_", "\\_") + ".*" or "GRANT OPTION" in line:
             raise ValueError("account has privileges outside the dedicated IM database")
-        write_grant |= privileges == "ALL PRIVILEGES"
-    if initializing and not write_grant:
-        raise ValueError("initialization requires ALL PRIVILEGES on the exact sta database only")
+        scoped_privileges.update(privileges.split(", "))
+    if initializing and "ALL PRIVILEGES" not in scoped_privileges:
+        required = {"SELECT", "INSERT", "UPDATE", "DELETE", "CREATE", "INDEX", "ALTER"}
+        if restoring:
+            required.add("DROP")
+        missing = required - scoped_privileges
+        if missing:
+            raise ValueError("missing scoped database privileges: " + ", ".join(sorted(missing)))
 
 
 class Client:
@@ -107,15 +116,12 @@ class Client:
         finally:
             directory.cleanup()
 
-    def check(self, ready=False, initializing=False):
+    def check(self, ready=False, initializing=False, restoring=False):
         identity = self.run("SELECT DATABASE(),SUBSTRING_INDEX(CURRENT_USER(),'@',1);").strip()
         if identity != self.db["name"] + "\t" + self.db["user"]:
             raise ValueError("database/account identity mismatch")
-        validate_grants(self.run("SHOW GRANTS;").splitlines(), self.db["name"], initializing=initializing)
-        account = self.run("SHOW CREATE USER CURRENT_USER();")
-        limit = re.search(r"MAX_USER_CONNECTIONS\s+(\d+)", account)
-        if not limit or not 1 <= int(limit.group(1)) <= 50:
-            raise ValueError("dedicated account must cap connections between 1 and 50")
+        validate_grants(self.run("SHOW GRANTS;").splitlines(), self.db["name"],
+                        initializing=initializing, restoring=restoring)
         version = self.run("SELECT VERSION();").strip()
         if not version.startswith("8.0."):
             raise ValueError("only the reviewed MySQL 8.0 family is supported")
@@ -144,7 +150,7 @@ def main():
     if args.action == "restore" and database != "im_sta_recovery":
         raise ValueError("restore must use a separately approved empty recovery database")
     initializing = args.action in ("preflight", "init", "restore")
-    client.check(ready=not initializing, initializing=initializing)
+    client.check(ready=not initializing, initializing=initializing, restoring=args.action == "restore")
     if initializing:
         if client.run("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE();").strip() != "0":
             raise ValueError("refusing initialization/restore into a nonempty database")
