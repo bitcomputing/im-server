@@ -35,6 +35,17 @@ ALB 终止 TLS，按域名转发 HTTP 到部署机 Nginx 的 80 端口。将 `de
 
 2026-11-19，补齐 `/health` 转发后，公网 GET 和 OPTIONS 探测、已登录页面的 SDK 连接及刷新重连通过。回滚经过和验收范围见 [STA-IM-003 验收记录](sta-web-reconnect-20261119.md)。
 
+## 重建当前 STA IM 容器
+
+从包含脚本的本机仓库目录执行。第一条检查现场配置和数据库，第二条会重建当前镜像对应的 STA IM 容器，客户端会短暂重连。
+
+```powershell
+Get-Content -Raw .\deploy\sta\redeploy.py | ssh xudong@39.98.68.96 'sudo -n python3 -B - --check'
+Get-Content -Raw .\deploy\sta\redeploy.py | ssh xudong@39.98.68.96 'sudo -n python3 -B -'
+```
+
+脚本根据现有容器找到固定的 STA 发布目录和 Compose 配置，拿到发布锁并确认镜像 ID 与数据库版本匹配后，只重建 `im-server`。容器达到健康状态后才报告成功。发布新提交时按后面的构建和发布步骤准备新制品。
+
 ## 准备与启动
 
 1. 在经核定的 RDS 实例上准备空库 `im_sta` 和同名账号，库字符集 `utf8mb4`、排序 `utf8mb4_0900_ai_ci`。账号绑定实测的容器出口。在准确转义的 `im\_sta` 库范围内授予 `SELECT, INSERT, UPDATE, DELETE, CREATE, INDEX, ALTER`，用于建表、写入和库内的启动迁移。STA 单实例的 IM、JuggleChat 和管理台各有一个连接池，`mysql.maxOpenConns` 接受 `1–32` 的整数。模板值为 `16`，单实例合计最多 48 条应用连接。调高前，按发布时最多同时运行的实例数乘以 3 个池和每池上限估算连接需求，核对 STA 账号上限及 RDS 实例余量。凭据经已有密钥渠道交付，受限配置目录权限 `0700`、文件 `0600`。用真实连接回查 TLS 和应用驱动能力，按部署时测得的 RDS 配置定连接方式。
