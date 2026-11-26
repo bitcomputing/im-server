@@ -25,6 +25,8 @@ func Route(eng *gin.Engine, prefix string, policy http.Handler) {
 	mindlinkRoutes.GET("/history-v3/:conversation_id/:before/:limit", gin.WrapH(policy))
 	mindlinkRoutes.GET("/conversations/:conversation_id/seen", gin.WrapH(policy))
 	mindlinkRoutes.PUT("/conversations/:conversation_id/seen", gin.WrapH(policy))
+	mindlinkRoutes.GET("/visibility/hidden", gin.WrapH(policy))
+	mindlinkRoutes.PUT("/conversations/:conversation_id/visibility", gin.WrapH(policy))
 
 	group := eng.Group("/" + prefix)
 	group.Use(apis.Signature)

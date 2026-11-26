@@ -12,11 +12,18 @@ import (
 	"im-server/commons/errs"
 )
 
+func (h *PolicyHTTP) WithVisibilityOwner(owner string) *PolicyHTTP {
+	copy := *h
+	copy.visibilityOwner = owner
+	return &copy
+}
+
 type PolicyHTTP struct {
-	verifier      *Verifier
-	db            *sql.DB
-	disableSource *DisableAuthoritySource
-	nativeRead    NativeRead
+	visibilityOwner string
+	verifier        *Verifier
+	db              *sql.DB
+	disableSource   *DisableAuthoritySource
+	nativeRead      NativeRead
 }
 
 // WithNativeRead is configured once by the gateway before serving requests.
@@ -61,6 +68,12 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/apigateway/mindlink/operations/") {
 		operation = "operations.query"
 	}
+	if r.Method == http.MethodGet && r.URL.Path == OwnerDMHiddenPath {
+		operation = OperationOwnerDMHidden
+	}
+	if r.Method == http.MethodPut && strings.HasPrefix(r.URL.Path, "/apigateway/mindlink/conversations/") && strings.HasSuffix(r.URL.Path, "/visibility") {
+		operation = OperationOwnerDMVisibility
+	}
 	if r.Method == http.MethodPost && r.URL.Path == PrincipalDisablePath {
 		operation = OperationPrincipalDisable
 	}
@@ -96,6 +109,19 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var result *MutationResult
+	if operation == OperationOwnerDMHidden {
+		if h.visibilityOwner == "" || h.visibilityOwner != auth.claims.OwnerID {
+			writePolicyError(w, ErrForbidden)
+			return
+		}
+		ids, e := h.verifier.hiddenOwnerDMs(r.Context(), h.db, auth)
+		if e != nil {
+			writePolicyError(w, e)
+			return
+		}
+		writePolicyJSON(w, http.StatusOK, policyEnvelope{0, "success", map[string]any{"owner_id": auth.claims.OwnerID, "request_id": auth.claims.RequestID, "hidden_ids": ids}})
+		return
+	}
 	if operation == OperationSeenQuery || operation == OperationSeenAdvance {
 		result, err = h.verifier.Read(r.Context(), h.db, auth, h.nativeRead)
 		if err != nil {
@@ -119,6 +145,12 @@ func (h *PolicyHTTP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Replayed bool `json:"replayed"`
 		}{read, result.Replayed}})
 		return
+	} else if operation == OperationOwnerDMVisibility {
+		if h.visibilityOwner == "" || auth.claims.OwnerID != h.visibilityOwner {
+			writePolicyError(w, ErrForbidden)
+			return
+		}
+		result, err = h.verifier.setOwnerDMVisibility(r.Context(), h.db, auth)
 	} else if operation == OperationPrincipalDisable {
 		if _, err := h.verifier.ParsePrincipalDisable(auth); err != nil {
 			writePolicyError(w, err)

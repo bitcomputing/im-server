@@ -26,12 +26,12 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 			return closed, mindlink.ErrInvalidRequest
 		}
 		for _, op := range item.QueryOperations {
-			if op != "operations.query" && op != mindlink.OperationMessageQuery && op != mindlink.OperationHistoryRead && op != mindlink.OperationSeenQuery {
+			if op != "operations.query" && op != mindlink.OperationMessageQuery && op != mindlink.OperationHistoryRead && op != mindlink.OperationSeenQuery && op != mindlink.OperationOwnerDMHidden {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}
 		for _, op := range item.MutationOperations {
-			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure && op != mindlink.OperationConversationCancel && op != mindlink.OperationMessageSend && op != mindlink.OperationSeenAdvance && op != mindlink.OperationStationStopped {
+			if op != mindlink.OperationPrincipalDisable && op != mindlink.OperationPrincipalEnsure && op != mindlink.OperationConversationEnsure && op != mindlink.OperationConversationCancel && op != mindlink.OperationMessageSend && op != mindlink.OperationSeenAdvance && op != mindlink.OperationOwnerDMVisibility && op != mindlink.OperationStationStopped {
 				return closed, mindlink.ErrInvalidRequest
 			}
 		}
@@ -55,7 +55,7 @@ func NewMindlinkHTTP(cfg configures.MindlinkConfig, db *sql.DB) (http.Handler, e
 		if err != nil {
 			return closed, err
 		}
-		return h.WithNativeRead(nativeMindlinkRead), nil
+		return h.WithVisibilityOwner(cfg.VisibilityOwner).WithNativeRead(nativeMindlinkRead), nil
 	}
-	return mindlink.NewPolicyHTTP(v, db).WithNativeRead(nativeMindlinkRead), nil
+	return mindlink.NewPolicyHTTP(v, db).WithVisibilityOwner(cfg.VisibilityOwner).WithNativeRead(nativeMindlinkRead), nil
 }

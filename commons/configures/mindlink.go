@@ -1,6 +1,7 @@
 package configures
 
 type MindlinkConfig struct {
+	VisibilityOwner        string                        `yaml:"visibility_owner"`
 	Enabled                bool                          `yaml:"enabled"`
 	Trusts                 []MindlinkTrustConfig         `yaml:"trusts"`
 	DisableAuthoritySource MindlinkAuthoritySourceConfig `yaml:"disable_authority_source"`
