@@ -99,6 +99,14 @@ func ownerListRows(ctx context.Context, target string) ([]*pbobjs.Conversation, 
 			return err
 		}
 		for i, r := range result {
+			if r.Business.Type != "avatar_pair_group" && positions[i] > 0 && r.UnreadCount > 0 {
+				index, err := (dbs.SeenDao{DB: tx}).OwnerReadIndex(app, owner, r.TargetId, r.ChannelType, positions[i])
+				if err != nil {
+					return err
+				}
+				r.LatestReadIndex = max(r.LatestReadIndex, min(index, r.LatestUnreadIndex))
+				r.UnreadCount = max(0, r.LatestUnreadIndex-r.LatestReadIndex)
+			}
 			last, err := (dbs.SeenDao{DB: tx}).LatestPreview(app, owner, r.TargetId, "", r.ChannelType)
 			if err != nil {
 				return err

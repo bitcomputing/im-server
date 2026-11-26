@@ -13,6 +13,7 @@ import (
 	"im-server/commons/mindlink"
 	"im-server/commons/pbdefines/pbobjs"
 	conversation "im-server/services/conversation/services"
+	"im-server/services/conversation/storages/dbs"
 )
 
 func nativeMindlinkRead(ctx context.Context, tx *sql.Tx, b mindlink.ReadBinding, position *int64) (mindlink.ReadState, error) {
@@ -39,6 +40,19 @@ func nativeMindlinkRead(ctx context.Context, tx *sql.Tx, b mindlink.ReadBinding,
 			return mindlink.ReadState{}, mindlink.ErrInvalidRequest
 		}
 		return mindlink.ReadState{}, mindlink.ErrNotReady
+	}
+	if position != nil && b.Kind != "avatar_pair_group" {
+		channel := pbobjs.ChannelType(b.ChannelType)
+		index, err := (dbs.SeenDao{DB: db.WithContext(ctx)}).OwnerReadIndex(b.AppKey, b.RequesterID, b.TargetID, channel, state.SeenSeq)
+		if err != nil {
+			return mindlink.ReadState{}, err
+		}
+		if index > 0 {
+			_, err = tx.ExecContext(ctx, "UPDATE conversations SET latest_read_msg_index=GREATEST(latest_read_msg_index,LEAST(?,latest_unread_msg_index)) WHERE app_key=? AND user_id=? AND target_id=? AND channel_type=? AND sub_channel=''", index, b.AppKey, b.RequesterID, b.TargetID, channel)
+			if err != nil {
+				return mindlink.ReadState{}, err
+			}
+		}
 	}
 	return mindlink.ReadState{SeenSeq: strconv.FormatInt(state.SeenSeq, 10), LatestSeq: strconv.FormatInt(state.LatestSeq, 10), HasNew: state.HasNew}, nil
 }
