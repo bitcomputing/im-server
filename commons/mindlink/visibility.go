@@ -118,7 +118,8 @@ func (v *Verifier) hiddenOwnerDMs(ctx context.Context, db *sql.DB, a *Authorizat
 	}
 	defer tx.Rollback()
 	var enabled bool
-	if err = tx.QueryRowContext(ctx, "SELECT read_enabled AND list_projection_ready FROM mindlink_owner_barriers WHERE environment=? AND tenant_id=? AND appkey=? AND owner_id=?", c.Environment, c.TenantID, c.AppKey, c.OwnerID).Scan(&enabled); err != nil || !enabled {
+	// Legacy list reads still need native visibility after SDK list projection is disabled.
+	if err = tx.QueryRowContext(ctx, "SELECT read_enabled FROM mindlink_owner_barriers WHERE environment=? AND tenant_id=? AND appkey=? AND owner_id=?", c.Environment, c.TenantID, c.AppKey, c.OwnerID).Scan(&enabled); err != nil || !enabled {
 		return nil, ErrNotReady
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT m.conversation_id FROM mindlink_conversations m JOIN conversations i ON i.app_key=m.native_appkey AND BINARY i.user_id=BINARY m.owner_im_id AND BINARY i.target_id=BINARY m.native_target_id AND i.channel_type=1 AND i.sub_channel='' WHERE m.environment=? AND m.tenant_id=? AND m.appkey=? AND m.owner_id=? AND m.kind='owner_avatar_dm' AND i.is_deleted<>0 ORDER BY m.conversation_id LIMIT 4097`, c.Environment, c.TenantID, c.AppKey, c.OwnerID)
